@@ -2,18 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, ChevronRight, Layers3, Leaf, MapPin, MessageCircle, Minus, PackageOpen, Plus, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Trash2, Utensils, X } from "lucide-react";
-<<<<<<< HEAD
 import { api, Product, Category, rupiah, slugify } from "@/lib/types";
-=======
-import { api, Product, Category, rupiah } from "@/lib/types";
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
 import Link from "next/link";
 
 type CartItem = { product: Product; quantity: number };
 type HomeCartItem = { offer: HomeOffer; quantity: number };
 type Settings = { nama_instansi: string; nomor_whatsapp: string; alamat: string | null };
 type FlyingItem = { key: number; left: number; top: number; x: number; y: number; foto_url: string | null };
-<<<<<<< HEAD
 type HomeOffer = {
   category: string;
   badge: string;
@@ -29,12 +24,9 @@ type HomeOffer = {
   emoji?: string;
   background?: string;
 };
-=======
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
 const cartKey = "mbg-cart-v1";
 const homeCartKey = "dapurkita-rfq-v1";
 
-<<<<<<< HEAD
 const homeCategories = ["Semua Kategori", "Peralatan", "Legalitas", "Maintenance", "Bahan Baku"];
 const homeOffers: HomeOffer[] = [
   {
@@ -219,33 +211,6 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
           <div className="mt-1.5 grid grid-cols-[1fr_1.2fr] gap-1">
             <button onClick={onDetail} className="inline-flex items-center justify-center gap-1 rounded bg-[#e7efff] px-2 py-1.5 text-[8px] font-bold text-slate-700 hover:bg-[#dbe7ff]"><Search size={10}/>Detail</button>
             <button onClick={(event) => onAdd(event.currentTarget)} disabled={!product.tersedia} aria-label={`Tambah ${product.nama_produk} ke keranjang`} className="inline-flex items-center justify-center gap-1 rounded bg-[#ad3b00] px-2 py-1.5 text-[8px] font-bold text-white hover:bg-[#8e3000] disabled:cursor-not-allowed disabled:opacity-40"><ShoppingCart size={10}/>Keranjang</button>
-=======
-function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail: () => void; onAdd: (source: HTMLElement) => void }) {
-  return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
-      <button onClick={onDetail} className="relative block aspect-[1.4/1] w-full overflow-hidden bg-[#edf2ff] text-left">
-        {product.foto_url
-          ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-          : <div className="flex h-full items-center justify-center bg-[#edf2ff] text-5xl">🍱</div>}
-        <span className="absolute left-2.5 top-2.5 max-w-[68%] truncate rounded bg-white/95 px-2 py-1 text-[9px] font-semibold text-slate-700 shadow-sm">{product.tersedia ? "Ready Stock" : "Tidak tersedia"}</span>
-        <span className="absolute right-2.5 top-2.5 max-w-[45%] truncate rounded bg-white/95 px-2 py-1 text-[9px] font-semibold text-slate-700 shadow-sm">{product.kategori?.nama_kategori || "Menu MBG"}</span>
-      </button>
-      <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[8px] font-bold uppercase tracking-[.12em] text-slate-400">Kode: {product.kode_produk}</p>
-        </div>
-        <button onClick={onDetail} className="mt-1 min-h-9 text-left text-sm font-extrabold leading-4 text-slate-800 hover:text-[#ad3b00]">{product.nama_produk}</button>
-        <p className="mt-1 line-clamp-2 min-h-8 text-[10px] leading-3.5 text-slate-500">{product.deskripsi}</p>
-        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-slate-500">
-          <span className="inline-flex items-center gap-1"><Leaf size={10} className="text-[#ad3b00]"/>{product.informasi_gizi.kalori} kkal</span>
-          <span className="inline-flex items-center gap-1"><BadgeCheck size={10} className="text-[#ad3b00]"/>Protein {product.informasi_gizi.protein} g</span>
-        </div>
-        <div className="mt-auto flex items-end justify-between gap-2 border-t border-slate-100 pt-2.5">
-          <div><small className="block text-[8px] text-slate-500">Harga per {product.satuan}</small><b className="text-sm font-extrabold text-[#ad3b00]">{rupiah(product.harga)}</b></div>
-          <div className="flex gap-1.5">
-            <button onClick={onDetail} className="rounded bg-[#e8efff] px-2.5 py-1.5 text-[9px] font-bold text-slate-700 hover:bg-[#dce7ff]">Detail</button>
-            <button onClick={(event) => onAdd(event.currentTarget)} disabled={!product.tersedia} aria-label={`Tambah ${product.nama_produk} ke keranjang`} className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40"><ShoppingCart size={13}/></button>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
           </div>
         </div>
       </div>
@@ -266,18 +231,11 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
   const [requestedCategory, setRequestedCategory] = useState<string | null>(null);
   const [homeCategory, setHomeCategory] = useState("Semua Kategori");
   const [search, setSearch] = useState("");
-<<<<<<< HEAD
   const [priceRange, setPriceRange] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("recommended");
   const [loading, setLoading] = useState(page === "catalog");
   const [cartInitialized, setCartInitialized] = useState(false);
-=======
-  const [availability, setAvailability] = useState<"all" | "available">("all");
-  const [priceRange, setPriceRange] = useState<"all" | "under-1m" | "1m-5m" | "over-5m">("all");
-  const [sort, setSort] = useState<"recommended" | "price-low" | "price-high" | "name">("recommended");
-  const [loading, setLoading] = useState(true);
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nama_pemesan: "", nama_sekolah: "", telepon_pemesan: "", catatan: "" });
@@ -335,7 +293,6 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
   }, [page]);
 
   useEffect(() => {
-<<<<<<< HEAD
     if (!requestedCategory) return;
     const match = categories.find((item) =>
       item.slug === requestedCategory || slugify(item.nama_kategori) === requestedCategory
@@ -384,29 +341,6 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
     else filtered.sort((a, b) => b2bProductOrder.indexOf(a.kode_produk) - b2bProductOrder.indexOf(b.kode_produk));
     return filtered;
   }, [b2bProducts, category, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
-=======
-    if (!loading) localStorage.setItem(cartKey, JSON.stringify(cart));
-  }, [cart, loading]);
-
-  const visible = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const filtered = products.filter((p) =>
-      (category === null || p.kategori_id === category) &&
-      (!query || `${p.nama_produk} ${p.kode_produk} ${p.deskripsi}`.toLowerCase().includes(query)) &&
-      (availability === "all" || p.tersedia) &&
-      (priceRange === "all" ||
-        (priceRange === "under-1m" && Number(p.harga) < 1000000) ||
-        (priceRange === "1m-5m" && Number(p.harga) >= 1000000 && Number(p.harga) <= 5000000) ||
-        (priceRange === "over-5m" && Number(p.harga) > 5000000))
-    );
-    return [...filtered].sort((a, b) => {
-      if (sort === "price-low") return Number(a.harga) - Number(b.harga);
-      if (sort === "price-high") return Number(b.harga) - Number(a.harga);
-      if (sort === "name") return a.nama_produk.localeCompare(b.nama_produk);
-      return 0;
-    });
-  }, [products, category, search, availability, priceRange, sort]);
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const total = cart.reduce((sum, item) => sum + Number(item.product.harga) * item.quantity, 0);
   const homeItemCount = homeCart.reduce((sum, item) => sum + item.quantity, 0);
@@ -533,22 +467,9 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
                 {homeCategories.map((item) => <button key={item} onClick={() => setHomeCategory(item)} className={`shrink-0 rounded-md px-3 py-2 text-[10px] font-semibold ${homeCategory === item ? "bg-white text-slate-800 shadow-sm" : "text-slate-600 hover:bg-white/60"}`}>{item}</button>)}
               </div>
             </div>
-<<<<<<< HEAD
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={() => addHomeOffer(item)}/>)}
             </div>
-=======
-            {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1,2,3,4].map((n) => <div key={n} className="h-[330px] animate-pulse rounded-xl bg-white/80"/> )}</div> :
-              featuredProducts.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {featuredProducts.map((product) => <ProductCard key={product.id} product={product} onDetail={() => setSelected(product)} onAdd={(source) => add(product, source)}/>)}
-              </div> : <div className="rounded-xl border border-white bg-white/80 px-5 py-12 text-center">
-                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#fff4e8] text-[#ad3b00]"><Utensils size={22}/></span>
-                <h2 className="mt-3 font-bold text-slate-800">Menu sedang disiapkan</h2>
-                <p className="mt-1 text-sm text-slate-500">Silakan kunjungi katalog untuk melihat pilihan yang tersedia.</p>
-                <Link href="/katalog" className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#ad3b00]">Buka katalog <ChevronRight size={16}/></Link>
-              </div>
-            }
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
             <div className="mt-7 flex justify-center">
               <Link href="/katalog" className="inline-flex items-center gap-2 rounded-md bg-[#ad3b00] px-5 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-[#8f3000]"><ShoppingBag size={13}/> Lihat Semua 250+ Produk di Katalog Lengkap <ArrowRight size={15}/></Link>
             </div>
@@ -601,7 +522,6 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
           </div>
         </section>
       </> : <>
-<<<<<<< HEAD
         <section className="border-b border-slate-100 bg-white">
           <div className="mx-auto max-w-7xl px-5 pb-7 pt-8 lg:px-8 lg:pb-9 lg:pt-10">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e8eeff] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600"><BadgeCheck size={12} className="text-[#b63d00]"/> B2B HORECA PROCUREMENT CATALOGUE 2025</span>
@@ -612,24 +532,10 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
                 <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><span className="flex items-center justify-between"><b className="text-slate-800">Kategori</b><Layers3 size={13} className="text-[#ad3b00]"/></span><span className="mt-1 block text-slate-500">{catalogCategories.length} pilihan</span></div>
                 <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><b className="block text-slate-800">Pengiriman Nasional</b><span className="mt-1 block text-slate-500">Armada terjadwal & terlacak</span></div>
                 <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><b className="block text-slate-800">Faktur Pajak</b><span className="mt-1 block text-slate-500">Transaksi bisnis resmi</span></div>
-=======
-        <section className="border-b border-[#e1e6f4] bg-[#f7f8ff]">
-          <div className="mx-auto max-w-7xl px-5 py-7 lg:px-8 lg:py-8">
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e8efff] px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-600"><BadgeCheck size={11} className="text-[#ad3b00]"/> Katalog Pengadaan Dapur</span>
-                <h1 className="mt-3 text-2xl font-black leading-tight tracking-tight text-slate-900 sm:text-3xl md:text-4xl">Katalog Pengadaan Dapur Profesional</h1>
-                <p className="mt-2 max-w-xl text-xs leading-5 text-slate-600 sm:text-sm">Temukan bahan baku, perlengkapan, dan layanan dapur dari mitra terverifikasi untuk mendukung operasional MBG Anda.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[10px] sm:min-w-[280px]">
-                <div className="rounded-md bg-[#e8efff] p-2.5 text-slate-700"><div className="flex items-center justify-between"><b className="text-[9px] uppercase tracking-wide text-slate-500">Produk aktif</b><PackageOpen size={14} className="text-[#ad3b00]"/></div><strong className="mt-1 block text-sm text-slate-900">{products.length} item</strong></div>
-                <div className="rounded-md bg-[#e8efff] p-2.5 text-slate-700"><div className="flex items-center justify-between"><b className="text-[9px] uppercase tracking-wide text-slate-500">Kategori</b><Layers3 size={14} className="text-[#ad3b00]"/></div><strong className="mt-1 block text-sm text-slate-900">{categories.length} pilihan</strong></div>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
               </div>
             </div>
           </div>
         </section>
-<<<<<<< HEAD
         <section id="katalog" className="mx-auto w-full max-w-7xl flex-1 px-5 py-7 lg:px-8 lg:py-9">
           <div className="grid gap-4 rounded-xl border border-slate-100 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.7fr_1fr_1fr_1fr] lg:p-4">
             <label className="relative block"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="field h-10 border-slate-200 pl-9 text-xs" placeholder="Cari nama produk, kode SKU..."/></label>
@@ -655,51 +561,15 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
         </section>
       </>}
       <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
-=======
-        <section id="katalog" className="mx-auto w-full max-w-7xl flex-1 bg-[#f7f8ff] px-5 py-6 lg:px-8 lg:py-8">
-          <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(280px,1fr)_165px_185px_180px]">
-              <label className="relative block"><Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="field field-with-icon h-10 border-0 bg-[#edf2ff] text-xs" placeholder="Cari produk, merk, spesifikasi, atau layanan..."/></label>
-              <select value={priceRange} onChange={(e)=>setPriceRange(e.target.value as typeof priceRange)} className="field h-10 border-0 bg-[#edf2ff] py-2 text-[10px] text-slate-600"><option value="all">Semua rentang harga</option><option value="under-1m">Di bawah Rp1 juta</option><option value="1m-5m">Rp1–5 juta</option><option value="over-5m">Di atas Rp5 juta</option></select>
-              <select value={availability} onChange={(e)=>setAvailability(e.target.value as typeof availability)} className="field h-10 border-0 bg-[#edf2ff] py-2 text-[10px] text-slate-600"><option value="all">Ketersediaan: Semua</option><option value="available">Tersedia saja</option></select>
-              <select value={sort} onChange={(e)=>setSort(e.target.value as typeof sort)} className="field h-10 border-0 bg-[#edf2ff] py-2 text-[10px] text-slate-600"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-low">Harga terendah</option><option value="price-high">Harga tertinggi</option><option value="name">Nama A–Z</option></select>
-            </div>
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal size={12} className="shrink-0 text-slate-600"/>
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Kategori</span>
-                <div className="scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
-                  <button onClick={()=>setCategory(null)} className={`shrink-0 rounded px-3 py-1.5 text-[9px] font-bold transition ${category===null?"bg-[#ad3b00] text-white shadow-sm":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>Semua kategori ({products.length})</button>
-                  {categories.map((item)=><button key={item.id} onClick={()=>setCategory(item.id)} className={`shrink-0 rounded px-3 py-1.5 text-[9px] font-semibold transition ${category===item.id?"bg-[#ad3b00] text-white shadow-sm":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>{item.nama_kategori} <span className="ml-1 opacity-70">({products.filter((product) => product.kategori_id === item.id).length})</span></button>)}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="mb-4 mt-6 flex items-end justify-between gap-3"><div><h2 className="text-lg font-black text-slate-900 md:text-xl">Daftar Produk & Jasa</h2></div><span className="rounded bg-[#e8efff] px-2 py-1 text-[9px] font-semibold text-slate-600">{visible.length} item ditampilkan</span></div>
-          {error&&<div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Katalog tidak dapat dimuat: {error}</div>}
-          {loading?<div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{[1,2,3,4].map((n)=><div key={n} className="h-[330px] animate-pulse rounded-lg bg-[#edf2ff]"/>)}</div>:
-            visible.length?<div className="grid grid-cols-2 items-stretch gap-4 md:grid-cols-3 lg:grid-cols-4">{visible.map((product)=><ProductCard key={product.id} product={product} onDetail={()=>setSelected(product)} onAdd={(source)=>add(product, source)}/>)}</div>:
-            <div className="rounded-lg border border-dashed border-[#dfe6f5] bg-white py-16 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#edf2ff] text-[#ad3b00]"><Search size={22}/></div><h2 className="mt-3 font-bold text-slate-800">{error?"Katalog belum dapat ditampilkan":"Produk belum ditemukan"}</h2><p className="mt-1 text-sm text-slate-500">{error?"Periksa koneksi database, lalu muat ulang halaman.":"Coba kata kunci, kategori, atau filter lainnya."}</p></div>}
-        </section>
-      </>}
-
-      <footer id="kontak" className="mt-auto border-t border-[#dfe6f5] bg-[#edf2ff] px-5 pb-4 pt-8 text-slate-600">
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
         <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
           <div>
             <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest-700 text-white"><Leaf size={17}/></span>DapurKita</Link>
             <p className="mt-3 max-w-xs text-[10px] leading-4">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
             <div className="mt-3 flex gap-2 text-[9px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
           </div>
-<<<<<<< HEAD
           <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">NAVIGASI CEPAT</h3><div className="mt-3 flex flex-col gap-2 text-[10px]"><Link href="/" className="hover:text-[#ad3b00]">Home Utama</Link><Link href="/katalog" className="hover:text-[#ad3b00]">Katalog Peralatan</Link><a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-[#ad3b00]">Hubungi Tim B2B</a><Link href="/admin/login" className="hover:text-[#ad3b00]">Portal Operasional Admin</Link></div></div>
           <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-[10px]"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku & Pangan Komersial</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan & Legalitas Usaha</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan & Maintenance Dapur</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan Dapur & Heavy Duty</a></div></div>
           <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">HEAD OFFICE</h3><div className="mt-3 space-y-2 text-[10px]"><p className="flex gap-2"><MapPin size={13} className="shrink-0 text-[#ad3b00]"/>Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190</p><a href="tel:+622155578900" className="flex gap-2 hover:text-[#ad3b00]"><MessageCircle size={13} className="shrink-0 text-[#ad3b00]"/>+62 21 5557 8900</a><a href="mailto:procurement@dapurkita.co.id" className="flex gap-2 hover:text-[#ad3b00]">✉ procurement@dapurkita.co.id</a></div></div>
-=======
-          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">Navigasi Cepat</h3><div className="mt-3 flex flex-col gap-2 text-[10px]"><Link href="/" className="hover:text-forest-600">Home</Link><Link href="/katalog" className="hover:text-forest-600">Katalog Menu</Link><a href={whatsappHref} className="hover:text-forest-600">Hubungi via WhatsApp</a><Link href="/admin/login" className="hover:text-forest-600">Portal Admin</Link></div></div>
-          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">Kategori Menu</h3><div className="mt-3 flex flex-col gap-2 text-[10px]">{categories.slice(0,4).map((item)=><Link key={item.id} href="/katalog" className="hover:text-forest-600">{item.nama_kategori}</Link>)}{!categories.length&&<><Link href="/katalog">Paket Makan Siang</Link><Link href="/katalog">Kudapan Sehat</Link></>}</div></div>
-          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">Kontak</h3><div className="mt-3 space-y-2 text-[10px]">{settings?.alamat&&<p className="flex gap-2"><MapPin size={13} className="shrink-0 text-forest-600"/>{settings.alamat}</p>}{settings?.nomor_whatsapp&&<a href={whatsappHref} target="_blank" rel="noreferrer" className="flex gap-2 hover:text-forest-600"><MessageCircle size={13} className="shrink-0 text-forest-600"/>+{settings.nomor_whatsapp.replace(/\D/g,"")}</a>}<p className="text-slate-500">Melayani dengan sepenuh hati.</p></div></div>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
         </div>
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 border-t border-[#dfe7fb] pt-4 text-[9px] sm:flex-row"><span>© 2025 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.</span><span className="flex gap-4"><a href="#kontak">Kebijakan Privasi B2B</a><a href="#kontak">Syarat & Ketentuan</a></span></div>
       </footer>
@@ -712,7 +582,6 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
       >
         {flyingItem.foto_url ? <img src={flyingItem.foto_url} alt="" className="h-full w-full object-cover" /> : "🍱"}
       </div>}
-<<<<<<< HEAD
       <button ref={cartButtonRef} onClick={()=>setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${page === "home" ? homeItemCount : itemCount} item`}>
         <ShoppingBag size={16}/>{page === "home" ? "Keranjang RFQ" : "Keranjang"} {(page === "home" ? homeItemCount : itemCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[10px]">{page === "home" ? homeItemCount : itemCount}</span>}
       </button>
@@ -733,37 +602,11 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
               <h2 id="home-offer-title" className="mt-1.5 text-xl font-black leading-tight text-slate-900">{selectedHomeOffer.title}</h2>
               <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#ad3b00]">{selectedHomeOffer.price}</b>{selectedHomeOffer.unit && <span className="pb-1 text-[9px] text-slate-500">{selectedHomeOffer.unit}</span>}</div>
               <div className="mt-3 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-md bg-[#edf7ef] px-2 py-1.5 text-[9px] font-bold text-forest-700"><BadgeCheck size={12}/>{selectedHomeOffer.badge}</span><span className="inline-flex items-center rounded-md bg-[#edf2ff] px-2 py-1.5 text-[9px] font-bold text-slate-700">Pengadaan B2B</span></div>
-=======
-      <button ref={cartButtonRef} onClick={()=>setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${itemCount} item`}>
-        <ShoppingBag size={16}/>Keranjang {itemCount>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[10px]">{itemCount}</span>}
-      </button>
-
-      {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(e) => e.target === e.currentTarget && setSelected(null)}>
-        <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-            <p className="text-[9px] font-bold uppercase tracking-[.12em] text-slate-500">{selected.kategori?.nama_kategori || "Produk"} <span className="mx-2 text-slate-300">|</span> <span className="normal-case tracking-normal">SKU: {selected.kode_produk}</span></p>
-            <button onClick={() => setSelected(null)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup detail produk"><X size={16}/></button>
-          </div>
-          <div className="grid gap-5 p-5 md:grid-cols-[1fr_1fr]">
-            <div className="flex min-h-[205px] items-center justify-center overflow-hidden rounded-md bg-[#edf2ff]">
-              {selected.foto_url ? <img src={selected.foto_url} alt={selected.nama_produk} className="h-full max-h-[220px] w-full object-cover"/> : <Utensils size={58} className="text-[#ad3b00]"/>}
-            </div>
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[.12em] text-[#ad3b00]">{selected.kategori?.nama_kategori || "Menu MBG"}</p>
-              <h2 className="mt-1.5 text-xl font-black leading-tight text-slate-900">{selected.nama_produk}</h2>
-              <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#ad3b00]">{rupiah(selected.harga)}</b><span className="pb-1 text-[9px] text-slate-500">/ Unit ({selected.satuan})</span></div>
-              <p className="mt-3 text-[11px] leading-5 text-slate-600">{selected.deskripsi}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[9px] font-bold ${selected.tersedia ? "bg-[#edf7ef] text-forest-700" : "bg-slate-100 text-slate-600"}`}><BadgeCheck size={12}/>{selected.tersedia ? "Tersedia" : "Tidak tersedia"}</span>
-                {selected.informasi_gizi.kalori > 0 && <span className="inline-flex items-center gap-1.5 rounded-md bg-[#edf2ff] px-2 py-1.5 text-[9px] font-bold text-slate-700"><Leaf size={12}/>{selected.informasi_gizi.kalori} kkal</span>}
-              </div>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
             </div>
           </div>
           <div className="px-5 pb-5">
             <div className="rounded-lg border border-slate-100 p-3.5">
               <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-900"><span className="flex h-5 w-5 items-center justify-center rounded bg-[#fff1e8] text-[#ad3b00]"><BadgeCheck size={12}/></span>Informasi Produk</h3>
-<<<<<<< HEAD
               <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-2">
                 <div><span className="block text-slate-400">Kategori</span><b className="mt-0.5 block text-slate-700">{selectedHomeOffer.category}</b></div>
                 <div><span className="block text-slate-400">SKU</span><b className="mt-0.5 block text-slate-700">{selectedHomeOffer.sku}</b></div>
@@ -773,24 +616,11 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               <button onClick={() => { addHomeOffer(selectedHomeOffer); setSelectedHomeOffer(null); setCartOpen(true); }} className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[10px] font-bold text-slate-700 hover:bg-slate-50"><ShoppingCart size={14}/>Tambah ke keranjang</button>
               <a href={whatsappHref.startsWith("https://") ? `${whatsappHref}?text=${encodeURIComponent(`Halo DapurKita, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}` : "/#kontak"} target={whatsappHref.startsWith("https://") ? "_blank" : undefined} rel={whatsappHref.startsWith("https://") ? "noreferrer" : undefined} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[10px] font-bold text-white hover:bg-[#8f3000]"><MessageCircle size={14}/>Tanya via WhatsApp</a>
-=======
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-[9px]">
-                <div><span className="block text-slate-400">Kategori</span><b className="mt-0.5 block text-slate-700">{selected.kategori?.nama_kategori || "Belum dikategorikan"}</b></div>
-                <div><span className="block text-slate-400">Satuan</span><b className="mt-0.5 block text-slate-700">{selected.satuan}</b></div>
-                <div><span className="block text-slate-400">Status ketersediaan</span><b className="mt-0.5 block text-slate-700">{selected.tersedia ? "Tersedia" : "Tidak tersedia"}</b></div>
-                <div><span className="block text-slate-400">Informasi gizi</span><b className="mt-0.5 block text-slate-700">{selected.informasi_gizi.protein} g protein</b></div>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3">
-              <div className="flex items-center gap-2"><span className="text-[10px] font-bold text-slate-600">Kuantitas:</span><div className="flex items-center rounded-md border border-slate-200 p-0.5"><button onClick={() => adjust(selected.id,-1)} className="flex h-7 w-7 items-center justify-center text-slate-500 disabled:opacity-30" disabled={!cart.find((item) => item.product.id === selected.id)}><Minus size={13}/></button><span className="w-8 text-center text-[11px] font-black">{cart.find((item) => item.product.id === selected.id)?.quantity || 1}</span><button onClick={() => cart.find((item) => item.product.id === selected.id) ? adjust(selected.id,1) : add(selected)} className="flex h-7 w-7 items-center justify-center text-slate-500"><Plus size={13}/></button></div></div>
-              <button onClick={() => { add(selected); setSelected(null); setCartOpen(true); }} disabled={!selected.tersedia} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[10px] font-bold text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40"><ShoppingCart size={14}/>Tambah ke keranjang</button>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
             </div>
           </div>
         </div>
       </div>}
 
-<<<<<<< HEAD
       {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(e) => e.target === e.currentTarget && setSelected(null)}>
         <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
@@ -891,9 +721,6 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
       </div>}
 
       {cartOpen && page === "catalog" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-5" onMouseDown={(e) => e.target === e.currentTarget && setCartOpen(false)}>
-=======
-      {cartOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-5" onMouseDown={(e) => e.target === e.currentTarget && setCartOpen(false)}>
->>>>>>> 73e82db0a1c9eb52676f30f0bb8a0a01ff3e1843
         <aside className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <div className="flex items-center gap-3">
