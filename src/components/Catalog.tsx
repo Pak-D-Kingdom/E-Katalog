@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronRight, Leaf, MapPin, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronRight, Layers3, Leaf, MapPin, MessageCircle, Minus, PackageOpen, Plus, Search, ShoppingBag, ShoppingCart, SlidersHorizontal, Trash2, Utensils, X } from "lucide-react";
 import { api, Product, Category, rupiah, slugify } from "@/lib/types";
 import Link from "next/link";
 
@@ -190,7 +190,7 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
       <button onClick={onDetail} className="relative block aspect-[1.25/1] w-full overflow-hidden bg-[#edf2ff] text-left">
         {product.foto_url
           ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-          : <span className="sr-only">Foto produk belum tersedia</span>}
+          : <span className="flex h-full items-center justify-center text-4xl">🍱</span>}
         <span className="absolute left-2 top-2 rounded bg-[#dce6ff] px-2 py-1 text-[8px] font-bold text-slate-700">{status}</span>
         <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[8px] font-semibold text-slate-700">{product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
@@ -201,12 +201,16 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
         </div>
         <button onClick={onDetail} className="mt-1 min-h-9 text-left text-[11px] font-extrabold leading-4 text-slate-900 hover:text-[#ad3b00]">{product.nama_produk}</button>
         <p className="mt-1 line-clamp-2 min-h-7 text-[8px] leading-3 text-slate-500">{product.deskripsi}</p>
+        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[8px] text-slate-500">
+          <span className="inline-flex items-center gap-1"><Leaf size={10} className="text-[#ad3b00]"/>{product.informasi_gizi.kalori} kkal</span>
+          <span className="inline-flex items-center gap-1"><BadgeCheck size={10} className="text-[#ad3b00]"/>Protein {product.informasi_gizi.protein} g</span>
+        </div>
         <div className="mt-auto pt-2">
           <small className="block text-[8px] text-slate-500">Harga Satuan B2B</small>
           <b className="block text-base font-extrabold leading-5 text-[#b63d00]">{rupiah(product.harga)}</b>
           <div className="mt-1.5 grid grid-cols-[1fr_1.2fr] gap-1">
             <button onClick={onDetail} className="inline-flex items-center justify-center gap-1 rounded bg-[#e7efff] px-2 py-1.5 text-[8px] font-bold text-slate-700 hover:bg-[#dbe7ff]"><Search size={10}/>Detail</button>
-            <button onClick={(event) => onAdd(event.currentTarget)} aria-label={`Tambah ${product.nama_produk} ke keranjang`} className="inline-flex items-center justify-center gap-1 rounded bg-[#ad3b00] px-2 py-1.5 text-[8px] font-bold text-white hover:bg-[#8e3000]"><ShoppingCart size={10}/>Keranjang</button>
+            <button onClick={(event) => onAdd(event.currentTarget)} disabled={!product.tersedia} aria-label={`Tambah ${product.nama_produk} ke keranjang`} className="inline-flex items-center justify-center gap-1 rounded bg-[#ad3b00] px-2 py-1.5 text-[8px] font-bold text-white hover:bg-[#8e3000] disabled:cursor-not-allowed disabled:opacity-40"><ShoppingCart size={10}/>Keranjang</button>
           </div>
         </div>
       </div>
@@ -326,7 +330,10 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
       return (category === null || p.kategori_id === category) &&
       (!query || `${p.nama_produk} ${p.kode_produk} ${p.deskripsi}`.toLowerCase().includes(query)) &&
       inPriceRange &&
-      (availabilityFilter === "all" || status === availabilityFilter)
+      (availabilityFilter === "all" ||
+        (availabilityFilter === "available" && p.tersedia) ||
+        (availabilityFilter === "unavailable" && !p.tersedia) ||
+        status === availabilityFilter)
     });
     if (sortOrder === "price-asc") filtered.sort((a, b) => Number(a.harga) - Number(b.harga));
     else if (sortOrder === "price-desc") filtered.sort((a, b) => Number(b.harga) - Number(a.harga));
@@ -437,11 +444,11 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white"><Leaf size={21}/></span>
             <span><b className="block text-sm leading-tight text-slate-900">DapurKita</b><small className="block text-[9px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[8px] leading-3 text-slate-500">& B2B Solutions</small></span>
           </Link>
-          <nav aria-label="Navigasi utama" className="order-3 flex w-full items-center justify-center gap-1 rounded-lg bg-[#eef3ff] p-1 text-xs font-semibold text-slate-600 md:absolute md:left-1/2 md:top-1/2 md:order-2 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
+          <nav aria-label="Navigasi utama" className="order-3 flex w-full items-center justify-center gap-1 rounded-lg bg-[#edf2ff] p-1 text-xs font-semibold text-slate-600 md:absolute md:left-1/2 md:top-1/2 md:order-2 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
             <Link href="/" className={`rounded-md px-4 py-2 ${page === "home" ? "bg-white text-slate-900 shadow-sm" : "hover:text-slate-900"}`}>Home</Link>
             <Link href="/katalog" className={`rounded-md px-4 py-2 ${page === "catalog" ? "bg-white text-slate-900 shadow-sm" : "hover:text-slate-900"}`}>Katalog</Link>
           </nav>
-          <a href={whatsappHref} target={settings?.nomor_whatsapp ? "_blank" : undefined} rel={settings?.nomor_whatsapp ? "noreferrer" : undefined} className="order-2 inline-flex items-center gap-1.5 rounded-md bg-[#a83b00] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#8c3100] md:order-3">
+          <a href={whatsappHref} target={settings?.nomor_whatsapp ? "_blank" : undefined} rel={settings?.nomor_whatsapp ? "noreferrer" : undefined} className="order-2 inline-flex items-center gap-1.5 rounded-md bg-[#ad3b00] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#8f3000] md:order-3">
             <MessageCircle size={14}/> WhatsApp
           </a>
         </div>
@@ -521,8 +528,10 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
             <div className="mt-4 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
               <div><h1 className="text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Katalog Pengadaan Dapur Profesional</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Solusi pengadaan terintegrasi untuk kebutuhan dapur komersial, hotel, restoran, dan catering.</p></div>
               <div className="grid grid-cols-2 gap-2 text-[9px] sm:min-w-[310px]">
-                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-3"><b className="block text-slate-800">Pengiriman Nasional</b><span className="mt-1 block text-slate-500">Armada terjadwal & terlacak</span></div>
-                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-3"><b className="block text-slate-800">Faktur Pajak</b><span className="mt-1 block text-slate-500">Transaksi bisnis resmi</span></div>
+                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><span className="flex items-center justify-between"><b className="text-slate-800">Produk B2B</b><PackageOpen size={13} className="text-[#ad3b00]"/></span><span className="mt-1 block text-slate-500">{b2bProducts.length} item</span></div>
+                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><span className="flex items-center justify-between"><b className="text-slate-800">Kategori</b><Layers3 size={13} className="text-[#ad3b00]"/></span><span className="mt-1 block text-slate-500">{catalogCategories.length} pilihan</span></div>
+                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><b className="block text-slate-800">Pengiriman Nasional</b><span className="mt-1 block text-slate-500">Armada terjadwal & terlacak</span></div>
+                <div className="rounded-lg border border-slate-100 bg-[#f7f8ff] p-2.5"><b className="block text-slate-800">Faktur Pajak</b><span className="mt-1 block text-slate-500">Transaksi bisnis resmi</span></div>
               </div>
             </div>
           </div>
@@ -531,9 +540,10 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
           <div className="grid gap-4 rounded-xl border border-slate-100 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.7fr_1fr_1fr_1fr] lg:p-4">
             <label className="relative block"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="field h-10 border-slate-200 pl-9 text-xs" placeholder="Cari nama produk, kode SKU..."/></label>
             <select value={priceRange} onChange={(e)=>setPriceRange(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="all">Semua Rentang Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
-            <select value={availabilityFilter} onChange={(e)=>setAvailabilityFilter(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="all">Semua Status</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
+            <select value={availabilityFilter} onChange={(e)=>setAvailabilityFilter(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="all">Semua Status</option><option value="available">Tersedia saja</option><option value="unavailable">Tidak tersedia</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
             <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
           </div>
+          <div className="mb-2 mt-4 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500"><SlidersHorizontal size={12}/>Kategori</div>
           <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <button onClick={()=>{setRequestedCategory(null);setCategory(null);}} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left ${category===null?"border-[#b8c8f5] bg-[#eef3ff]":"border-slate-100 bg-white hover:bg-slate-50"}`}><span className="text-[10px] font-bold text-slate-800">Semua Kategori</span><span className="rounded bg-white px-2 py-1 text-[9px] text-slate-500">{b2bProducts.length}</span></button>
             {catalogCategories.map((item)=><button key={item.id} onClick={()=>{setRequestedCategory(null);setCategory(item.id);}} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left ${category===item.id?"border-[#b8c8f5] bg-[#eef3ff]":"border-slate-100 bg-white hover:bg-slate-50"}`}><span className="truncate text-[10px] font-bold text-slate-800">{item.nama_kategori}</span><span className="ml-2 rounded bg-white px-2 py-1 text-[9px] text-slate-500">{b2bProducts.filter((product)=>product.kategori_id===item.id).length}</span></button>)}
@@ -771,6 +781,10 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
               </form>
             </>}
           </div>
+          {cart.length > 0 && <div className="grid grid-cols-[120px_1fr] gap-2 border-t border-slate-100 px-5 py-3">
+            <button onClick={() => setCartOpen(false)} className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-50"><ArrowRight size={14} className="rotate-180"/>Lanjut belanja</button>
+            <button disabled={submitting} onClick={() => { const formElement = document.querySelector<HTMLFormElement>("aside form"); formElement?.requestSubmit(); }} className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ad3b00] text-[10px] font-bold text-white hover:bg-[#8f3000] disabled:opacity-60"><MessageCircle size={14}/>{submitting ? "Menyimpan pesanan..." : "Order via WhatsApp"}</button>
+          </div>}
         </aside>
       </div>}
     </main>
