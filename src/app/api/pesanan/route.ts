@@ -1,0 +1,111 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+const pesananSchema = z.object({
+  nama_pemesan: z.string().trim().min(2).max(160),
+  nama_sekolah: z.string().trim().max(191).optional().default(""),
+  telepon_pemesan: z.string().trim().max(30).optional().default(""),
+  catatan: z.string().trim().max(2000).optional().default(""),
+  items: z.array(z.object({ produk_id: z.number().int().positive(), jumlah: z.number().int().min(1).max(500) })).min(1).max(100)
+});
+
+export async function GET(request: Request) {
+  try {
+    await requireAdmin();
+    const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+    const pesanan = await prisma.riwayat_pesanan.findMany({
+      where: query ? { kode_pesanan: { contains: query } } : {},
+      include: { detail_pesanan: true },
+      orderBy: { dibuat_pada: "desc" },
+      take: 200
+    });
+    return NextResponse.json({ pesanan });
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "Tidak berizin." }, { status: 401 });
+    throw error;
+  }
+}
+
+function rupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+}
+
+export async function POST(request: Request) {
+  const parsed = pesananSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Data pesanan tidak valid." }, { status: 400 });
+
+  const consolidated = new Map<number, number>();
+  for (const item of parsed.data.items) {
+    const jumlah = (consolidated.get(item.produk_id) ?? 0) + item.jumlah;
+    if (jumlah > 500) return NextResponse.json({ error: "Jumlah produk maksimal 500 per item." }, { status: 400 });
+    consolidated.set(item.produk_id, jumlah);
+  }
+  const requested = Array.from(consolidated, ([produk_id, jumlah]) => ({ produk_id, jumlah }));
+  const products = await prisma.produk.findMany({ where: { id: { in: requested.map((item) => item.produk_id) }, tersedia: true } });
+  if (products.length !== requested.length) return NextResponse.json({ error: "Ada produk yang sudah tidak tersedia. Muat ulang katalog." }, { status: 409 });
+
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const items = requested.map((item) => {
+    const product = byId.get(item.produk_id)!;
+    const price = Number(product.harga);
+    return { ...item, nama_produk: product.nama_produk, harga_satuan: price, subtotal: price * item.jumlah };
+  });
+  const totalCents = items.reduce((sum, item) => sum + Math.round(item.subtotal * 100), 0);
+  const total = totalCents / 100;
+  if (!Number.isFinite(total) || total <= 0) return NextResponse.json({ error: "Total pesanan tidak valid." }, { status: 400 });
+  const settings = await prisma.pengaturan_katalog.findFirst({ orderBy: { id: "asc" } });
+  if (!settings) return NextResponse.json({ error: "Pengaturan katalog belum tersedia." }, { status: 503 });
+
+  const now = new Date();
+  const tanggal = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  let order;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const count = await prisma.riwayat_pesanan.count({ where: { kode_pesanan: { startsWith: `MBG-${tanggal}-` } } });
+    const kode_pesanan = `MBG-${tanggal}-${String(count + 1 + attempt).padStart(3, "0")}`;
+    try {
+      order = await prisma.riwayat_pesanan.create({
+        data: {
+          kode_pesanan,
+          nama_pemesan: parsed.data.nama_pemesan,
+          nama_sekolah: parsed.data.nama_sekolah || null,
+          telepon_pemesan: parsed.data.telepon_pemesan || null,
+          catatan: parsed.data.catatan || null,
+          total_harga: total,
+          detail_pesanan: {
+            create: items.map((item) => ({
+              produk_id: item.produk_id,
+              nama_produk: item.nama_produk,
+              harga_satuan: item.harga_satuan,
+              jumlah: item.jumlah,
+              subtotal: item.subtotal
+            }))
+          }
+        }
+      });
+      break;
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "P2002")) throw error;
+    }
+  }
+  if (!order) return NextResponse.json({ error: "Tidak dapat membuat kode pesanan. Silakan coba kembali." }, { status: 503 });
+
+  const daftar_pesanan = items.map((item) => `- ${item.nama_produk} x${item.jumlah} (${rupiah(item.subtotal)})`).join("\n");
+  const values: Record<string, string> = {
+    nama_instansi: settings.nama_instansi,
+    nama_pemesan: order.nama_pemesan,
+    nama_sekolah: order.nama_sekolah ?? "-",
+    telepon_pemesan: order.telepon_pemesan ?? "-",
+    daftar_pesanan,
+    total_harga: rupiah(total),
+    catatan: order.catatan || "-",
+    kode_pesanan: order.kode_pesanan
+  };
+  const text = settings.template_pesan.replace(/\{([a-z_]+)\}/g, (token, key: string) => values[key] ?? token);
+  const nomor = settings.nomor_whatsapp.replace(/\D/g, "");
+  const whatsapp_url = `https://wa.me/${nomor}?text=${encodeURIComponent(text)}`;
+  return NextResponse.json({ kode_pesanan: order.kode_pesanan, whatsapp_url }, { status: 201 });
+}
