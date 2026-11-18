@@ -187,10 +187,10 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
   const status = b2bProductStatuses[product.kode_produk] || (product.tersedia ? "Ready Stock" : "Tidak Tersedia");
   return (
     <article className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
-      <button onClick={onDetail} className="relative block aspect-[1.25/1] w-full overflow-hidden bg-[#edf2ff] text-left">
+      <button onClick={onDetail} aria-label={`Lihat detail ${product.nama_produk}`} className="relative block aspect-[1.2/1] w-full overflow-hidden bg-[#edf2ff] text-left">
         {product.foto_url
           ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-          : <span className="flex h-full items-center justify-center text-4xl">🍱</span>}
+          : <span className="block h-full w-full" aria-hidden="true" />}
         <span className="absolute left-2 top-2 rounded bg-[#dce6ff] px-2 py-1 text-[8px] font-bold text-slate-700">{status}</span>
         <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[8px] font-semibold text-slate-700">{product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
@@ -437,7 +437,7 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
   }
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-3 px-5 py-3 lg:px-8">
           <Link href="/" aria-label="Beranda DapurKita" className="order-1 flex items-center gap-2.5">
@@ -522,7 +522,7 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
           </div>
         </section>
       </> : <>
-        <section className="border-b border-slate-100 bg-white">
+        <section className="border-b border-slate-100 bg-[#f7f8ff]">
           <div className="mx-auto max-w-7xl px-5 pb-7 pt-8 lg:px-8 lg:pb-9 lg:pt-10">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e8eeff] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-600"><BadgeCheck size={12} className="text-[#b63d00]"/> B2B HORECA PROCUREMENT CATALOGUE 2025</span>
             <div className="mt-4 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
@@ -536,28 +536,31 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
             </div>
           </div>
         </section>
-        <section id="katalog" className="mx-auto w-full max-w-7xl flex-1 px-5 py-7 lg:px-8 lg:py-9">
-          <div className="grid gap-4 rounded-xl border border-slate-100 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.7fr_1fr_1fr_1fr] lg:p-4">
-            <label className="relative block"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="field h-10 border-slate-200 pl-9 text-xs" placeholder="Cari nama produk, kode SKU..."/></label>
-            <select value={priceRange} onChange={(e)=>setPriceRange(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="all">Semua Rentang Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
-            <select value={availabilityFilter} onChange={(e)=>setAvailabilityFilter(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="all">Semua Status</option><option value="available">Tersedia saja</option><option value="unavailable">Tidak tersedia</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
-            <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="field h-10 border-slate-200 text-xs"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
+        <section id="katalog" className="mx-auto w-full max-w-7xl flex-1 px-5 py-5 lg:px-8 lg:py-6">
+          <div className="grid gap-2 rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm sm:grid-cols-2 lg:grid-cols-[1.7fr_1fr_1fr_1fr] lg:p-3">
+            <label className="relative block"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="h-10 w-full rounded-md border-0 bg-[#edf2ff] pl-9 pr-3 text-[10px] text-slate-700 outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-[#ad3b00]/20" placeholder="Cari produk, merk, spesifikasi, atau layanan..."/></label>
+            <select value={priceRange} onChange={(e)=>setPriceRange(e.target.value)} className="h-10 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[10px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Semua Rentang Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
+            <select value={availabilityFilter} onChange={(e)=>setAvailabilityFilter(e.target.value)} className="h-10 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[10px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Ketersediaan: Semua</option><option value="available">Tersedia saja</option><option value="unavailable">Tidak tersedia</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
+            <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="h-10 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[10px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
           </div>
-          <div className="mb-2 mt-4 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500"><SlidersHorizontal size={12}/>Kategori</div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <button onClick={()=>{setRequestedCategory(null);setCategory(null);}} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left ${category===null?"border-[#b8c8f5] bg-[#eef3ff]":"border-slate-100 bg-white hover:bg-slate-50"}`}><span className="text-[10px] font-bold text-slate-800">Semua Kategori</span><span className="rounded bg-white px-2 py-1 text-[9px] text-slate-500">{b2bProducts.length}</span></button>
-            {catalogCategories.map((item)=><button key={item.id} onClick={()=>{setRequestedCategory(null);setCategory(item.id);}} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left ${category===item.id?"border-[#b8c8f5] bg-[#eef3ff]":"border-slate-100 bg-white hover:bg-slate-50"}`}><span className="truncate text-[10px] font-bold text-slate-800">{item.nama_kategori}</span><span className="ml-2 rounded bg-white px-2 py-1 text-[9px] text-slate-500">{b2bProducts.filter((product)=>product.kategori_id===item.id).length}</span></button>)}
+          <div className="scrollbar-hide mt-2.5 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+            <span className="inline-flex shrink-0 items-center gap-1 text-[9px] font-bold text-slate-600"><SlidersHorizontal size={11}/>Kategori:</span>
+            <button onClick={()=>{setRequestedCategory(null);setCategory(null);}} className={`shrink-0 rounded px-3 py-1.5 text-[9px] font-bold transition ${category===null?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>Semua Kategori ({b2bProducts.length})</button>
+            {catalogCategories.map((item)=><button key={item.id} onClick={()=>{setRequestedCategory(null);setCategory(item.id);}} className={`shrink-0 rounded px-3 py-1.5 text-[9px] font-semibold transition ${category===item.id?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>{item.nama_kategori} ({b2bProducts.filter((product)=>product.kategori_id===item.id).length})</button>)}
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">Populer:</span>
-            {popularTags.map((tag)=><button key={tag} onClick={()=>{setSearch(popularTagQueries[tag]);setRequestedCategory(null);setCategory(null);}} className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[9px] font-medium text-slate-600 hover:border-[#b8c8f5] hover:text-[#ad3b00]">{tag}</button>)}
-            <span className="ml-auto text-[10px] text-slate-500">{loading ? "Memuat katalog..." : `${visible.length} produk & layanan`}</span>
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 inline-flex items-center gap-1 text-[9px] font-bold text-slate-600"><SlidersHorizontal size={11}/>Tag Populer:</span>
+            {popularTags.map((tag)=><button key={tag} onClick={()=>{setSearch(popularTagQueries[tag]);setRequestedCategory(null);setCategory(null);}} className="rounded bg-[#edf2ff] px-2 py-1 text-[8px] font-medium text-slate-700 hover:bg-[#dfe8ff]">{tag}</button>)}
+          </div>
+          <div className="mb-3 mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2"><h2 className="text-base font-black text-slate-900">Daftar Produk &amp; Jasa</h2><span className="rounded bg-[#e8eeff] px-2 py-1 text-[8px] font-semibold text-slate-600">{loading ? "Memuat..." : `${visible.length} Item Ditampilkan`}</span></div>
+            <span className="inline-flex items-center gap-1 text-[8px] text-slate-600"><BadgeCheck size={11} className="text-[#ad3b00]"/>Harga resmi tertera belum termasuk PPN faktur B2B</span>
           </div>
           {requestedCategoryMissing && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">Kategori “{requestedCategory?.replace(/-/g, " ")}” belum tersedia. Tambahkan kategori ini melalui dashboard admin atau pilih kategori lain.</div>}
           {error&&<div role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Katalog tidak dapat dimuat: {error}</div>}
-          {loading?<div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{[1,2,3,4,5,6,7,8,9,10].map((n)=><div key={n} className="aspect-[.8/1] animate-pulse rounded-lg bg-slate-100"/>)}</div>:
-            visible.length?<div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{visible.map((product)=><ProductCard key={product.id} product={product} onDetail={()=>setSelected(product)} onAdd={(source)=>add(product, source)}/>)}</div>:
-            <div className="mt-4 rounded-xl bg-white py-16 text-center"><div className="text-4xl">⌕</div><h2 className="mt-3 font-bold text-slate-800">{error?"Katalog belum dapat ditampilkan":"Produk tidak ditemukan"}</h2><p className="mt-1 text-sm text-slate-500">{error?"Periksa koneksi database, lalu muat ulang halaman.":"Sesuaikan kata kunci atau filter untuk melihat produk lainnya."}</p></div>}
+          {loading?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{[1,2,3,4,5,6,7,8].map((n)=><div key={n} className="aspect-[.8/1] animate-pulse rounded-lg bg-[#edf2ff]"/>)}</div>:
+            visible.length?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{visible.map((product)=><ProductCard key={product.id} product={product} onDetail={()=>setSelected(product)} onAdd={(source)=>add(product, source)}/>)}</div>:
+            <div className="mt-4 rounded-xl bg-white py-16 text-center"><div className="text-4xl">⌕</div><h2 className="mt-3 font-bold text-slate-800">{error?"Katalog belum dapat ditampilkan":b2bProducts.length===0?"Belum ada produk di katalog":"Produk tidak ditemukan"}</h2><p className="mt-1 text-sm text-slate-500">{error?"Periksa koneksi database, lalu muat ulang halaman.":b2bProducts.length===0?"Tambahkan produk melalui dashboard admin atau jalankan npm run db:seed untuk data contoh.":"Sesuaikan kata kunci atau filter untuk melihat produk lainnya."}</p></div>}
         </section>
       </>}
       <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
@@ -583,7 +586,7 @@ export default function Catalog({ page = "home" }: { page?: "home" | "catalog" }
         {flyingItem.foto_url ? <img src={flyingItem.foto_url} alt="" className="h-full w-full object-cover" /> : "🍱"}
       </div>}
       <button ref={cartButtonRef} onClick={()=>setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${page === "home" ? homeItemCount : itemCount} item`}>
-        <ShoppingBag size={16}/>{page === "home" ? "Keranjang RFQ" : "Keranjang"} {(page === "home" ? homeItemCount : itemCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[10px]">{page === "home" ? homeItemCount : itemCount}</span>}
+        <ShoppingBag size={16}/>Keranjang RFQ {(page === "home" ? homeItemCount : itemCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[10px]">{page === "home" ? homeItemCount : itemCount}</span>}
       </button>
 
       {selectedHomeOffer && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && setSelectedHomeOffer(null)}>
