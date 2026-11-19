@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Catalog from "@/components/Catalog";
+import Catalog from "@/components/Public/Home/Catalog";
 
 export const metadata: Metadata = {
   title: "DapurKita | Kitchen Supply & B2B Solutions",
