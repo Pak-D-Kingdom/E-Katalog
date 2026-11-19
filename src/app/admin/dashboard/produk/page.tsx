@@ -123,7 +123,56 @@ export default function ProductsPage() {
     setForm((current) => ({
       ...current,
       nama_produk: value,
-      ...(editing ? {} : { slug: slugify(value) }),
+      ...(editing ? {} : {
+        slug: slugify(value),
+        kode_produk: current.kode_produk || generateSku(value, current.kategori_id),
+      }),
+    }));
+  }
+
+  function generateSku(name: string, categoryId: string) {
+    const category = categories.find((item) => String(item.id) === categoryId);
+    const prefixes: Record<string, string> = {
+      "Bahan Baku & Food Supplies": "RAW",
+      "Kudapan Sehat": "SNK",
+      "Paket Makan Siang": "PKG",
+      "Peralatan Dapur": "EQ",
+      "Perawatan & Maintenance": "SRV",
+      "Perizinan & Legalitas": "LEG",
+    };
+    const prefix = category ? (prefixes[category.nama_kategori] || "PRD") : "PRD";
+    const words = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const nameCode = words.slice(0, 2).map((word) => word.slice(0, 4)).join("-");
+    const base = nameCode ? `${prefix}-${nameCode}` : prefix;
+
+    let index = 1;
+    let candidate = `${base}-${String(index).padStart(3, "0")}`;
+    const used = new Set(products.map((product) => product.kode_produk.toUpperCase()));
+    while (used.has(candidate)) {
+      index += 1;
+      candidate = `${base}-${String(index).padStart(3, "0")}`;
+    }
+    return candidate;
+  }
+
+  function changeCategory(value: string) {
+    setForm((current) => ({
+      ...current,
+      kategori_id: value,
+      ...(editing
+        ? {}
+        : {
+            kode_produk: /^(PRD|RAW|SNK|PKG|EQ|SRV|LEG)-/.test(current.kode_produk)
+              ? generateSku(current.nama_produk, value)
+              : current.kode_produk || generateSku(current.nama_produk, value),
+          }),
     }));
   }
 
@@ -163,11 +212,16 @@ export default function ProductsPage() {
     setError("");
     setMessage("");
 
+    const generatedKode = form.kode_produk.trim()
+      || generateSku(form.nama_produk, form.kategori_id);
+    const generatedSlug = form.slug.trim()
+      || slugify(form.nama_produk);
+
     const payload = {
       kategori_id: form.kategori_id ? Number(form.kategori_id) : null,
-      kode_produk: form.kode_produk,
+      kode_produk: generatedKode,
       nama_produk: form.nama_produk,
-      slug: form.slug,
+      slug: generatedSlug,
       deskripsi: form.deskripsi,
       informasi_gizi: {
         kalori: Number(form.kalori),
@@ -760,7 +814,6 @@ export default function ProductsPage() {
               </label>
 
               <input
-                required
                 value={form.kode_produk}
                 onChange={(e) =>
                   setForm({ ...form, kode_produk: e.target.value })
@@ -779,9 +832,7 @@ export default function ProductsPage() {
 
                 <select
                   value={form.kategori_id}
-                  onChange={(e) =>
-                    setForm({ ...form, kategori_id: e.target.value })
-                  }
+                  onChange={(e) => changeCategory(e.target.value)}
                   className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
                 >
                   <option value="">Pilih kategori</option>

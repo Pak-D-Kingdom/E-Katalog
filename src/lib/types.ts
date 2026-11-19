@@ -22,7 +22,12 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = typeof result.error === "string" ? result.error : "Permintaan gagal. Silakan coba kembali.";
+    if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/auth/login")) {
+      window.location.assign("/admin/auth/login");
+    }
+    const message = typeof result.error === "string"
+      ? result.error
+      : "Permintaan gagal. Silakan coba kembali.";
     throw new Error(message);
   }
   return result as T;
