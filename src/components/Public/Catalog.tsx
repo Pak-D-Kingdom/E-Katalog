@@ -1,0 +1,367 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, BadgeCheck, Leaf, MapPin, MessageCircle, Minus, Plus, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
+import { api, rupiah } from "@/lib/types";
+import type { Category, Product } from "@/lib/types";
+import Link from "next/link";
+import HomePage, { homeOffers } from "./Home/HomePage";
+import type { HomeOffer } from "./Home/HomePage";
+import KatalogPage from "./Katalog/KatalogPage";
+import type { CartItem } from "./types";
+
+type HomeCartItem = { offer: HomeOffer; quantity: number };
+type Settings = { nama_instansi: string; nomor_whatsapp: string; alamat: string | null };
+type FlyingItem = { key: number; left: number; top: number; x: number; y: number; foto_url: string | null };
+const cartKey = "mbg-cart-v1";
+const homeCartKey = "dapurkita-rfq-v1";
+
+export default function PublicCatalog({ page = "home" }: { page?: "home" | "catalog" }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [homeCart, setHomeCart] = useState<HomeCartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [loading, setLoading] = useState(page === "catalog");
+  const [cartInitialized, setCartInitialized] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ nama_pemesan: "", nama_sekolah: "", telepon_pemesan: "", catatan: "" });
+  const [flyingItem, setFlyingItem] = useState<FlyingItem | null>(null);
+  const cartButtonRef = useRef<HTMLButtonElement>(null);
+  const flyingKeyRef = useRef(0);
+
+  useEffect(() => {
+    setLoading(page === "catalog");
+    const requests: Promise<void>[] = [];
+    requests.push(
+      api<{ pengaturan: Settings | null }>("/api/pengaturan")
+        .then(({ pengaturan }) => setSettings(pengaturan))
+        .catch((e: Error) => setError(e.message))
+    );
+    if (page === "catalog") {
+      requests.push(
+        Promise.all([
+          api<{ produk: Product[] }>("/api/produk"),
+          api<{ kategori: Category[] }>("/api/kategori")
+        ]).then(([p, c]) => {
+          setProducts(p.produk);
+          setCategories(c.kategori);
+        }).catch((e: Error) => setError(e.message))
+      );
+    }
+    Promise.all(requests).finally(() => setLoading(false));
+    try {
+      const saved = JSON.parse(localStorage.getItem(cartKey) || "[]") as CartItem[];
+      if (Array.isArray(saved)) setCart(saved.filter((item) => item?.product?.id && Number.isInteger(item.quantity) && item.quantity > 0));
+    } catch {
+      localStorage.removeItem(cartKey);
+    }
+    if (page === "home") {
+      try {
+        const saved = JSON.parse(localStorage.getItem(homeCartKey) || "[]") as Array<{ offer?: { sku?: string }; quantity?: number }>;
+        if (Array.isArray(saved)) {
+          const restored: HomeCartItem[] = [];
+          for (const item of saved) {
+            const offer = homeOffers.find((candidate) => candidate.sku === item?.offer?.sku);
+            if (offer && typeof item.quantity === "number" && Number.isInteger(item.quantity) && item.quantity > 0) {
+              restored.push({ offer, quantity: item.quantity });
+            }
+          }
+          setHomeCart(restored);
+        }
+      } catch {
+        localStorage.removeItem(homeCartKey);
+      }
+    }
+    setCartInitialized(true);
+  }, [page]);
+
+  useEffect(() => {
+    if (cartInitialized) {
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      if (page === "home") localStorage.setItem(homeCartKey, JSON.stringify(homeCart));
+    }
+  }, [cart, homeCart, cartInitialized, page]);
+
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const total = cart.reduce((sum, item) => sum + Number(item.product.harga) * item.quantity, 0);
+  const homeItemCount = homeCart.reduce((sum, item) => sum + item.quantity, 0);
+  const homeTotal = homeCart.reduce((sum, item) => sum + item.offer.priceValue * item.quantity, 0);
+  const whatsappNumber = settings?.nomor_whatsapp.replace(/\D/g, "");
+  const whatsappHref = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}`
+    : page === "home" ? "https://wa.me/622155578900" : "/#kontak";
+
+  function add(product: Product, source?: HTMLElement) {
+    if (source && cartButtonRef.current) {
+      const sourceRect = source.getBoundingClientRect();
+      const targetRect = cartButtonRef.current.getBoundingClientRect();
+      setFlyingItem({
+        key: ++flyingKeyRef.current,
+        left: sourceRect.left + sourceRect.width / 2 - 14,
+        top: sourceRect.top + sourceRect.height / 2 - 14,
+        x: targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2),
+        y: targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2),
+        foto_url: product.foto_url
+      });
+    }
+    setCart((items) => {
+      const current = items.find((item) => item.product.id === product.id);
+      return current
+        ? items.map((item) => item.product.id === product.id ? { ...item, product, quantity: item.quantity + 1 } : item)
+        : [...items, { product, quantity: 1 }];
+    });
+  }
+  function adjust(id: number, delta: number) {
+    setCart((items) => items.map((item) => item.product.id === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0));
+  }
+
+  function addHomeOffer(offer: HomeOffer) {
+    setHomeCart((items) => {
+      const current = items.find((item) => item.offer.sku === offer.sku);
+      return current
+        ? items.map((item) => item.offer.sku === offer.sku ? { ...item, quantity: item.quantity + 1 } : item)
+        : [...items, { offer, quantity: 1 }];
+    });
+  }
+
+  function adjustHomeOffer(sku: string, delta: number) {
+    setHomeCart((items) => items.map((item) => item.offer.sku === sku ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0));
+  }
+
+  async function checkout(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    if (!cart.length) return;
+    setSubmitting(true);
+    try {
+      const result = await api<{ whatsapp_url: string }>("/api/pesanan", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          items: cart.map((item) => ({ produk_id: item.product.id, jumlah: item.quantity }))
+        })
+      });
+      setCart([]);
+      localStorage.removeItem(cartKey);
+      window.location.assign(result.whatsapp_url);
+    } catch (e) {
+      setError((e as Error).message);
+      setSubmitting(false);
+    }
+  }
+
+  function checkoutHome(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    if (!homeCart.length) return;
+    setSubmitting(true);
+    const itemLines = homeCart.map(({ offer, quantity }) => {
+      const subtotal = offer.priceValue * quantity;
+      return `- ${offer.title} [${offer.sku}] x${quantity} @ ${rupiah(offer.priceValue)} = ${rupiah(subtotal)}`;
+    }).join("\n");
+    const text = [
+      `Halo DapurKita, saya ${form.nama_pemesan} dari ${form.nama_sekolah || "-"} ingin meminta penawaran:`,
+      `Nomor telepon: ${form.telepon_pemesan || "-"}`,
+      "",
+      "Rangkuman pilihan:",
+      itemLines,
+      `Total estimasi: ${rupiah(homeTotal)}`,
+      `Catatan: ${form.catatan || "-"}`,
+      `Kode permintaan: DK-${Date.now()}`
+    ].join("\n");
+    localStorage.removeItem(homeCartKey);
+    setHomeCart([]);
+    window.location.assign(`${whatsappHref}?text=${encodeURIComponent(text)}`);
+  }
+
+  return (
+    <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
+      <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
+        <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-3 px-5 py-3 lg:px-8">
+          <Link href="/" aria-label="Beranda DapurKita" className="order-1 flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white"><Leaf size={21}/></span>
+            <span><b className="block text-sm leading-tight text-slate-900">DapurKita</b><small className="block text-[9px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[8px] leading-3 text-slate-500">& B2B Solutions</small></span>
+          </Link>
+          <nav aria-label="Navigasi utama" className="order-3 flex w-full items-center justify-center gap-1 rounded-lg bg-[#ad3b00] p-1 text-xs font-semibold text-white md:absolute md:left-1/2 md:top-1/2 md:order-2 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
+            <Link href="/" className={`rounded-md px-4 py-2 ${page === "home" ? "bg-white text-[#ad3b00] shadow-sm" : "text-white/90 hover:bg-white/15 hover:text-white"}`}>Home</Link>
+            <Link href="/katalog" className={`rounded-md px-4 py-2 ${page === "catalog" ? "bg-white text-[#ad3b00] shadow-sm" : "text-white/90 hover:bg-white/15 hover:text-white"}`}>Katalog</Link>
+          </nav>
+          <a href={whatsappHref} target={settings?.nomor_whatsapp ? "_blank" : undefined} rel={settings?.nomor_whatsapp ? "noreferrer" : undefined} className="order-2 inline-flex items-center gap-1.5 rounded-md bg-[#ad3b00] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#8f3000] md:order-3">
+            <MessageCircle size={14}/> WhatsApp
+          </a>
+        </div>
+      </header>
+
+      {page === "home" ? <HomePage
+        onAddOffer={addHomeOffer}
+        onOpenCart={() => setCartOpen(true)}
+        whatsappHref={whatsappHref}
+      /> : <KatalogPage
+        products={products}
+        categories={categories}
+        loading={loading}
+        error={error}
+        cart={cart}
+        onAdd={add}
+        onAdjust={adjust}
+        onOpenCart={() => setCartOpen(true)}
+      />}
+      <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
+        <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
+          <div>
+            <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest-700 text-white"><Leaf size={17}/></span>DapurKita</Link>
+            <p className="mt-3 max-w-xs text-[10px] leading-4">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
+            <div className="mt-3 flex gap-2 text-[9px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
+          </div>
+          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">NAVIGASI CEPAT</h3><div className="mt-3 flex flex-col gap-2 text-[10px]"><Link href="/" className="hover:text-[#ad3b00]">Home Utama</Link><Link href="/katalog" className="hover:text-[#ad3b00]">Katalog Peralatan</Link><a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-[#ad3b00]">Hubungi Tim B2B</a><Link href="/admin/login" className="hover:text-[#ad3b00]">Portal Operasional Admin</Link></div></div>
+          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-[10px]"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku & Pangan Komersial</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan & Legalitas Usaha</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan & Maintenance Dapur</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan Dapur & Heavy Duty</a></div></div>
+          <div><h3 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-900">HEAD OFFICE</h3><div className="mt-3 space-y-2 text-[10px]"><p className="flex gap-2"><MapPin size={13} className="shrink-0 text-[#ad3b00]"/>Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190</p><a href="tel:+622155578900" className="flex gap-2 hover:text-[#ad3b00]"><MessageCircle size={13} className="shrink-0 text-[#ad3b00]"/>+62 21 5557 8900</a><a href="mailto:procurement@dapurkita.co.id" className="flex gap-2 hover:text-[#ad3b00]">✉ procurement@dapurkita.co.id</a></div></div>
+        </div>
+        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 border-t border-[#dfe7fb] pt-4 text-[9px] sm:flex-row"><span>© 2025 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.</span><span className="flex gap-4"><a href="#kontak">Kebijakan Privasi B2B</a><a href="#kontak">Syarat & Ketentuan</a></span></div>
+      </footer>
+
+      {flyingItem && <div
+        key={flyingItem.key}
+        onAnimationEnd={() => setFlyingItem(null)}
+        className="pointer-events-none fixed z-[60] flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-white text-lg shadow-lg animate-fly-to-cart"
+        style={{ left: flyingItem.left, top: flyingItem.top, "--fly-x": `${flyingItem.x}px`, "--fly-y": `${flyingItem.y}px` } as React.CSSProperties}
+      >
+        {flyingItem.foto_url ? <img src={flyingItem.foto_url} alt="" className="h-full w-full object-cover" /> : "🍱"}
+      </div>}
+      <button ref={cartButtonRef} onClick={()=>setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${page === "home" ? homeItemCount : itemCount} item`}>
+        <ShoppingBag size={16}/>Keranjang RFQ {(page === "home" ? homeItemCount : itemCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[10px]">{page === "home" ? homeItemCount : itemCount}</span>}
+      </button>
+
+      {cartOpen && page === "home" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && setCartOpen(false)}>
+        <aside className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff1e8] text-[#ad3b00]"><ShoppingCart size={18}/></span>
+              <div><h2 className="text-sm font-black text-slate-900">Keranjang Permintaan Penawaran</h2><p className="mt-0.5 text-[9px] text-slate-500">{homeItemCount} item <span className="mx-1">•</span> DapurKita B2B</p></div>
+            </div>
+            <button onClick={() => setCartOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup keranjang"><X size={17}/></button>
+          </div>
+          {!homeCart.length ? <div className="py-14 text-center"><ShoppingBag className="mx-auto text-slate-300" size={42}/><p className="mt-4 text-sm font-bold text-slate-800">Keranjang masih kosong</p><p className="mt-1 text-xs text-slate-500">Pilih produk atau layanan B2B yang ingin ditanyakan.</p><button className="mt-4 text-xs font-bold text-[#ad3b00]" onClick={() => setCartOpen(false)}>Lanjut belanja</button></div> : <form onSubmit={checkoutHome} className="flex min-h-0 flex-1 flex-col">
+            <div className="scrollbar-hide flex-1 overflow-y-auto px-5 py-4">
+              <div className="space-y-2.5">
+                {homeCart.map(({ offer, quantity }) => <div key={offer.sku} className="rounded-lg border border-slate-100 bg-white p-3">
+                  <div className="flex gap-3">
+                    <img src={offer.image} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover"/>
+                    <div className="min-w-0 flex-1">
+                      <b className="block text-[11px] text-slate-900">{offer.title}</b>
+                      <p className="mt-0.5 text-[9px] text-slate-500">SKU: {offer.sku}</p>
+                      <p className="mt-1 text-[9px] text-slate-500">Harga satuan: <b className="text-slate-700">{rupiah(offer.priceValue)}</b></p>
+                      <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-slate-100 p-0.5 w-fit">
+                        <button type="button" onClick={() => adjustHomeOffer(offer.sku, -1)} className="flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-slate-100" aria-label="Kurangi jumlah"><Minus size={12}/></button>
+                        <span className="w-5 text-center text-[10px] font-bold text-slate-800">{quantity}</span>
+                        <button type="button" onClick={() => adjustHomeOffer(offer.sku, 1)} className="flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-slate-100" aria-label="Tambah jumlah"><Plus size={12}/></button>
+                      </div>
+                    </div>
+                    <div className="flex w-[88px] flex-col items-end justify-between">
+                      <b className="text-[12px] text-[#ad3b00]">{rupiah(offer.priceValue * quantity)}</b>
+                      <button type="button" onClick={() => setHomeCart((items) => items.filter((item) => item.offer.sku !== offer.sku))} className="text-slate-400 hover:text-red-500" aria-label="Hapus item"><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                </div>)}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-100 p-3">
+                <div className="flex justify-between text-[10px] text-slate-600"><span>Subtotal permintaan ({homeItemCount} item)</span><b className="text-slate-800">{rupiah(homeTotal)}</b></div>
+                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-sm font-black text-slate-900">Total estimasi</span><b className="text-lg font-black text-[#ad3b00]">{rupiah(homeTotal)}</b></div>
+              </div>
+              {error && <div role="alert" className="mt-3 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{error}</div>}
+              <div className="mt-3 grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
+                <label className="block text-[9px] font-bold leading-4 text-slate-600">Nama pemesan *
+                  <input required minLength={2} className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Nama Anda" value={form.nama_pemesan} onChange={(event) => setForm({...form, nama_pemesan: event.target.value})}/>
+                </label>
+                <label className="block text-[9px] font-bold leading-4 text-slate-600">SPPG
+                  <input className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Nama SPPG" value={form.nama_sekolah} onChange={(event) => setForm({...form, nama_sekolah: event.target.value})}/>
+                </label>
+                <label className="block text-[9px] font-bold leading-4 text-slate-600 sm:col-span-2">Nomor telepon / WhatsApp
+                  <input type="tel" className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Contoh: 0812-3456-7890" value={form.telepon_pemesan} onChange={(event) => setForm({...form, telepon_pemesan: event.target.value})}/>
+                </label>
+                <label className="block text-[9px] font-bold leading-4 text-slate-600 sm:col-span-2">Catatan (opsional)
+                  <textarea className="field mt-1 min-h-16 resize-y overflow-hidden rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Kebutuhan atau pertanyaan tambahan..." value={form.catatan} onChange={(event) => setForm({...form, catatan: event.target.value})}/>
+                </label>
+              </div>
+            </div>
+            <div className="grid grid-cols-[120px_1fr] gap-2 border-t border-slate-100 px-5 py-3">
+              <button type="button" onClick={() => setCartOpen(false)} className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-50"><ArrowRight size={14} className="rotate-180"/>Lanjut belanja</button>
+              <button type="submit" disabled={submitting} className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ad3b00] text-[10px] font-bold text-white hover:bg-[#8f3000] disabled:opacity-60"><MessageCircle size={14}/>{submitting ? "Membuka WhatsApp..." : "Kirim Permintaan via WhatsApp"}</button>
+            </div>
+          </form>}
+        </aside>
+      </div>}
+
+      {cartOpen && page === "catalog" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-5" onMouseDown={(e) => e.target === e.currentTarget && setCartOpen(false)}>
+        <aside className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff1e8] text-[#ad3b00]"><ShoppingCart size={18}/></span>
+              <div><h2 className="text-sm font-black text-slate-900">Keranjang</h2><p className="mt-0.5 text-[9px] text-slate-500">{itemCount} item <span className="mx-1">•</span> E-Katalog MBG <span className="mx-1">•</span> Respon cepat</p></div>
+            </div>
+            {cart.length === 0 && <button onClick={() => setCartOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup keranjang"><X size={17}/></button>}
+          </div>
+          <div className="scrollbar-hide flex-1 overflow-y-auto px-5 py-4">
+            {!cart.length ? <div className="py-14 text-center"><ShoppingBag className="mx-auto text-slate-300" size={42}/><p className="mt-4 text-sm font-bold text-slate-800">Keranjang masih kosong</p><p className="mt-1 text-xs text-slate-500">Tambahkan produk atau layanan dari katalog.</p><button className="mt-4 text-xs font-bold text-[#ad3b00]" onClick={() => setCartOpen(false)}>Lanjut belanja</button></div> : <>
+              <div className="space-y-2.5">
+                {cart.map(({ product, quantity }) => (
+                  <div key={product.id} className="rounded-lg border border-slate-100 bg-white p-3">
+                    <div className="flex gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff1e8] text-[#ad3b00]">{product.foto_url ? <img src={product.foto_url} alt="" className="h-full w-full object-cover"/> : <Utensils size={21}/>}</div>
+                      <div className="min-w-0 flex-1">
+                        <b className="block truncate text-[11px] text-slate-900">{product.nama_produk}</b>
+                        <p className="mt-0.5 text-[9px] text-slate-500">SKU: {product.kode_produk}</p>
+                        <div className="mt-1.5 flex items-center justify-between">
+                          <span className="text-[9px] text-slate-500">Harga satuan: <b className="text-slate-700">{rupiah(product.harga)}</b></span>
+                          <div className="flex items-center gap-1.5 rounded-md border border-slate-100 p-0.5">
+                            <button onClick={() => adjust(product.id,-1)} className="flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-slate-100" aria-label="Kurangi jumlah"><Minus size={12}/></button>
+                            <span className="w-5 text-center text-[10px] font-bold text-slate-800">{quantity}</span>
+                            <button onClick={() => adjust(product.id,1)} className="flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-slate-100" aria-label="Tambah jumlah"><Plus size={12}/></button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex w-[88px] flex-col items-end justify-between">
+                        <b className="text-[12px] text-[#ad3b00]">{rupiah(Number(product.harga) * quantity)}</b>
+                        <button onClick={() => setCart((items) => items.filter((item) => item.product.id !== product.id))} className="text-slate-400 hover:text-red-500" aria-label="Hapus item"><Trash2 size={14}/></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-100 p-3">
+                <div className="flex justify-between text-[10px] text-slate-600"><span>Subtotal pesanan ({itemCount} item)</span><b className="text-slate-800">{rupiah(total)}</b></div>
+                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-sm font-black text-slate-900">Total keseluruhan pesanan</span><b className="text-lg font-black text-[#ad3b00]">{rupiah(total)}</b></div>
+              </div>
+              <div className="mt-3 flex gap-2 rounded-md bg-[#fff7f2] px-3 py-2.5 text-[9px] leading-4 text-slate-600"><BadgeCheck size={14} className="shrink-0 text-[#ad3b00]"/><p>Pesan otomatis berisi data produk, jumlah, dan total estimasi untuk diteruskan ke tim E-Katalog MBG.</p></div>
+              <form onSubmit={checkout} className="mt-3 overflow-hidden rounded-lg border border-slate-100 bg-white">
+                <h3 className="flex items-center gap-2 bg-[#fff9f5] px-3.5 py-2.5 text-[11px] font-black text-[#ad3b00]"><ShoppingBag size={14}/> Informasi pemesan / lembaga</h3>
+                {error && <div className="mt-3 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{error}</div>}
+                <div className="grid gap-x-3 gap-y-2.5 p-3.5 sm:grid-cols-2">
+                  <label className="block text-[9px] font-bold leading-4 text-slate-600">Nama pemesan *
+                    <input required minLength={2} className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Contoh: Budi Setiawan" value={form.nama_pemesan} onChange={(e) => setForm({...form,nama_pemesan:e.target.value})}/>
+                  </label>
+                  <label className="block text-[9px] font-bold leading-4 text-slate-600">SPPG
+                    <input className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Contoh: SMK Negeri 1" value={form.nama_sekolah} onChange={(e) => setForm({...form,nama_sekolah:e.target.value})}/>
+                  </label>
+                  <label className="block text-[9px] font-bold leading-4 text-slate-600 sm:col-span-2">Nomor telepon / WhatsApp
+                    <input type="tel" className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Contoh: 0812-3456-7890" value={form.telepon_pemesan} onChange={(e) => setForm({...form,telepon_pemesan:e.target.value})}/>
+                  </label>
+                  <label className="block text-[9px] font-bold leading-4 text-slate-600 sm:col-span-2">Catatan pesanan (opsional)
+                    <textarea className="field mt-1 min-h-16 resize-y overflow-hidden rounded-md border-slate-200 px-3 py-2 text-[10px] font-normal" placeholder="Contoh: kebutuhan harian..." value={form.catatan} onChange={(e) => setForm({...form,catatan:e.target.value})}/>
+                  </label>
+                </div>
+              </form>
+            </>}
+          </div>
+          {cart.length > 0 && <div className="grid grid-cols-[120px_1fr] gap-2 border-t border-slate-100 px-5 py-3">
+            <button onClick={() => setCartOpen(false)} className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-50"><ArrowRight size={14} className="rotate-180"/>Lanjut belanja</button>
+            <button disabled={submitting} onClick={() => { const formElement = document.querySelector<HTMLFormElement>("aside form"); formElement?.requestSubmit(); }} className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ad3b00] text-[10px] font-bold text-white hover:bg-[#8f3000] disabled:opacity-60"><MessageCircle size={14}/>{submitting ? "Menyimpan pesanan..." : "Order via WhatsApp"}</button>
+          </div>}
+        </aside>
+      </div>}
+    </main>
+  );
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Catalog from "@/components/Public/Home/Catalog";
+import PublicCatalog from "@/components/Public/Catalog";
 
 export const metadata: Metadata = {
   title: "DapurKita | Kitchen Supply & B2B Solutions",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <Catalog page="home" />;
+  return <PublicCatalog page="home" />;
 }

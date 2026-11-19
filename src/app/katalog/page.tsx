@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Catalog from "@/components/Public/Home/Catalog";
+import PublicCatalog from "@/components/Public/Catalog";
 
 export const metadata: Metadata = {
   title: "Katalog DapurKita | Pengadaan HORECA B2B",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function CatalogPage() {
-  return <Catalog page="catalog" />;
+  return <PublicCatalog page="catalog" />;
 }

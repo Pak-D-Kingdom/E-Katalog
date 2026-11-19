@@ -2,7 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
     LayoutDashboard,
     Package,
@@ -10,6 +11,7 @@ import {
     Store,
     LogOut,
 } from "lucide-react";
+import { api } from "@/lib/types";
 
 const menuItems = [
     {
@@ -31,6 +33,25 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
+
+    async function handleLogout() {
+        setIsLoggingOut(true);
+        setLogoutError("");
+
+        try {
+            await api<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+            router.replace("/admin/auth/login");
+            router.refresh();
+        } catch (error) {
+            setLogoutError(
+                error instanceof Error ? error.message : "Gagal keluar. Silakan coba kembali."
+            );
+            setIsLoggingOut(false);
+        }
+    }
 
     return (
         <aside className="flex h-full w-full flex-col overflow-y-auto bg-[#EEF3FF]">
@@ -115,12 +136,22 @@ export default function Sidebar() {
                         Branch: Jakarta Pusat
                     </span>
 
-                    <button className="flex items-center gap-1 text-[10px] font-bold text-[#A83D00] hover:text-[#873100]">
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="flex items-center gap-1 text-[10px] font-bold text-[#A83D00] hover:text-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
                         <LogOut size={12} />
-                        Keluar
+                        {isLoggingOut ? "Keluar..." : "Keluar"}
                     </button>
                 </div>
 
+                {logoutError && (
+                    <p role="alert" className="mt-2 text-[10px] text-red-600">
+                        {logoutError}
+                    </p>
+                )}
             </div>
 
         </aside>
