@@ -25,9 +25,11 @@ import {
   Building2,
 } from "lucide-react";
 import { api, Category, Product, rupiah, slugify } from "@/lib/types";
+import Swal from "sweetalert2";
 
 type ProductForm = {
   kategori_id: string;
+  subkategori: string;
   kode_produk: string;
   nama_produk: string;
   slug: string;
@@ -44,6 +46,7 @@ type ProductForm = {
 
 const empty: ProductForm = {
   kategori_id: "",
+  subkategori: "",
   kode_produk: "",
   nama_produk: "",
   slug: "",
@@ -97,6 +100,7 @@ export default function ProductsPage() {
         kategori_id: product.kategori_id
           ? String(product.kategori_id)
           : "",
+        subkategori: product.subkategori || "",
         kode_produk: product.kode_produk,
         nama_produk: product.nama_produk,
         slug: product.slug,
@@ -133,12 +137,10 @@ export default function ProductsPage() {
   function generateSku(name: string, categoryId: string) {
     const category = categories.find((item) => String(item.id) === categoryId);
     const prefixes: Record<string, string> = {
-      "Bahan Baku & Food Supplies": "RAW",
-      "Kudapan Sehat": "SNK",
-      "Paket Makan Siang": "PKG",
-      "Peralatan Dapur": "EQ",
-      "Perawatan & Maintenance": "SRV",
-      "Perizinan & Legalitas": "LEG",
+      "Bahan Baku": "RAW",
+      "Peralatan": "EQ",
+      "Perawatan": "SRV",
+      "Perizinan": "LEG",
     };
     const prefix = category ? (prefixes[category.nama_kategori] || "PRD") : "PRD";
     const words = name
@@ -219,6 +221,7 @@ export default function ProductsPage() {
 
     const payload = {
       kategori_id: form.kategori_id ? Number(form.kategori_id) : null,
+      subkategori: form.subkategori.trim() || null,
       kode_produk: generatedKode,
       nama_produk: form.nama_produk,
       slug: generatedSlug,
@@ -282,7 +285,7 @@ export default function ProductsPage() {
       const keyword = query.toLowerCase();
 
       const matchesSearch =
-        `${product.nama_produk} ${product.kode_produk}`
+        `${product.nama_produk} ${product.kode_produk} ${product.subkategori || ""}`
           .toLowerCase()
           .includes(keyword);
 
@@ -523,14 +526,16 @@ export default function ProductsPage() {
                 Daftar SKU dan produk katalog
               </p>
 
-              <button
-                type="button"
-                onClick={() => startEdit()}
-                className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#873100]"
-              >
-                <Plus size={15} />
-                Tambah SKU
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => startEdit()}
+                  className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#873100]"
+                >
+                  <Plus size={15} />
+                  Tambah SKU
+                </button>
+              </div>
             </div>
           </div>
 
@@ -583,6 +588,11 @@ export default function ProductsPage() {
                       <span className="inline-block max-w-[105px] rounded-sm bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
                         {product.kategori?.nama_kategori || "Tanpa kategori"}
                       </span>
+                      {product.subkategori && (
+                        <span className="mt-1 block max-w-[120px] text-[9px] text-[#64748B]">
+                          {product.subkategori}
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-3 py-4 text-[11px] font-bold text-[#172B4D]">
@@ -861,6 +871,23 @@ export default function ProductsPage() {
                   className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
                 />
               </div>
+            </div>
+
+            {/* SUBCATEGORY */}
+            <div>
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Subkategori
+              </label>
+
+              <input
+                maxLength={120}
+                value={form.subkategori}
+                onChange={(e) =>
+                  setForm({ ...form, subkategori: e.target.value })
+                }
+                placeholder="Contoh: Hewani, Sayur, atau Chemical"
+                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+              />
             </div>
 
             {/* UNIT */}

@@ -12,6 +12,7 @@ import {
     LogOut,
 } from "lucide-react";
 import { api } from "@/lib/types";
+import Swal from "sweetalert2";
 
 const menuItems = [
     {
@@ -38,6 +39,20 @@ export default function Sidebar() {
     const [logoutError, setLogoutError] = useState("");
 
     async function handleLogout() {
+        const confirmation = await Swal.fire({
+            title: "Keluar dari dashboard?",
+            text: "Anda perlu masuk kembali untuk mengakses dashboard.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#A83D00",
+            cancelButtonColor: "#64748B",
+            confirmButtonText: "Ya, keluar",
+            cancelButtonText: "Batal",
+            reverseButtons: true,
+        });
+
+        if (!confirmation.isConfirmed) return;
+
         setIsLoggingOut(true);
         setLogoutError("");
 

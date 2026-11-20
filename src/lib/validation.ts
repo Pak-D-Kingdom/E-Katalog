@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const produkSchema = z.object({
   kategori_id: z.number().int().positive().nullable().optional(),
+  subkategori: z.string().trim().max(120).nullable().optional(),
   kode_produk: z.string().trim().min(1).max(80),
   nama_produk: z.string().trim().min(1).max(191),
   slug: z.string().trim().min(1).max(191).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),

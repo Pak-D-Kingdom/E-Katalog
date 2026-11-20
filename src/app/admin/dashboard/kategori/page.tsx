@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import CategoryCard from "@/components/admin/dashboard/CategoryCard";
 import { api, Category, slugify } from "@/lib/types";
+import Swal from "sweetalert2";
 
 type CategoryForm = {
   nama_kategori: string;
@@ -79,7 +80,19 @@ export default function CategoriesPage() {
   }
 
   async function remove(id: number) {
-    if (!window.confirm("Hapus kategori ini? Produk di dalamnya tidak akan ikut terhapus.")) return;
+    const confirmation = await Swal.fire({
+      title: "Hapus kategori?",
+      text: "Produk di dalamnya tidak akan ikut terhapus.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, hapus",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
     setError("");
 
     try {

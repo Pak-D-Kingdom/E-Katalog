@@ -10,7 +10,7 @@ import {
 const portfolioData = [
   {
     category: "HARDWARE & MACHINERY",
-    title: "Peralatan Dapur",
+    title: "Peralatan",
     percentage: 34,
     quantity: "85",
     quantityLabel: "Produk",
@@ -30,7 +30,7 @@ const portfolioData = [
   },
   {
     category: "PREVENTIVE TECHNICAL",
-    title: "Perawatan & Maint.",
+    title: "Perawatan",
     percentage: 18,
     quantity: "45",
     quantityLabel: "Layanan",
@@ -40,7 +40,7 @@ const portfolioData = [
   },
   {
     category: "COMPLIANCE & AUDIT",
-    title: "Perizinan & Legalitas",
+    title: "Perizinan",
     percentage: 13,
     quantity: "32",
     quantityLabel: "Layanan",

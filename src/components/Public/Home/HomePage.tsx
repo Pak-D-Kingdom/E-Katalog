@@ -20,7 +20,7 @@ export type HomeOffer = {
 
 export const homeOffers: HomeOffer[] = [
   {
-    category: "Peralatan Dapur",
+    category: "Peralatan",
     badge: "Garansi 2 Thn",
     sku: "DK-OVN-18M",
     title: "Commercial Combi Steam Oven 10-Tray GN 1/1",
@@ -31,7 +31,7 @@ export const homeOffers: HomeOffer[] = [
     image: "/commercial-combi-steam-oven.png"
   },
   {
-    category: "Perizinan & Legalitas",
+    category: "Perizinan",
     badge: "Audit Terverifikasi",
     sku: "DK-SFT-HACCP",
     title: "Paket Sertifikasi HACCP & Food Safety Audit",
@@ -42,7 +42,7 @@ export const homeOffers: HomeOffer[] = [
     image: "/haccp-food-safety-audit.png"
   },
   {
-    category: "Perawatan & Maintenance",
+    category: "Perawatan",
     badge: "SLA 24 Jam",
     sku: "DK-MNT-KITCHEN",
     title: "Kontrak Maintenance & Deep Cleaning Bulanan",
@@ -68,43 +68,43 @@ export const homeOffers: HomeOffer[] = [
   }
 ];
 
-const homeCategories = ["Semua Kategori", "Peralatan", "Legalitas", "Maintenance", "Bahan Baku"];
+const homeCategories = ["Semua Kategori", "Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
 const homePillars = [
   {
     icon: "◉",
-    title: "Bahan Baku & Food Supplies",
-    categorySlug: "bahan-baku-food-supplies",
+    title: "Bahan Baku",
+    categorySlug: "bahan-baku",
     badge: "Fresh & Dry",
     description: "Komoditas pangan bermutu tinggi, pasokan tepat dan terverifikasi halal, serta sembako grosir dan sanitasi kimia.",
     action: "Lihat Pasokan Pangan"
   },
   {
     icon: "✿",
-    title: "Perizinan & Legalitas",
-    categorySlug: "perizinan-legalitas",
+    title: "Perizinan",
+    categorySlug: "perizinan",
     badge: "Audit Standard",
     description: "Pendampingan sertifikasi kelayakan hygiene dan sertifikasi tata ruang dapur industri oleh auditor resmi.",
     action: "Lihat Paket Perizinan"
   },
   {
     icon: "▣",
-    title: "Perawatan & Servis Dapur",
-    categorySlug: "perawatan-maintenance",
+    title: "Perawatan",
+    categorySlug: "perawatan",
     badge: "Preventif 24/7",
     description: "Kontrak inspeksi pipa gas bertekanan, servis cold-storage berkala, deep cleaning exhaust, dan penanggulangan hama.",
     action: "Lihat Paket Servis"
   },
   {
     icon: "♨",
-    title: "Peralatan Heavy Duty",
-    categorySlug: "peralatan-dapur",
+    title: "Peralatan",
+    categorySlug: "peralatan",
     badge: "Garansi 2 Thn",
     description: "Peralatan memasak kapasitas tinggi berbahan stainless steel food grade 304 tahan banting untuk produksi nonstop.",
     action: "Lihat Kitchen Hardware"
   }
 ];
 
-function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: () => void; onAdd: () => void }) {
+function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: () => void; onAdd: (source: HTMLElement) => void }) {
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="relative aspect-[1.4/1] overflow-hidden bg-[#e7edf4]">
@@ -124,7 +124,7 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
           <div className="min-w-0"><small className="block text-[10px] text-slate-500">{item.priceLabel}</small><b className="text-base font-extrabold text-[#b63d00]">{item.price}</b>{item.unit && <small className="ml-1 text-[10px] text-slate-500">{item.unit}</small>}</div>
           <div className="flex shrink-0 gap-1.5">
             <button type="button" onClick={onDetail} className="rounded bg-[#e7efff] px-4 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-[#dbe7ff]">Detail</button>
-            <button type="button" onClick={onAdd} aria-label={`Tambah ${item.title} ke keranjang`} className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8e3000]"><ShoppingCart size={13}/></button>
+            <button type="button" onClick={(event) => onAdd(event.currentTarget)} aria-label={`Tambah ${item.title} ke keranjang`} className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8e3000]"><ShoppingCart size={13}/></button>
           </div>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function HomePage({
   onOpenCart,
   whatsappHref
 }: {
-  onAddOffer: (offer: HomeOffer) => void;
+  onAddOffer: (offer: HomeOffer, source?: HTMLElement) => void;
   onOpenCart: () => void;
   whatsappHref: string;
 }) {
@@ -161,7 +161,7 @@ export default function HomePage({
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={() => onAddOffer(item)}/>)}
+          {featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)}
         </div>
         <div className="mt-7 flex justify-center">
           <Link href="/katalog" className="inline-flex items-center gap-2 rounded-md bg-[#ad3b00] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#8f3000]"><ShoppingBag size={13}/> Lihat Semua 250+ Produk di Katalog Lengkap <ArrowRight size={15}/></Link>
@@ -237,7 +237,7 @@ export default function HomePage({
             </div>
           </div>
           <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <button onClick={() => { onAddOffer(selectedHomeOffer); setSelectedHomeOffer(null); onOpenCart(); }} className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[12px] font-bold text-slate-700 hover:bg-slate-50"><ShoppingCart size={14}/>Tambah ke keranjang</button>
+            <button onClick={(event) => { onAddOffer(selectedHomeOffer, event.currentTarget); setSelectedHomeOffer(null); onOpenCart(); }} className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[12px] font-bold text-slate-700 hover:bg-slate-50"><ShoppingCart size={14}/>Tambah ke keranjang</button>
             <a href={whatsappHref.startsWith("https://") ? `${whatsappHref}?text=${encodeURIComponent(`Halo DapurKita, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}` : "/#kontak"} target={whatsappHref.startsWith("https://") ? "_blank" : undefined} rel={whatsappHref.startsWith("https://") ? "noreferrer" : undefined} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000]"><MessageCircle size={14}/>Tanya via WhatsApp</a>
           </div>
         </div>

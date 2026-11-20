@@ -4,10 +4,10 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const categoryData = [
-  { key: "equipment", nama_kategori: "Peralatan Dapur", slug: "peralatan-dapur" },
-  { key: "supply", nama_kategori: "Bahan Baku & Food Supplies", slug: "bahan-baku-food-supplies" },
-  { key: "legal", nama_kategori: "Perizinan & Legalitas", slug: "perizinan-legalitas" },
-  { key: "maintenance", nama_kategori: "Perawatan & Maintenance", slug: "perawatan-maintenance" }
+  { key: "equipment", nama_kategori: "Peralatan", slug: "peralatan", previousSlug: "peralatan-dapur" },
+  { key: "supply", nama_kategori: "Bahan Baku", slug: "bahan-baku", previousSlug: "bahan-baku-food-supplies" },
+  { key: "legal", nama_kategori: "Perizinan", slug: "perizinan", previousSlug: "perizinan-legalitas" },
+  { key: "maintenance", nama_kategori: "Perawatan", slug: "perawatan", previousSlug: "perawatan-maintenance" }
 ] as const;
 
 const productData = [
@@ -41,11 +41,16 @@ async function main() {
 
   const categories = new Map<string, number>();
   for (const item of categoryData) {
-    const category = await prisma.kategori.upsert({
-      where: { slug: item.slug },
-      update: {},
-      create: { nama_kategori: item.nama_kategori, slug: item.slug }
-    });
+    const existingCategory = await prisma.kategori.findUnique({ where: { slug: item.slug } })
+      ?? await prisma.kategori.findUnique({ where: { slug: item.previousSlug } });
+    const category = existingCategory
+      ? await prisma.kategori.update({
+          where: { id: existingCategory.id },
+          data: { nama_kategori: item.nama_kategori, slug: item.slug }
+        })
+      : await prisma.kategori.create({
+          data: { nama_kategori: item.nama_kategori, slug: item.slug }
+        });
     categories.set(item.key, category.id);
   }
 

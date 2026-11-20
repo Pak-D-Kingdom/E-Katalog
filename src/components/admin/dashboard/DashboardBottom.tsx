@@ -17,7 +17,7 @@ const products = [
   {
     name: "Combi Steam Oven 10-Tray",
     sku: "EQ-OVN-2024-01",
-    category: "Peralatan Dapur",
+    category: "Peralatan",
     price: "Rp 115.000.000",
     image: "oven",
   },
@@ -52,7 +52,7 @@ const products = [
   {
     name: "Mesin Pendingin Industrial",
     sku: "EQ-REF-2024-06",
-    category: "Peralatan Dapur",
+    category: "Peralatan",
     price: "Rp 32.500.000",
     image: "refrigerator",
   },
@@ -203,7 +203,7 @@ export default function DashboardBottom() {
                 className="max-w-[105px] cursor-pointer bg-transparent py-2 text-[10px] text-[#172B4D] outline-none"
               >
                 <option value="Semua">Semua</option>
-                <option value="Peralatan Dapur">Peralatan Dapur</option>
+                <option value="Peralatan">Peralatan</option>
                 <option value="Perawatan">Perawatan</option>
                 <option value="Bahan Baku">Bahan Baku</option>
                 <option value="Perizinan">Perizinan</option>

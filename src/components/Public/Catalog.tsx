@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
 import { api, rupiah } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import type { CartItem } from "./types";
 
 type HomeCartItem = { offer: HomeOffer; quantity: number };
 type Settings = { nama_instansi: string; nomor_whatsapp: string; alamat: string | null };
-type FlyingItem = { key: number; left: number; top: number; x: number; y: number; foto_url: string | null };
+type FlyingItem = { key: number; left: number; top: number; x: number; y: number; image: string | null };
 const cartKey = "mbg-cart-v1";
 const homeCartKey = "dapurkita-rfq-v1";
 const hiddenNavCategoryNames = new Set(["kudapan sehat", "paket makan siang"]);
@@ -26,6 +26,8 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [homeCart, setHomeCart] = useState<HomeCartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -35,6 +37,7 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nama_pemesan: "", nama_sekolah: "", telepon_pemesan: "", catatan: "" });
   const [flyingItem, setFlyingItem] = useState<FlyingItem | null>(null);
+  const [cartPulseKey, setCartPulseKey] = useState(0);
   const cartButtonRef = useRef<HTMLButtonElement>(null);
   const flyingKeyRef = useRef(0);
 
@@ -114,19 +117,24 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
     ? `https://wa.me/${whatsappNumber}`
     : page === "home" ? "https://wa.me/622155578900" : "/#kontak";
 
+  function animateIntoCart(source: HTMLElement | undefined, image: string | null) {
+    setCartPulseKey((key) => key + 1);
+    if (!source || !cartButtonRef.current) return;
+
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = cartButtonRef.current.getBoundingClientRect();
+    setFlyingItem({
+      key: ++flyingKeyRef.current,
+      left: sourceRect.left + sourceRect.width / 2 - 24,
+      top: sourceRect.top + sourceRect.height / 2 - 24,
+      x: targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2),
+      y: targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2),
+      image,
+    });
+  }
+
   function add(product: Product, source?: HTMLElement) {
-    if (source && cartButtonRef.current) {
-      const sourceRect = source.getBoundingClientRect();
-      const targetRect = cartButtonRef.current.getBoundingClientRect();
-      setFlyingItem({
-        key: ++flyingKeyRef.current,
-        left: sourceRect.left + sourceRect.width / 2 - 14,
-        top: sourceRect.top + sourceRect.height / 2 - 14,
-        x: targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2),
-        y: targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2),
-        foto_url: product.foto_url
-      });
-    }
+    animateIntoCart(source, product.foto_url);
     setCart((items) => {
       const current = items.find((item) => item.product.id === product.id);
       return current
@@ -138,7 +146,8 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
     setCart((items) => items.map((item) => item.product.id === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0));
   }
 
-  function addHomeOffer(offer: HomeOffer) {
+  function addHomeOffer(offer: HomeOffer, source?: HTMLElement) {
+    animateIntoCart(source, offer.image);
     setHomeCart((items) => {
       const current = items.find((item) => item.offer.sku === offer.sku);
       return current
@@ -201,13 +210,43 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
     <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:gap-y-3 sm:px-5 sm:py-3 lg:px-8">
-          <Link href="/" aria-label="Beranda DapurKita" className="order-1 flex items-center gap-2.5">
+          <Link href="/" aria-label="Beranda DapurKita" className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white"><Leaf size={21}/></span>
             <span><b className="block text-base leading-tight text-slate-900">DapurKita</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
           </Link>
-          <nav aria-label="Navigasi utama" className="order-2 ml-0 grid w-full grid-cols-[1fr_1fr_auto] items-center gap-x-1 gap-y-1 text-sm font-semibold text-slate-700 sm:ml-auto sm:flex sm:w-auto sm:max-w-full sm:flex-wrap sm:justify-end sm:gap-3">
+          <div className="ml-auto flex items-center gap-1 sm:hidden">
             {page === "catalog" && (
-              <label className="relative col-span-3 block w-full sm:col-span-1 sm:w-44">
+              <button
+                type="button"
+                aria-label={mobileSearchOpen ? "Tutup pencarian" : "Cari produk"}
+                aria-expanded={mobileSearchOpen}
+                aria-controls="mobile-catalog-search"
+                onClick={() => {
+                  setMobileSearchOpen((open) => !open);
+                  setMobileMenuOpen(false);
+                }}
+                className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
+              >
+                <Search size={20} />
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-main-navigation"
+              onClick={() => {
+                setMobileMenuOpen((open) => !open);
+                setMobileSearchOpen(false);
+              }}
+              className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
+            >
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+          <nav aria-label="Navigasi utama" className="ml-auto hidden items-center gap-3 text-sm font-semibold text-slate-700 sm:flex sm:max-w-full sm:flex-wrap sm:justify-end">
+            {page === "catalog" && (
+              <label className="relative block w-full sm:w-44">
                 <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="search"
@@ -219,9 +258,9 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
                 />
               </label>
             )}
-            <Link href="/" className={`justify-self-center px-2 py-2 transition-colors hover:text-slate-950 sm:justify-self-auto ${page === "home" ? "font-extrabold text-slate-950" : ""}`}>Home</Link>
-            <Link href="/katalog" className="justify-self-center px-2 py-2 text-slate-700 transition-colors hover:text-slate-950 sm:justify-self-auto">Katalog</Link>
-            <details className="group relative justify-self-end sm:justify-self-auto">
+            <Link href="/" className={`px-2 py-2 transition-colors hover:text-slate-950 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}>Home</Link>
+            <Link href="/katalog" className="px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">Katalog</Link>
+            <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-1 whitespace-nowrap px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">
                 Our Catalog
                 <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
@@ -275,6 +314,87 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
               </div>
             </details>
           </nav>
+          {page === "catalog" && mobileSearchOpen && (
+            <label id="mobile-catalog-search" className="relative block w-full pb-1 sm:hidden">
+              <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="search"
+                aria-label="Cari produk katalog"
+                autoFocus
+                value={catalogSearch}
+                onChange={(event) => setCatalogSearch(event.target.value)}
+                placeholder="Cari produk..."
+                className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#ad3b00] focus:ring-2 focus:ring-[#ad3b00]/20"
+              />
+            </label>
+          )}
+          {mobileMenuOpen && (
+            <nav id="mobile-main-navigation" aria-label="Navigasi mobile" className="max-h-[70vh] w-full overflow-y-auto border-t border-slate-100 pb-2 pt-2 text-sm font-semibold text-slate-700 sm:hidden">
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block rounded-md px-3 py-2.5 hover:bg-slate-50 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/katalog"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-md px-3 py-2.5 hover:bg-slate-50"
+              >
+                Katalog
+              </Link>
+              <div className="mt-1 border-t border-slate-100 pt-2">
+                <p className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">Our Catalog</p>
+                {categoriesLoading ? (
+                  <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat kategori...</p>
+                ) : categoryError ? (
+                  <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">Kategori tidak dapat dimuat: {categoryError}</p>
+                ) : navCategories.length ? (
+                  navCategories.map((category) => {
+                    const categoryProducts = products.filter((product) => product.kategori_id === category.id);
+                    return (
+                      <details key={category.id} className="group">
+                        <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2.5 hover:bg-[#fff1e8] hover:text-[#ad3b00]">
+                          {category.nama_kategori}
+                          <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="ml-3 border-l border-slate-100 pb-2 pl-2">
+                          <Link
+                            href={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block rounded-md px-3 py-2 text-sm font-semibold text-[#ad3b00] hover:bg-[#fff1e8]"
+                          >
+                            Lihat semua produk kategori
+                          </Link>
+                          {productsLoading ? (
+                            <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat produk...</p>
+                          ) : productsError ? (
+                            <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">Produk tidak dapat dimuat: {productsError}</p>
+                          ) : categoryProducts.length ? (
+                            categoryProducts.map((product) => (
+                              <Link
+                                key={product.id}
+                                href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                              >
+                                {product.nama_produk}
+                              </Link>
+                            ))
+                          ) : (
+                            <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada produk.</p>
+                          )}
+                        </div>
+                      </details>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada kategori.</p>
+                )}
+              </div>
+            </nav>
+          )}
         </div>
       </header>
 
@@ -302,7 +422,7 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
             <div className="mt-3 flex gap-2 text-[11px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
           </div>
           <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">NAVIGASI CEPAT</h3><div className="mt-3 flex flex-col gap-2 text-[12px]"><Link href="/" className="hover:text-[#ad3b00]">Home Utama</Link><Link href="/katalog" className="hover:text-[#ad3b00]">Katalog Peralatan</Link><a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-[#ad3b00]">Hubungi Tim B2B</a><Link href="/admin/login" className="hover:text-[#ad3b00]">Portal Operasional Admin</Link></div></div>
-          <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-[12px]"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku & Pangan Komersial</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan & Legalitas Usaha</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan & Maintenance Dapur</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan Dapur & Heavy Duty</a></div></div>
+          <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-[12px]"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan</a></div></div>
           <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">HEAD OFFICE</h3><div className="mt-3 space-y-2 text-[12px]"><p className="flex gap-2"><MapPin size={13} className="shrink-0 text-[#ad3b00]"/>Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190</p><a href="tel:+622155578900" className="flex gap-2 hover:text-[#ad3b00]"><MessageCircle size={13} className="shrink-0 text-[#ad3b00]"/>+62 21 5557 8900</a><a href="mailto:procurement@dapurkita.co.id" className="flex gap-2 hover:text-[#ad3b00]">✉ procurement@dapurkita.co.id</a></div></div>
         </div>
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 border-t border-[#dfe7fb] pt-4 text-[11px] sm:flex-row"><span>© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.</span><span className="flex gap-4"><a href="#kontak">Kebijakan Privasi B2B</a><a href="#kontak">Syarat & Ketentuan</a></span></div>
@@ -311,10 +431,16 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
       {flyingItem && <div
         key={flyingItem.key}
         onAnimationEnd={() => setFlyingItem(null)}
-        className="pointer-events-none fixed z-[60] flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-white text-lg shadow-lg animate-fly-to-cart"
+        aria-hidden="true"
+        className="pointer-events-none fixed z-[60] flex h-12 w-12 items-center justify-center rounded-xl border border-white/80 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(15,23,42,.25)] ring-2 ring-[#ad3b00]/20 animate-fly-to-cart"
         style={{ left: flyingItem.left, top: flyingItem.top, "--fly-x": `${flyingItem.x}px`, "--fly-y": `${flyingItem.y}px` } as React.CSSProperties}
       >
-        {flyingItem.foto_url ? <img src={flyingItem.foto_url} alt="" className="h-full w-full object-cover" /> : "🍱"}
+        {flyingItem.image
+          ? <img src={flyingItem.image} alt="" className="h-full w-full rounded-lg object-cover" />
+          : <ShoppingBag size={21} className="text-[#ad3b00]" />}
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#ad3b00] text-white shadow-sm">
+          <Plus size={12} />
+        </span>
       </div>}
       <a
         href={whatsappHref}
@@ -327,7 +453,7 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
         <MessageCircle size={24} aria-hidden="true" />
       </a>
       <button ref={cartButtonRef} onClick={()=>setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${page === "home" ? homeItemCount : itemCount} item`}>
-        <ShoppingBag size={16}/>Keranjang {(page === "home" ? homeItemCount : itemCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[12px]">{page === "home" ? homeItemCount : itemCount}</span>}
+        <span key={`cart-icon-${cartPulseKey}`} className={cartPulseKey ? "animate-cart-arrival" : ""}><ShoppingBag size={16}/></span>Keranjang {(page === "home" ? homeItemCount : itemCount)>0&&<span key={`cart-count-${cartPulseKey}`} className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[12px] ${cartPulseKey ? "animate-cart-count" : ""}`}>{page === "home" ? homeItemCount : itemCount}</span>}
       </button>
 
       {cartOpen && page === "home" && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && setCartOpen(false)}>

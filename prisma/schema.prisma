@@ -28,6 +28,7 @@ model kategori {
 model produk {
   id               Int             @id @default(autoincrement())
   kategori_id      Int?
+  subkategori      String?         @db.VarChar(120)
   kode_produk      String          @unique @db.VarChar(80)
   nama_produk      String          @db.VarChar(191)
   slug             String          @unique @db.VarChar(191)
@@ -44,6 +45,16 @@ model produk {
 
   @@index([kategori_id])
   @@index([tersedia])
+}
+
+model rekap_barang {
+  id            Int    @id @default(autoincrement())
+  kategori      String @db.VarChar(120)
+  subkategori   String @db.VarChar(120)
+  jumlah_barang Int
+
+  @@unique([kategori, subkategori])
+  @@index([kategori])
 }
 
 model pengaturan_katalog {

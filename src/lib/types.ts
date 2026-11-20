@@ -3,6 +3,7 @@ export type Category = { id: number; nama_kategori: string; slug: string; ikon_u
 export type Product = {
   id: number;
   kategori_id: number | null;
+  subkategori: string | null;
   kode_produk: string;
   nama_produk: string;
   slug: string;
@@ -14,7 +15,6 @@ export type Product = {
   tersedia: boolean;
   kategori?: Category | null;
 };
-
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,

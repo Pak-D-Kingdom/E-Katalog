@@ -7,16 +7,16 @@ import type { Category, Product } from "@/lib/types";
 import type { CartItem } from "../types";
 
 const categorySlugs = new Set([
-  "peralatan-dapur",
-  "bahan-baku-food-supplies",
-  "perizinan-legalitas",
-  "perawatan-maintenance"
+  "peralatan",
+  "bahan-baku",
+  "perizinan",
+  "perawatan"
 ]);
 const categoryOrder = [
-  "peralatan-dapur",
-  "bahan-baku-food-supplies",
-  "perizinan-legalitas",
-  "perawatan-maintenance"
+  "bahan-baku",
+  "perizinan",
+  "perawatan",
+  "peralatan"
 ];
 const productOrder = [
   "DK-RNG-4BOV", "DK-DFY-E24L", "DK-REF-UP4D", "DK-MIX-PL20", "DK-EXH-BF24",
@@ -42,7 +42,7 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
         {product.foto_url
           ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           : <span className="block h-full w-full" aria-hidden="true" />}
-        <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.kategori?.nama_kategori || "Layanan"}</span>
+        <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.subkategori || product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
       <div className="flex min-h-[170px] flex-col p-3">
         <div className="flex items-center justify-between gap-2">
@@ -51,7 +51,8 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
         </div>
         <button onClick={onDetail} className="mt-1 min-h-10 text-left text-sm font-extrabold leading-5 text-slate-900 hover:text-[#ad3b00]">{product.nama_produk}</button>
         <div className="mt-2 min-h-9 sm:min-h-5">
-          {product.kategori?.slug === "bahan-baku-food-supplies" && (
+          {product.kategori?.slug === "bahan-baku" &&
+            (product.informasi_gizi.kalori > 0 || product.informasi_gizi.protein > 0) && (
             <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600">
               <span className="inline-flex items-center gap-1"><Leaf size={12} className="text-[#ad3b00]"/>{product.informasi_gizi.kalori} kkal</span>
               <span className="inline-flex items-center gap-1"><BadgeCheck size={12} className="text-[#ad3b00]"/>Protein {product.informasi_gizi.protein} g</span>
@@ -97,6 +98,7 @@ export default function KatalogPage({
   const [selected, setSelected] = useState<Product | null>(null);
   const [category, setCategory] = useState<number | null>(null);
   const [requestedCategory, setRequestedCategory] = useState<string | null>(null);
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("recommended");
@@ -104,6 +106,7 @@ export default function KatalogPage({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setRequestedCategory(params.get("kategori"));
+    setSubcategoryFilter("all");
     onSearchChange(params.get("q") || "");
   }, [onSearchChange]);
 
@@ -119,6 +122,12 @@ export default function KatalogPage({
     .filter((item) => categorySlugs.has(item.slug))
     .sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
   const b2bProducts = products.filter((product) => product.kategori?.slug && categorySlugs.has(product.kategori.slug));
+  const subcategories = [...new Set(
+    b2bProducts
+      .filter((product) => category === null || product.kategori_id === category)
+      .map((product) => product.subkategori?.trim() || "")
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
   const requestedCategoryMissing = Boolean(requestedCategory) && !loading && category === null &&
     !categories.some((item) =>
       item.slug === requestedCategory || slugify(item.nama_kategori) === requestedCategory
@@ -136,7 +145,8 @@ export default function KatalogPage({
         (priceRange === "5m-15m" && price >= 5000000 && price < 15000000) ||
         (priceRange === "over-15m" && price >= 15000000);
       return (category === null || product.kategori_id === category) &&
-        (!query || `${product.nama_produk} ${product.kode_produk} ${product.deskripsi}`.toLowerCase().includes(query)) &&
+        (subcategoryFilter === "all" || product.subkategori === subcategoryFilter) &&
+        (!query || `${product.nama_produk} ${product.kode_produk} ${product.subkategori || ""} ${product.deskripsi}`.toLowerCase().includes(query)) &&
         inPriceRange &&
         (availabilityFilter === "all" ||
           (availabilityFilter === "available" && product.tersedia) ||
@@ -146,9 +156,16 @@ export default function KatalogPage({
     if (sortOrder === "price-asc") filtered.sort((a, b) => Number(a.harga) - Number(b.harga));
     else if (sortOrder === "price-desc") filtered.sort((a, b) => Number(b.harga) - Number(a.harga));
     else if (sortOrder === "name") filtered.sort((a, b) => a.nama_produk.localeCompare(b.nama_produk));
-    else filtered.sort((a, b) => productOrder.indexOf(a.kode_produk) - productOrder.indexOf(b.kode_produk));
+    else filtered.sort((a, b) => {
+      const aOrder = productOrder.indexOf(a.kode_produk);
+      const bOrder = productOrder.indexOf(b.kode_produk);
+      if (aOrder === -1 && bOrder === -1) return a.nama_produk.localeCompare(b.nama_produk);
+      if (aOrder === -1) return 1;
+      if (bOrder === -1) return -1;
+      return aOrder - bOrder;
+    });
     return filtered;
-  }, [b2bProducts, category, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
+  }, [b2bProducts, category, subcategoryFilter, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return <>
@@ -171,11 +188,12 @@ export default function KatalogPage({
       <div className="mb-4">
         <span className="mb-2 inline-flex items-center gap-1.5 text-sm font-bold text-slate-700"><SlidersHorizontal size={15}/>Kategori:</span>
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          <button onClick={()=>{setRequestedCategory(null);setCategory(null);}} className={`shrink-0 rounded px-4 py-2 text-sm font-bold transition ${category===null?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>Semua Kategori ({b2bProducts.length})</button>
-          {catalogCategories.map((item)=><button key={item.id} onClick={()=>{setRequestedCategory(null);setCategory(item.id);}} className={`shrink-0 rounded px-4 py-2 text-sm font-semibold transition ${category===item.id?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>{item.nama_kategori} ({b2bProducts.filter((product)=>product.kategori_id===item.id).length})</button>)}
+          <button onClick={()=>{setRequestedCategory(null);setCategory(null);setSubcategoryFilter("all");}} className={`shrink-0 rounded px-4 py-2 text-sm font-bold transition ${category===null?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>Semua Kategori ({b2bProducts.length})</button>
+          {catalogCategories.map((item)=><button key={item.id} onClick={()=>{setRequestedCategory(null);setCategory(item.id);setSubcategoryFilter("all");}} className={`shrink-0 rounded px-4 py-2 text-sm font-semibold transition ${category===item.id?"bg-[#ad3b00] text-white":"bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>{item.nama_kategori} ({b2bProducts.filter((product)=>product.kategori_id===item.id).length})</button>)}
         </div>
       </div>
-      <div className="grid gap-2 rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm sm:grid-cols-2 lg:grid-cols-3 lg:p-3">
+      <div className="grid gap-2 rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 lg:p-3">
+        <select value={subcategoryFilter} onChange={(event)=>setSubcategoryFilter(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Subkategori: Semua</option>{subcategories.map((subcategory)=><option key={subcategory} value={subcategory}>{subcategory}</option>)}</select>
         <select value={priceRange} onChange={(event)=>setPriceRange(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Semua Rentang Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
         <select value={availabilityFilter} onChange={(event)=>setAvailabilityFilter(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Ketersediaan: Semua</option><option value="available">Tersedia saja</option><option value="unavailable">Tidak tersedia</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
         <select value={sortOrder} onChange={(event)=>setSortOrder(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
@@ -217,14 +235,15 @@ export default function KatalogPage({
             <h3 className="flex items-center gap-2 text-[13px] font-black text-slate-900"><span className="flex h-5 w-5 items-center justify-center rounded bg-[#fff1e8] text-[#ad3b00]"><BadgeCheck size={12}/></span>Informasi Produk</h3>
             <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 text-[11px] min-[360px]:grid-cols-2">
               <div><span className="block text-slate-400">Kategori</span><b className="mt-0.5 block text-slate-700">{selected.kategori?.nama_kategori || "Belum dikategorikan"}</b></div>
+              <div><span className="block text-slate-400">Subkategori</span><b className="mt-0.5 block text-slate-700">{selected.subkategori || "—"}</b></div>
               <div><span className="block text-slate-400">Satuan</span><b className="mt-0.5 block text-slate-700">{selected.satuan}</b></div>
               <div><span className="block text-slate-400">Status ketersediaan</span><b className="mt-0.5 block text-slate-700">{selected.tersedia ? "Tersedia" : "Tidak tersedia"}</b></div>
-              <div><span className="block text-slate-400">Informasi gizi</span><b className="mt-0.5 block text-slate-700">{selected.informasi_gizi.protein} g protein</b></div>
+              <div><span className="block text-slate-400">Informasi gizi</span><b className="mt-0.5 block text-slate-700">{selected.informasi_gizi.kalori > 0 || selected.informasi_gizi.protein > 0 ? `${selected.informasi_gizi.protein} g protein` : "Belum tersedia"}</b></div>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_auto]">
-            <div className="flex items-center justify-between gap-2 sm:justify-start"><span className="text-[12px] font-bold text-slate-600">Kuantitas:</span><div className="flex items-center rounded-md border border-slate-200 p-0.5"><button onClick={() => onAdjust(selected.id,-1)} className="flex h-7 w-7 items-center justify-center text-slate-500 disabled:opacity-30" disabled={!cart.find((item) => item.product.id === selected.id)}><Minus size={13}/></button><span className="w-8 text-center text-[13px] font-black">{cart.find((item) => item.product.id === selected.id)?.quantity || 1}</span><button onClick={() => cart.find((item) => item.product.id === selected.id) ? onAdjust(selected.id,1) : onAdd(selected)} className="flex h-7 w-7 items-center justify-center text-slate-500"><Plus size={13}/></button></div></div>
-            <button onClick={() => { onAdd(selected); setSelected(null); onOpenCart(); }} disabled={!selected.tersedia} className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><ShoppingCart size={14}/>Tambah ke keranjang</button>
+            <div className="flex items-center justify-between gap-2 sm:justify-start"><span className="text-[12px] font-bold text-slate-600">Kuantitas:</span><div className="flex items-center rounded-md border border-slate-200 p-0.5"><button onClick={() => onAdjust(selected.id,-1)} className="flex h-7 w-7 items-center justify-center text-slate-500 disabled:opacity-30" disabled={!cart.find((item) => item.product.id === selected.id)}><Minus size={13}/></button><span className="w-8 text-center text-[13px] font-black">{cart.find((item) => item.product.id === selected.id)?.quantity || 1}</span><button onClick={(event) => onAdd(selected, event.currentTarget)} className="flex h-7 w-7 items-center justify-center text-slate-500"><Plus size={13}/></button></div></div>
+            <button onClick={(event) => { onAdd(selected, event.currentTarget); setSelected(null); onOpenCart(); }} disabled={!selected.tersedia} className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"><ShoppingCart size={14}/>Tambah ke keranjang</button>
           </div>
         </div>
       </div>
