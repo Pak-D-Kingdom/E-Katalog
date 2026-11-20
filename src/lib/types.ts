@@ -1,9 +1,35 @@
-export type Gizi = { kalori: number; protein: number; karbohidrat: number; lemak: number };
-export type Category = { id: number; nama_kategori: string; slug: string; ikon_url: string | null };
+export type Gizi = {
+  kalori: number;
+  protein: number;
+  karbohidrat: number;
+  lemak: number;
+};
+
+export type Category = {
+  id: number;
+  nama_kategori: string;
+  slug: string;
+  ikon_url: string | null;
+};
+
+export type Subcategory = {
+  id: number;
+  kategori_id: number;
+  nama_subkategori: string;
+  slug: string;
+  dibuat_pada?: string;
+  kategori?: Category;
+  _count?: {
+    produk: number;
+  };
+};
+
+
+
 export type Product = {
   id: number;
   kategori_id: number | null;
-  subkategori: string | null;
+  subkategori_id: number | null;
   kode_produk: string;
   nama_produk: string;
   slug: string;
@@ -14,6 +40,7 @@ export type Product = {
   foto_url: string | null;
   tersedia: boolean;
   kategori?: Category | null;
+  subkategori?: Subcategory | null;
 };
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {

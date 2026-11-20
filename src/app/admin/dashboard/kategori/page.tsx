@@ -28,8 +28,11 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(false);
 
   async function load() {
-    const result = await api<{ kategori: Category[] }>("/api/kategori");
-    setCategories(result.kategori);
+    const result = await api<{ kategori?: Category[] }>("/api/kategori");
+
+    setCategories(
+      Array.isArray(result.kategori) ? result.kategori : []
+    );
   }
 
   useEffect(() => {
@@ -40,10 +43,10 @@ export default function CategoriesPage() {
     setEditing(category?.id ?? null);
     setForm(category
       ? {
-          nama_kategori: category.nama_kategori,
-          slug: category.slug,
-          ikon_url: category.ikon_url ?? "",
-        }
+        nama_kategori: category.nama_kategori,
+        slug: category.slug,
+        ikon_url: category.ikon_url ?? "",
+      }
       : emptyForm);
     setError("");
     setOpen(true);
@@ -103,9 +106,12 @@ export default function CategoriesPage() {
     }
   }
 
-  const filtered = categories.filter((category) =>
-    `${category.nama_kategori} ${category.slug}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = (Array.isArray(categories) ? categories : []).filter(
+    (category) =>
+      `${category.nama_kategori} ${category.slug}`
+        .toLowerCase()
+        .includes(query.toLowerCase())
+  );  
 
   return (
     <div className="min-h-screen space-y-5 bg-[#F2F5FC] p-4 sm:p-6 lg:p-7">

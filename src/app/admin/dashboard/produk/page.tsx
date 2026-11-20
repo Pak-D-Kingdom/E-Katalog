@@ -12,7 +12,6 @@ import {
   X,
   Package,
   Star,
-  AlertTriangle,
   Wallet,
   RefreshCw,
   MessageSquare,
@@ -24,12 +23,19 @@ import {
   RotateCcw,
   Building2,
 } from "lucide-react";
-import { api, Category, Product, rupiah, slugify } from "@/lib/types";
-import Swal from "sweetalert2";
+import {
+  api,
+  Category,
+  Subcategory,
+  Product,
+  rupiah,
+  slugify,
+} from "@/lib/types";
 
 type ProductForm = {
   kategori_id: string;
-  subkategori: string;
+  subkategori_id: string;
+
   kode_produk: string;
   nama_produk: string;
   slug: string;
@@ -46,7 +52,7 @@ type ProductForm = {
 
 const empty: ProductForm = {
   kategori_id: "",
-  subkategori: "",
+  subkategori_id: "",
   kode_produk: "",
   nama_produk: "",
   slug: "",
@@ -66,11 +72,13 @@ const PAGE_SIZE = 4;
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [form, setForm] = useState<ProductForm>(empty);
 
   const [editing, setEditing] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
 
   const [error, setError] = useState("");
@@ -79,13 +87,17 @@ export default function ProductsPage() {
   const [uploading, setUploading] = useState(false);
 
   async function load() {
-    const [p, c] = await Promise.all([
-      api<{ produk: Product[] }>("/api/produk"),
-      api<{ kategori: Category[] }>("/api/kategori"),
+    const [p, c, s] = await Promise.all([
+      api<{ produk?: Product[] }>("/api/produk"),
+      api<{ kategori?: Category[] }>("/api/kategori"),
+      api<{ subkategori?: Subcategory[] }>("/api/subkategori"),
     ]);
 
-    setProducts(p.produk);
-    setCategories(c.kategori);
+    setProducts(Array.isArray(p.produk) ? p.produk : []);
+    setCategories(Array.isArray(c.kategori) ? c.kategori : []);
+    setSubcategories(
+      Array.isArray(s.subkategori) ? s.subkategori : []
+    );
   }
 
   useEffect(() => {
@@ -100,7 +112,9 @@ export default function ProductsPage() {
         kategori_id: product.kategori_id
           ? String(product.kategori_id)
           : "",
-        subkategori: product.subkategori || "",
+        subkategori_id: product.subkategori_id
+          ? String(product.subkategori_id)
+          : "",
         kode_produk: product.kode_produk,
         nama_produk: product.nama_produk,
         slug: product.slug,
@@ -168,13 +182,17 @@ export default function ProductsPage() {
     setForm((current) => ({
       ...current,
       kategori_id: value,
+      subkategori_id: "",
       ...(editing
         ? {}
         : {
-            kode_produk: /^(PRD|RAW|SNK|PKG|EQ|SRV|LEG)-/.test(current.kode_produk)
-              ? generateSku(current.nama_produk, value)
-              : current.kode_produk || generateSku(current.nama_produk, value),
-          }),
+          kode_produk: /^(PRD|RAW|SNK|PKG|EQ|SRV|LEG)-/.test(
+            current.kode_produk
+          )
+            ? generateSku(current.nama_produk, value)
+            : current.kode_produk ||
+            generateSku(current.nama_produk, value),
+        }),
     }));
   }
 
@@ -220,8 +238,10 @@ export default function ProductsPage() {
       || slugify(form.nama_produk);
 
     const payload = {
-      kategori_id: form.kategori_id ? Number(form.kategori_id) : null,
-      subkategori: form.subkategori.trim() || null,
+      kategori_id: Number(form.kategori_id),
+      subkategori_id: form.subkategori_id
+        ? Number(form.subkategori_id)
+        : null,
       kode_produk: generatedKode,
       nama_produk: form.nama_produk,
       slug: generatedSlug,
@@ -279,13 +299,29 @@ export default function ProductsPage() {
       setError((e as Error).message);
     }
   }
+  const availableSubcategories = useMemo(
+    () =>
+      subcategories.filter(
+        (item) => String(item.kategori_id) === form.kategori_id
+      ),
+    [subcategories, form.kategori_id]
+  );
 
+  const filterSubcategories = useMemo(
+    () =>
+      categoryFilter === "all"
+        ? subcategories
+        : subcategories.filter(
+          (item) => String(item.kategori_id) === categoryFilter
+        ),
+    [subcategories, categoryFilter]
+  );
   const filtered = useMemo(() => {
     return products.filter((product) => {
       const keyword = query.toLowerCase();
 
       const matchesSearch =
-        `${product.nama_produk} ${product.kode_produk} ${product.subkategori || ""}`
+        `${product.nama_produk} ${product.kode_produk} ${product.subkategori?.nama_subkategori || ""}`
           .toLowerCase()
           .includes(keyword);
 
@@ -293,9 +329,13 @@ export default function ProductsPage() {
         categoryFilter === "all" ||
         String(product.kategori_id) === categoryFilter;
 
-      return matchesSearch && matchesCategory;
+      const matchesSubcategory =
+        subcategoryFilter === "all" ||
+        String(product.subkategori_id ?? "") === subcategoryFilter;
+
+      return matchesSearch && matchesCategory && matchesSubcategory;
     });
-  }, [products, query, categoryFilter]);
+  }, [products, query, categoryFilter, subcategoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -327,7 +367,7 @@ export default function ProductsPage() {
     },
     {
       title: "STRUKTUR KATEGORI",
-      value: `${categories.length} Kategori`,
+      value: `${(categories ?? []).length} Kategori`,
       description: "Kelompok produk terdaftar",
       icon: Star,
       color: "text-[#A83D00]",
@@ -507,6 +547,7 @@ export default function ProductsPage() {
                 value={categoryFilter}
                 onChange={(e) => {
                   setCategoryFilter(e.target.value);
+                  setSubcategoryFilter("all");
                   setPage(1);
                 }}
                 className="rounded-md border border-[#E5EAF3] bg-[#EAF0FC] px-3 py-3 text-xs text-[#172B4D] outline-none"
@@ -516,6 +557,22 @@ export default function ProductsPage() {
                 {categories.map((c) => (
                   <option key={c.id} value={String(c.id)}>
                     {c.nama_kategori}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={subcategoryFilter}
+                onChange={(e) => {
+                  setSubcategoryFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="rounded-md border border-[#E5EAF3] bg-[#EAF0FC] px-3 py-3 text-xs text-[#172B4D] outline-none"
+                aria-label="Filter subkategori"
+              >
+                <option value="all">Semua Subkategori</option>
+                {filterSubcategories.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.nama_subkategori}
                   </option>
                 ))}
               </select>
@@ -585,14 +642,17 @@ export default function ProductsPage() {
                     </td>
 
                     <td className="px-3 py-4">
-                      <span className="inline-block max-w-[105px] rounded-sm bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
-                        {product.kategori?.nama_kategori || "Tanpa kategori"}
-                      </span>
-                      {product.subkategori && (
-                        <span className="mt-1 block max-w-[120px] text-[9px] text-[#64748B]">
-                          {product.subkategori}
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="inline-block max-w-[150px] rounded-sm bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
+                          {product.kategori?.nama_kategori || "Tanpa kategori"}
                         </span>
-                      )}
+
+                        {product.subkategori?.nama_subkategori && (
+                          <span className="inline-block max-w-[150px] rounded-sm bg-[#FCE9E1] px-2 py-1 text-[9px] font-medium text-[#A83D00]">
+                            {product.subkategori.nama_subkategori}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-3 py-4 text-[11px] font-bold text-[#172B4D]">
@@ -605,14 +665,14 @@ export default function ProductsPage() {
                     <td className="px-3 py-4 text-center">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${product.tersedia
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-slate-100 text-slate-500"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
                           }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${product.tersedia
-                              ? "bg-emerald-500"
-                              : "bg-slate-400"
+                            ? "bg-emerald-500"
+                            : "bg-slate-400"
                             }`}
                         />
                         {product.tersedia ? "Aktif" : "Nonaktif"}
@@ -687,8 +747,8 @@ export default function ProductsPage() {
                     type="button"
                     onClick={() => setPage(number)}
                     className={`min-w-8 rounded-md px-2 py-2 text-[10px] font-bold ${currentPage === number
-                        ? "bg-[#A83D00] text-white"
-                        : "bg-[#E5EDFF] text-[#172B4D]"
+                      ? "bg-[#A83D00] text-white"
+                      : "bg-[#E5EDFF] text-[#172B4D]"
                       }`}
                   >
                     {number}
@@ -833,14 +893,17 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* CATEGORY & PRICE */}
+
+            {/* CATEGORY & SUBCATEGORY */}
             <div className="grid grid-cols-2 gap-3">
+              {/* CATEGORY */}
               <div className="min-w-0">
                 <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                  Kategori
+                  Kategori <span className="text-red-500">*</span>
                 </label>
 
                 <select
+                  required
                   value={form.kategori_id}
                   onChange={(e) => changeCategory(e.target.value)}
                   className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
@@ -854,38 +917,58 @@ export default function ProductsPage() {
                 </select>
               </div>
 
+              {/* SUBCATEGORY */}
               <div className="min-w-0">
                 <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                  Harga B2B (IDR)
+                  Subkategori
                 </label>
 
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  value={form.harga}
+                <select
+                  value={form.subkategori_id}
                   onChange={(e) =>
-                    setForm({ ...form, harga: e.target.value })
+                    setForm((current) => ({
+                      ...current,
+                      subkategori_id: e.target.value,
+                    }))
                   }
-                  placeholder="25000000"
-                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
-                />
+                  disabled={
+                    !form.kategori_id ||
+                    availableSubcategories.length === 0
+                  }
+                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">
+                    {!form.kategori_id
+                      ? "Pilih kategori dahulu"
+                      : availableSubcategories.length === 0
+                        ? "Belum ada subkategori"
+                        : "Tanpa subkategori"}
+                  </option>
+
+                  {availableSubcategories.map((item) => (
+                    <option key={item.id} value={String(item.id)}>
+                      {item.nama_subkategori}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* SUBCATEGORY */}
+            {/* PRICE */}
             <div>
               <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Subkategori
+                Harga B2B (IDR)
               </label>
 
               <input
-                maxLength={120}
-                value={form.subkategori}
+                required
+                type="number"
+                min="1"
+                value={form.harga}
                 onChange={(e) =>
-                  setForm({ ...form, subkategori: e.target.value })
+                  setForm({ ...form, harga: e.target.value })
                 }
-                placeholder="Contoh: Hewani, Sayur, atau Chemical"
+                placeholder="25000000"
                 className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
               />
             </div>

@@ -199,7 +199,7 @@ export default function PublicCatalog({ page = "home" }: { page?: "home" | "cata
       itemLines,
       `Total estimasi: ${rupiah(homeTotal)}`,
       `Catatan: ${form.catatan || "-"}`,
-      `Kode permintaan: DK-${Date.now()}`
+      "Kode permintaan: Permintaan dari katalog"
     ].join("\n");
     localStorage.removeItem(homeCartKey);
     setHomeCart([]);

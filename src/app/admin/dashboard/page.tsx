@@ -1,6 +1,8 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   Activity,
   Boxes,
@@ -9,6 +11,7 @@ import {
   MessageSquare,
   Star,
   ArrowUpRight,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import QuickActions from "@/components/admin/dashboard/QuickActions";
@@ -101,6 +104,71 @@ function WelcomePanel() {
 }
 
 function Statistics() {
+  const [data, setData] = useState({
+    produkAktif: 0,
+    totalKategori: 0,
+    totalSubkategori: 0,
+  });
+
+  useEffect(() => {
+    async function loadStatistics() {
+      try {
+        const response = await fetch("/api/dashboard/summary");
+        if (!response.ok) throw new Error("Gagal mengambil statistik");
+
+        const result = await response.json();
+        setData(result);
+      } catch (error) {
+        console.error("Gagal memuat statistik dashboard:", error);
+      }
+    }
+
+    loadStatistics();
+  }, []);
+
+  const statistics = [
+    {
+      title: "TOTAL PRODUK AKTIF",
+      value: data.produkAktif,
+      suffix: "SKU Aktif",
+      description: "Data produk dari database",
+      icon: ClipboardCheck,
+      color: "text-[#A83D00]",
+      background: "bg-[#FFF4ED]",
+      footer: "bg-[#FBF4F0]",
+    },
+    {
+      title: "STRUKTUR KATALOG",
+      value: data.totalKategori,
+      suffix: "Kategori Utama",
+      description: `Mencakup ${data.totalSubkategori} subkategori terdaftar`,
+      icon: Boxes,
+      color: "text-[#172B4D]",
+      background: "bg-[#E8F0FF]",
+      footer: "bg-[#F0F4FC]",
+    },
+    {
+      title: "INQUIRY WHATSAPP B2B",
+      value: "142",
+      suffix: "Pemesanan",
+      description: "Aktivitas minggu ini (+18.4%)",
+      icon: MessageSquare,
+      color: "text-[#A83D00]",
+      background: "bg-[#FFF0E9]",
+      footer: "bg-[#FAEEE8]",
+    },
+    {
+      title: "PRODUK UNGGULAN",
+      value: "8 / 12",
+      suffix: "Slot",
+      description: "Aktif di beranda storefront utama",
+      icon: Star,
+      color: "text-[#A83D00]",
+      background: "bg-[#E8F0FF]",
+      footer: "bg-[#F0F4FC]",
+    },
+  ];
+
   return (
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {statistics.map((item) => {
@@ -148,6 +216,144 @@ function Statistics() {
   );
 }
 
+//import data exel
+
+function ImportExcel() {
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{
+    berhasil: number;
+    gagal: number;
+    detailGagal: { baris: number; pesan: string }[];
+  } | null>(null);
+  const [error, setError] = useState("");
+
+  async function handleImport() {
+    if (!file) return;
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/produk/import", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Import gagal.");
+      }
+
+      setResult(data);
+      setFile(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Terjadi kesalahan saat import."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-[#E8ECF4] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F0FF] text-[#172B4D]">
+          <FileSpreadsheet size={21} />
+        </div>
+
+        <div>
+          <h2 className="text-base font-bold text-[#172B4D]">
+            Import Data Produk
+          </h2>
+          <p className="mt-1 text-xs text-[#64748B]">
+            Tambahkan banyak produk sekaligus melalui file Excel.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:items-end">
+        <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#A83D00] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100]">
+          <FileSpreadsheet size={17} />
+          Pilih File Excel
+
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            disabled={loading}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setResult(null);
+              setError("");
+            }}
+          />
+        </label>
+
+        {file && (
+          <>
+            <p className="text-xs font-medium text-[#172B4D]">
+              File dipilih: {file.name}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleImport}
+              disabled={loading}
+              className="flex h-10 items-center justify-center rounded-lg bg-[#172B4D] px-5 text-xs font-bold text-white transition hover:bg-[#263F66] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Sedang Mengimport..." : "Import Produk"}
+            </button>
+          </>
+        )}
+
+        {!file && !result && (
+          <p className="text-[10px] text-[#94A3B8]">
+            Format .xlsx, .xls, atau .csv
+          </p>
+        )}
+
+        {error && (
+          <p className="max-w-xs text-xs font-medium text-red-600">
+            {error}
+          </p>
+        )}
+
+        {result && (
+          <div className="w-full rounded-lg border border-[#E8ECF4] bg-[#F8FAFD] p-3 text-xs sm:min-w-64">
+            <p className="font-bold text-green-700">
+              Import selesai!
+            </p>
+            <p className="mt-1 text-[#172B4D]">
+              Berhasil: {result.berhasil} produk
+            </p>
+            <p className="text-red-600">
+              Gagal: {result.gagal} produk
+            </p>
+
+            {result.detailGagal.length > 0 && (
+              <div className="mt-2 max-h-32 space-y-1 overflow-y-auto border-t border-[#E8ECF4] pt-2">
+                {result.detailGagal.map((item, index) => (
+                  <p key={index} className="text-red-600">
+                    Baris {item.baris}: {item.pesan}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
 export default function AdminDashboard() {
   return (
     <div className="min-h-screen space-y-5 p-4 sm:p-6 lg:p-7">
@@ -156,6 +362,9 @@ export default function AdminDashboard() {
       <Statistics />
 
       <QuickActions />
+
+      {/* Import Data Excel */}
+      <ImportExcel />
 
       <InventoryPortfolio />
 

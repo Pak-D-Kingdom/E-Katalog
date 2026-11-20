@@ -42,7 +42,7 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
         {product.foto_url
           ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           : <span className="block h-full w-full" aria-hidden="true" />}
-        <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.subkategori || product.kategori?.nama_kategori || "Layanan"}</span>
+        <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.subkategori?.nama_subkategori || product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
       <div className="flex min-h-[170px] flex-col p-3">
         <div className="flex items-center justify-between gap-2">
@@ -121,13 +121,21 @@ export default function KatalogPage({
   const catalogCategories = categories
     .filter((item) => categorySlugs.has(item.slug))
     .sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
-  const b2bProducts = products.filter((product) => product.kategori?.slug && categorySlugs.has(product.kategori.slug));
-  const subcategories = [...new Set(
-    b2bProducts
-      .filter((product) => category === null || product.kategori_id === category)
-      .map((product) => product.subkategori?.trim() || "")
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b));
+  const b2bProducts = useMemo(
+    () => products.filter((product) =>
+      product.kategori?.slug && categorySlugs.has(product.kategori.slug)
+    ),
+    [products]
+  );
+  const subcategories = useMemo(
+    () => [...new Set(
+      b2bProducts
+        .filter((product) => category === null || product.kategori_id === category)
+        .map((product) => product.subkategori?.nama_subkategori?.trim() || "")
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b)),
+    [b2bProducts, category]
+  );
   const requestedCategoryMissing = Boolean(requestedCategory) && !loading && category === null &&
     !categories.some((item) =>
       item.slug === requestedCategory || slugify(item.nama_kategori) === requestedCategory
@@ -145,8 +153,8 @@ export default function KatalogPage({
         (priceRange === "5m-15m" && price >= 5000000 && price < 15000000) ||
         (priceRange === "over-15m" && price >= 15000000);
       return (category === null || product.kategori_id === category) &&
-        (subcategoryFilter === "all" || product.subkategori === subcategoryFilter) &&
-        (!query || `${product.nama_produk} ${product.kode_produk} ${product.subkategori || ""} ${product.deskripsi}`.toLowerCase().includes(query)) &&
+        (subcategoryFilter === "all" || product.subkategori?.nama_subkategori === subcategoryFilter) &&
+        (!query || `${product.nama_produk} ${product.kode_produk} ${product.subkategori?.nama_subkategori || ""} ${product.deskripsi}`.toLowerCase().includes(query)) &&
         inPriceRange &&
         (availabilityFilter === "all" ||
           (availabilityFilter === "available" && product.tersedia) ||
@@ -166,7 +174,6 @@ export default function KatalogPage({
     });
     return filtered;
   }, [b2bProducts, category, subcategoryFilter, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return <>
     <section className="border-b border-slate-100 bg-[#f7f8ff]">
@@ -235,7 +242,7 @@ export default function KatalogPage({
             <h3 className="flex items-center gap-2 text-[13px] font-black text-slate-900"><span className="flex h-5 w-5 items-center justify-center rounded bg-[#fff1e8] text-[#ad3b00]"><BadgeCheck size={12}/></span>Informasi Produk</h3>
             <div className="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 text-[11px] min-[360px]:grid-cols-2">
               <div><span className="block text-slate-400">Kategori</span><b className="mt-0.5 block text-slate-700">{selected.kategori?.nama_kategori || "Belum dikategorikan"}</b></div>
-              <div><span className="block text-slate-400">Subkategori</span><b className="mt-0.5 block text-slate-700">{selected.subkategori || "—"}</b></div>
+              <div><span className="block text-slate-400">Subkategori</span><b className="mt-0.5 block text-slate-700">{selected.subkategori?.nama_subkategori || "—"}</b></div>
               <div><span className="block text-slate-400">Satuan</span><b className="mt-0.5 block text-slate-700">{selected.satuan}</b></div>
               <div><span className="block text-slate-400">Status ketersediaan</span><b className="mt-0.5 block text-slate-700">{selected.tersedia ? "Tersedia" : "Tidak tersedia"}</b></div>
               <div><span className="block text-slate-400">Informasi gizi</span><b className="mt-0.5 block text-slate-700">{selected.informasi_gizi.kalori > 0 || selected.informasi_gizi.protein > 0 ? `${selected.informasi_gizi.protein} g protein` : "Belum tersedia"}</b></div>

@@ -1,14 +1,17 @@
-
+import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import { getSession } from "@/lib/auth";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AdminShell>
-      {children}
-    </AdminShell>
-  );
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/admin/auth/login");
+  }
+
+  return <AdminShell>{children}</AdminShell>;
 }
