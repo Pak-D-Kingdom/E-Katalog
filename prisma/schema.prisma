@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,17 +18,33 @@ model admin {
 }
 
 model kategori {
-  id            Int       @id @default(autoincrement())
-  nama_kategori String    @db.VarChar(120)
-  slug          String    @unique @db.VarChar(191)
-  ikon_url      String?   @db.VarChar(500)
-  dibuat_pada   DateTime  @default(now())
-  produk        produk[]
+  id             Int          @id @default(autoincrement())
+  nama_kategori   String      @db.VarChar(120)
+  slug           String      @unique @db.VarChar(191)
+  ikon_url       String?      @db.VarChar(500)
+  dibuat_pada    DateTime    @default(now())
+  produk         produk[]
+  subkategori    subkategori[]
+}
+
+model subkategori {
+  id               Int       @id @default(autoincrement())
+  kategori_id       Int
+  nama_subkategori String    @db.VarChar(120)
+  slug              String    @db.VarChar(191)
+  dibuat_pada       DateTime  @default(now())
+
+  kategori           kategori  @relation(fields: [kategori_id], references: [id], onDelete: Restrict)
+  produk             produk[]
+
+  @@unique([kategori_id, slug])
+  @@index([kategori_id])
 }
 
 model produk {
   id               Int             @id @default(autoincrement())
-  kategori_id      Int?
+  kategori_id       Int?
+  subkategori_id   Int?
   kode_produk      String          @unique @db.VarChar(80)
   nama_produk      String          @db.VarChar(191)
   slug             String          @unique @db.VarChar(191)
@@ -40,9 +57,11 @@ model produk {
   dibuat_pada      DateTime        @default(now())
   diperbarui_pada  DateTime        @updatedAt
   kategori         kategori?       @relation(fields: [kategori_id], references: [id], onDelete: SetNull)
+  subkategori     subkategori?    @relation(fields: [subkategori_id], references: [id], onDelete: SetNull)
   detail_pesanan   detail_pesanan[]
 
   @@index([kategori_id])
+  @@index([subkategori_id])
   @@index([tersedia])
 }
 
@@ -59,7 +78,7 @@ model riwayat_pesanan {
   id               Int              @id @default(autoincrement())
   kode_pesanan     String           @unique @db.VarChar(40)
   nama_pemesan     String           @db.VarChar(160)
-  nama_sekolah     String?          @db.VarChar(191)
+  nama_sekolah    String?          @db.VarChar(191)
   telepon_pemesan  String?          @db.VarChar(30)
   catatan          String?          @db.Text
   total_harga      Decimal          @db.Decimal(12, 2)

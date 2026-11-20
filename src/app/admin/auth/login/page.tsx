@@ -3,9 +3,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Package,
   ShieldCheck,
   LockKeyhole,
@@ -41,7 +39,7 @@ export default function AdminLoginPage() {
         }),
       });
 
-      router.replace("/admin");
+      router.replace("/admin/dashboard");
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
