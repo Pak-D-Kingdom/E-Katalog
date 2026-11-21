@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Activity,
@@ -12,55 +12,13 @@ import {
   Star,
   ArrowUpRight,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 
 import QuickActions from "@/components/admin/dashboard/QuickActions";
 import InventoryPortfolio from "@/components/admin/dashboard/InventoryPortfolio";
 import DashboardBottom from "@/components/admin/dashboard/DashboardBottom";
 
-// Data sementara untuk tampilan UI
-const statistics = [
-  {
-    title: "TOTAL PRODUK AKTIF",
-    value: "248",
-    suffix: "SKU Aktif",
-    description: "+12 produk baru bulan ini",
-    icon: ClipboardCheck,
-    color: "text-[#A83D00]",
-    background: "bg-[#FFF4ED]",
-    footer: "bg-[#FBF4F0]",
-  },
-  {
-    title: "STRUKTUR KATALOG",
-    value: "4",
-    suffix: "Kategori Utama",
-    description: "Mencakup 18 Sub-kategori terdaftar",
-    icon: Boxes,
-    color: "text-[#172B4D]",
-    background: "bg-[#E8F0FF]",
-    footer: "bg-[#F0F4FC]",
-  },
-  {
-    title: "INQUIRY WHATSAPP B2B",
-    value: "142",
-    suffix: "Pemesanan",
-    description: "Aktivitas minggu ini (+18.4%)",
-    icon: MessageSquare,
-    color: "text-[#A83D00]",
-    background: "bg-[#FFF0E9]",
-    footer: "bg-[#FAEEE8]",
-  },
-  {
-    title: "PRODUK UNGGULAN",
-    value: "8 / 12",
-    suffix: "Slot",
-    description: "Aktif di beranda storefront utama",
-    icon: Star,
-    color: "text-[#A83D00]",
-    background: "bg-[#E8F0FF]",
-    footer: "bg-[#F0F4FC]",
-  },
-];
 
 function WelcomePanel() {
   return (
@@ -108,6 +66,7 @@ function Statistics() {
     produkAktif: 0,
     totalKategori: 0,
     totalSubkategori: 0,
+    totalInquiry: 0,
   });
 
   useEffect(() => {
@@ -149,9 +108,9 @@ function Statistics() {
     },
     {
       title: "INQUIRY WHATSAPP B2B",
-      value: "142",
-      suffix: "Pemesanan",
-      description: "Aktivitas minggu ini (+18.4%)",
+      value: data.totalInquiry,
+      suffix: "Permintaan",
+      description: "Total permintaan penawaran tercatat",
       icon: MessageSquare,
       color: "text-[#A83D00]",
       background: "bg-[#FFF0E9]",
@@ -227,6 +186,19 @@ function ImportExcel() {
     detailGagal: { baris: number; pesan: string }[];
   } | null>(null);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function cancelSelectedFile() {
+    if (loading) return;
+
+    setFile(null);
+    setResult(null);
+    setError("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   async function handleImport() {
     if (!file) return;
@@ -284,6 +256,7 @@ function ImportExcel() {
           Pilih File Excel
 
           <input
+            ref={fileInputRef}
             type="file"
             accept=".xlsx,.xls,.csv"
             className="hidden"
@@ -298,10 +271,25 @@ function ImportExcel() {
 
         {file && (
           <>
-            <p className="text-xs font-medium text-[#172B4D]">
-              File dipilih: {file.name}
-            </p>
+            {/* Nama file dan tombol batal */}
+            <div className="flex max-w-full items-center justify-end gap-2">
+              <p className="max-w-[220px] break-all text-right text-xs font-medium text-[#172B4D]">
+                File dipilih: {file.name}
+              </p>
 
+              <button
+                type="button"
+                onClick={cancelSelectedFile}
+                disabled={loading}
+                title="Batalkan pilihan file"
+                aria-label="Batalkan pilihan file"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Tombol import */}
             <button
               type="button"
               onClick={handleImport}
@@ -355,13 +343,35 @@ function ImportExcel() {
 
 
 export default function AdminDashboard() {
+  function handleExport(
+    kategoriId: number | null,
+    format: "csv" | "xlsx" | "pdf"
+  ) {
+    const params = new URLSearchParams({
+      format,
+      kategoriId: kategoriId === null
+        ? "all"
+        : String(kategoriId),
+    });
+
+    const exportUrl = `/api/produk/export?${params.toString()}`;
+
+    if (format === "pdf") {
+      // PDF dibuka di tab baru untuk dicetak atau disimpan.
+      window.open(exportUrl, "_blank");
+    } else {
+      // CSV dan Excel langsung diunduh.
+      window.location.href = exportUrl;
+    }
+  }
+
   return (
     <div className="min-h-screen space-y-5 p-4 sm:p-6 lg:p-7">
       <WelcomePanel />
 
       <Statistics />
 
-      <QuickActions />
+      <QuickActions onExport={handleExport} />
 
       {/* Import Data Excel */}
       <ImportExcel />
