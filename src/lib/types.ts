@@ -36,9 +36,11 @@ export type Product = {
   deskripsi: string;
   informasi_gizi: Gizi;
   harga: string | number;
+  stok: number | null;
   satuan: string;
   foto_url: string | null;
   tersedia: boolean;
+  jumlah_barang_subkategori?: number | null;
   kategori?: Category | null;
   subkategori?: Subcategory | null;
 };

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
+import { useEffect, useState, type TransitionEvent } from "react";
+import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
 import Link from "next/link";
+import { rupiah } from "@/lib/types";
+import type { Product } from "@/lib/types";
 
 export type HomeOffer = {
   category: string;
@@ -12,63 +14,66 @@ export type HomeOffer = {
   details: string[];
   priceLabel: string;
   price: string;
-  priceValue: number; 
+  priceValue: number;
   unit?: string;
-  image: string;
+  image: string | null;
   overlayBadges?: boolean;
 };
 
-export const homeOffers: HomeOffer[] = [
-  {
-    category: "Peralatan",
-    badge: "Garansi 2 Thn",
-    sku: "DK-OVN-18M",
-    title: "Commercial Combi Steam Oven 10-Tray GN 1/1",
-    details: ["Kapasitas: 10 Tray GN 1/1 (Gas / 18kW)", "Material: SUS 304 Thick Chamber"],
-    priceLabel: "Harga Satuan",
-    price: "Rp 68.500.000",
-    priceValue: 68500000,
-    image: "/commercial-combi-steam-oven.png"
-  },
-  {
-    category: "Perizinan",
-    badge: "Audit Terverifikasi",
-    sku: "DK-SFT-HACCP",
-    title: "Paket Sertifikasi HACCP & Food Safety Audit",
-    details: ["Termasuk GAP Analysis & Dokumen SOP", "Pelatihan Staff Dapur (10 Orang)"],
-    priceLabel: "Paket Mulai Dari",
-    price: "Rp 14.500.000",
-    priceValue: 14500000,
-    image: "/haccp-food-safety-audit.png"
-  },
-  {
-    category: "Perawatan",
-    badge: "SLA 24 Jam",
-    sku: "DK-MNT-KITCHEN",
-    title: "Kontrak Maintenance & Deep Cleaning Bulanan",
-    details: ["2x Kunjungan Preventif Bulanan", "Pembersihan Grease Trap & Ducting Hood"],
-    priceLabel: "Langganan Rutin",
-    price: "Rp 4.750.000",
-    priceValue: 4750000,
-    unit: "/ bln",
-    image: "/maintenance-deep-cleaning.png",
-    overlayBadges: true
-  },
-  {
-    category: "Bahan Baku",
-    badge: "Halal & Cold-Chain",
-    sku: "DK-BEEF-STRIP29",
-    title: "Daging Sapi Australian Striploin MB2+ (Karton 20kg)",
-    details: ["Karton Master 20 kg Vacuum Sealed", "Suhu Pengiriman: -18°C Controlled"],
-    priceLabel: "Harga Grosir B2B",
-    price: "Rp 3.850.000",
-    priceValue: 3850000,
-    unit: "/ karton",
-    image: "/daging-sapi-australian-striploin.png"
+const homeCategoryOrder = ["Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
+const defaultProductDescription =
+  "Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.";
+
+export function getHomeOffers(products: Product[]): HomeOffer[] {
+  const firstProductByCategory = new Map<number, Product>();
+
+  for (const product of products) {
+    const categoryId = product.kategori?.id;
+    if (categoryId !== undefined && !firstProductByCategory.has(categoryId)) {
+      firstProductByCategory.set(categoryId, product);
+    }
   }
-];
+
+  return [...firstProductByCategory.values()]
+    .sort((a, b) => {
+      const aOrder = homeCategoryOrder.indexOf(a.kategori?.nama_kategori || "");
+      const bOrder = homeCategoryOrder.indexOf(b.kategori?.nama_kategori || "");
+      return (aOrder < 0 ? Number.MAX_SAFE_INTEGER : aOrder) -
+        (bOrder < 0 ? Number.MAX_SAFE_INTEGER : bOrder);
+    })
+    .map((product) => {
+      const priceValue = Number(product.harga);
+      const description = product.deskripsi.trim();
+      const unit = product.satuan.trim();
+      return {
+        category: product.kategori?.nama_kategori || "Lainnya",
+        badge: product.tersedia ? "Tersedia" : "Tidak tersedia",
+        sku: product.kode_produk,
+        title: product.nama_produk,
+        details: [
+          ...(description &&
+          description.toLowerCase() !== defaultProductDescription.toLowerCase()
+            ? [description]
+            : []),
+          ...(unit && unit.toLowerCase() !== "unit" ? [`Satuan: ${unit}`] : [])
+        ],
+        priceLabel: "Harga Satuan",
+        price: rupiah(priceValue),
+        priceValue,
+        unit: product.satuan,
+        image: product.foto_url,
+        overlayBadges: true,
+      };
+    });
+}
 
 const homeCategories = ["Semua Kategori", "Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
+const homeSlides = [
+  "/commercial-combi-steam-oven.png",
+  "/haccp-food-safety-audit.png",
+  "/maintenance-deep-cleaning.png",
+  "/daging-sapi-australian-striploin.png"
+];
 const homePillars = [
   {
     icon: "◉",
@@ -104,11 +109,120 @@ const homePillars = [
   }
 ];
 
+function HomeHeroSlider() {
+  const [slidePosition, setSlidePosition] = useState(1);
+  const [transitionEnabled, setTransitionEnabled] = useState(true);
+  const slides = [homeSlides[homeSlides.length - 1], ...homeSlides, homeSlides[0]];
+  const activeSlide =
+    slidePosition === 0
+      ? homeSlides.length - 1
+      : slidePosition === homeSlides.length + 1
+        ? 0
+        : slidePosition - 1;
+
+  useEffect(() => {
+    if (transitionEnabled) return;
+    const frame = window.requestAnimationFrame(() => {
+      setTransitionEnabled(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [transitionEnabled]);
+
+  const showPrevious = () =>
+    setSlidePosition((current) => Math.max(0, current - 1));
+  const showNext = () =>
+    setSlidePosition((current) =>
+      Math.min(homeSlides.length + 1, current + 1)
+    );
+  const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== "transform") {
+      return;
+    }
+    if (slidePosition === homeSlides.length + 1) {
+      setTransitionEnabled(false);
+      setSlidePosition(1);
+    } else if (slidePosition === 0) {
+      setTransitionEnabled(false);
+      setSlidePosition(homeSlides.length);
+    }
+  };
+
+  return (
+    <div
+      role="region"
+      aria-label="Sorotan katalog DapurKita"
+      aria-roledescription="carousel"
+      className="relative mx-auto w-full max-w-[1600px] overflow-hidden bg-slate-900 aspect-video"
+    >
+      <div
+        onTransitionEnd={handleTransitionEnd}
+        className={`flex h-full w-full ${
+          transitionEnabled ? "transition-transform duration-700 ease-in-out" : "transition-none"
+        }`}
+        style={{ transform: `translateX(-${slidePosition * 100}%)` }}
+      >
+        {slides.map((slide, position) => {
+          const index = (position - 1 + homeSlides.length) % homeSlides.length;
+          return (
+            <article
+              key={`${position}-${slide}`}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} dari ${homeSlides.length}`}
+              className="relative h-full w-full shrink-0"
+            >
+              <img
+                src={slide}
+                alt=""
+                fetchPriority={position === 1 ? "high" : "auto"}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </article>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={showPrevious}
+        aria-label="Slide sebelumnya"
+        className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-slate-950/45 text-white transition hover:bg-slate-950/70 sm:left-5 sm:h-11 sm:w-11"
+      >
+        <ChevronLeft size={22} />
+      </button>
+      <button
+        type="button"
+        onClick={showNext}
+        aria-label="Slide berikutnya"
+        className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-slate-950/45 text-white transition hover:bg-slate-950/70 sm:right-5 sm:h-11 sm:w-11"
+      >
+        <ChevronRight size={22} />
+      </button>
+      <div className="absolute bottom-3 right-4 flex items-center gap-1.5 sm:bottom-5 sm:right-8">
+        {homeSlides.map((slide, index) => (
+          <button
+            key={slide}
+            type="button"
+            onClick={() => {
+              setTransitionEnabled(true);
+              setSlidePosition(index + 1);
+            }}
+            aria-label={`Tampilkan slide ${index + 1}`}
+            aria-current={activeSlide === index ? "true" : undefined}
+            className={`h-1.5 rounded-full transition-all ${
+              activeSlide === index ? "w-6 bg-white" : "w-1.5 bg-white/60 hover:bg-white"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: () => void; onAdd: (source: HTMLElement) => void }) {
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="relative aspect-[1.4/1] overflow-hidden bg-[#e7edf4]">
-        <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/>
+        {item.image && <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/>}
         {item.overlayBadges && <>
           <span className="absolute left-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">{item.category}</span>
           <span className="absolute right-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">{item.badge}</span>
@@ -117,11 +231,11 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
       <div className="flex min-h-[185px] flex-col p-3">
         <p className="text-[10px] font-bold uppercase tracking-[.13em] text-slate-500">SKU: {item.sku}</p>
         <h3 className="mt-1.5 min-h-9 text-[14px] font-extrabold leading-4 text-slate-900">{item.title}</h3>
-        <div className="mt-1.5 space-y-1 text-[10px] leading-3.5 text-slate-600">
-          {item.details.map((detail) => <p key={detail} className="flex gap-1.5"><BadgeCheck size={10} className="mt-0.5 shrink-0 text-[#ad3b00]"/>{detail}</p>)}
+        <div className="mt-1.5 space-y-1 text-xs leading-4 text-slate-600">
+          {item.details.map((detail) => <p key={detail} className="flex gap-1.5"><BadgeCheck size={12} className="mt-0.5 shrink-0 text-[#ad3b00]"/>{detail}</p>)}
         </div>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <div className="min-w-0"><small className="block text-[10px] text-slate-500">{item.priceLabel}</small><b className="text-base font-extrabold text-[#b63d00]">{item.price}</b>{item.unit && <small className="ml-1 text-[10px] text-slate-500">{item.unit}</small>}</div>
+          <div className="min-w-0"><small className="block text-[10px] text-slate-500">{item.priceLabel}</small><b className="text-base font-extrabold text-[#b63d00]">{item.price}</b>{item.unit && item.unit.trim().toLowerCase() !== "unit" && <small className="ml-1 text-[10px] text-slate-500">{item.unit}</small>}</div>
           <div className="flex shrink-0 gap-1.5">
             <button type="button" onClick={onDetail} className="rounded bg-[#e7efff] px-4 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-[#dbe7ff]">Detail</button>
             <button type="button" onClick={(event) => onAdd(event.currentTarget)} aria-label={`Tambah ${item.title} ke keranjang`} className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8e3000]"><ShoppingCart size={13}/></button>
@@ -133,10 +247,14 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
 }
 
 export default function HomePage({
+  offers,
+  loading,
   onAddOffer,
   onOpenCart,
   whatsappHref
 }: {
+  offers: HomeOffer[];
+  loading: boolean;
   onAddOffer: (offer: HomeOffer, source?: HTMLElement) => void;
   onOpenCart: () => void;
   whatsappHref: string;
@@ -144,11 +262,12 @@ export default function HomePage({
   const [homeCategory, setHomeCategory] = useState("Semua Kategori");
   const [selectedHomeOffer, setSelectedHomeOffer] = useState<HomeOffer | null>(null);
   const featuredHomeOffers = homeCategory === "Semua Kategori"
-    ? homeOffers
-    : homeOffers.filter((item) => item.category.toLowerCase().includes(homeCategory.toLowerCase()));
+    ? offers
+    : offers.filter((item) => item.category.toLowerCase().includes(homeCategory.toLowerCase()));
 
   return <>
     <section id="home" className="bg-[#eef3ff]">
+      <HomeHeroSlider />
       <div className="mx-auto max-w-7xl px-5 pb-8 pt-7 lg:px-8 lg:pb-10 lg:pt-9">
         <div className="mb-6 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
@@ -161,7 +280,13 @@ export default function HomePage({
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)}
+          {loading ? (
+            <p className="col-span-full py-8 text-center text-sm text-slate-500">Memuat produk unggulan...</p>
+          ) : featuredHomeOffers.length ? (
+            featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)
+          ) : (
+            <p className="col-span-full py-8 text-center text-sm text-slate-500">Belum ada produk pada kategori ini.</p>
+          )}
         </div>
         <div className="mt-7 flex justify-center">
           <Link href="/katalog" className="inline-flex items-center gap-2 rounded-md bg-[#ad3b00] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#8f3000]"><ShoppingBag size={13}/> Lihat Semua 250+ Produk di Katalog Lengkap <ArrowRight size={15}/></Link>
@@ -217,13 +342,13 @@ export default function HomePage({
         </div>
         <div className="grid gap-5 p-5 md:grid-cols-[1fr_1fr]">
           <div className="relative min-h-[205px] overflow-hidden rounded-md bg-[#edf2ff]">
-            <img src={selectedHomeOffer.image} alt={selectedHomeOffer.title} className="absolute inset-0 h-full w-full object-cover"/>
+            {selectedHomeOffer.image && <img src={selectedHomeOffer.image} alt={selectedHomeOffer.title} className="absolute inset-0 h-full w-full object-cover"/>}
             {selectedHomeOffer.overlayBadges && <span className="absolute left-2 top-2 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700">{selectedHomeOffer.badge}</span>}
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#ad3b00]">{selectedHomeOffer.category}</p>
             <h2 id="home-offer-title" className="mt-1.5 text-xl font-black leading-tight text-slate-900">{selectedHomeOffer.title}</h2>
-            <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#ad3b00]">{selectedHomeOffer.price}</b>{selectedHomeOffer.unit && <span className="pb-1 text-[11px] text-slate-500">{selectedHomeOffer.unit}</span>}</div>
+            <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#ad3b00]">{selectedHomeOffer.price}</b>{selectedHomeOffer.unit && selectedHomeOffer.unit.trim().toLowerCase() !== "unit" && <span className="pb-1 text-[11px] text-slate-500">{selectedHomeOffer.unit}</span>}</div>
             <div className="mt-3 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-md bg-[#edf7ef] px-2 py-1.5 text-[11px] font-bold text-forest-700"><BadgeCheck size={12}/>{selectedHomeOffer.badge}</span><span className="inline-flex items-center rounded-md bg-[#edf2ff] px-2 py-1.5 text-[11px] font-bold text-slate-700">Pengadaan B2B</span></div>
           </div>
         </div>

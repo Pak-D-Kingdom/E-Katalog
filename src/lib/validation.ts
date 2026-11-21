@@ -41,6 +41,8 @@ export const produkSchema = z.object({
 
   harga: z.number().positive(),
 
+  stok: z.number().int().nonnegative().max(4294967295).nullable().optional(),
+
   satuan: z.string().trim().min(1).max(40),
 
   foto_url: z.string().trim().max(500).nullable().optional(),

@@ -7,9 +7,9 @@ import { api, Category, Product, rupiah, slugify } from "@/lib/types";
 type FormData = {
   kategori_id: string; kode_produk: string; nama_produk: string; slug: string; deskripsi: string;
   kalori: string; protein: string; karbohidrat: string; lemak: string; harga: string;
-  satuan: string; foto_url: string; tersedia: boolean;
+  stok: string; satuan: string; foto_url: string; tersedia: boolean;
 };
-const empty: FormData = { kategori_id: "", kode_produk: "", nama_produk: "", slug: "", deskripsi: "", kalori: "0", protein: "0", karbohidrat: "0", lemak: "0", harga: "", satuan: "porsi", foto_url: "", tersedia: true };
+const empty: FormData = { kategori_id: "", kode_produk: "", nama_produk: "", slug: "", deskripsi: "", kalori: "0", protein: "0", karbohidrat: "0", lemak: "0", harga: "", stok: "", satuan: "porsi", foto_url: "", tersedia: true };
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,7 +35,7 @@ export default function ProductsPage() {
         kode_produk: product.kode_produk, nama_produk: product.nama_produk, slug: product.slug, deskripsi: product.deskripsi,
         kalori: String(product.informasi_gizi.kalori), protein: String(product.informasi_gizi.protein),
         karbohidrat: String(product.informasi_gizi.karbohidrat), lemak: String(product.informasi_gizi.lemak),
-        harga: String(product.harga), satuan: product.satuan, foto_url: product.foto_url || "", tersedia: product.tersedia
+        harga: String(product.harga), stok: product.stok == null ? "" : String(product.stok), satuan: product.satuan, foto_url: product.foto_url || "", tersedia: product.tersedia
       });
     } else { setEditing(null); setForm(empty); }
     setError(""); setOpen(true);
@@ -56,7 +56,7 @@ export default function ProductsPage() {
       kategori_id: form.kategori_id ? Number(form.kategori_id) : null,
       kode_produk: form.kode_produk, nama_produk: form.nama_produk, slug: form.slug, deskripsi: form.deskripsi,
       informasi_gizi: { kalori: Number(form.kalori), protein: Number(form.protein), karbohidrat: Number(form.karbohidrat), lemak: Number(form.lemak) },
-      harga: Number(form.harga), satuan: form.satuan, foto_url: form.foto_url || null, tersedia: form.tersedia
+      harga: Number(form.harga), stok: form.stok.trim() === "" ? null : Number(form.stok), satuan: form.satuan, foto_url: form.foto_url || null, tersedia: form.tersedia
     };
     try {
       await api(editing ? `/api/produk/${editing}` : "/api/produk", { method: editing ? "PUT" : "POST", body: JSON.stringify(payload) });
@@ -89,6 +89,7 @@ export default function ProductsPage() {
         <div><label className="label">Kategori</label><select className="field" value={form.kategori_id} onChange={(e)=>setForm({...form,kategori_id:e.target.value})}><option value="">Tanpa kategori</option>{categories.map((c)=><option key={c.id} value={c.id}>{c.nama_kategori}</option>)}</select></div>
         <div className="sm:col-span-2"><label className="label">Deskripsi</label><textarea required className="field min-h-24" value={form.deskripsi} onChange={(e)=>setForm({...form,deskripsi:e.target.value})}/></div>
         <div><label className="label">Harga (Rp)</label><input required type="number" min="1" step="1" className="field" value={form.harga} onChange={(e)=>setForm({...form,harga:e.target.value})}/></div>
+        <div><label className="label">Stok (opsional)</label><input type="number" min="0" max="4294967295" step="1" className="field" placeholder="Belum dicatat" value={form.stok} onChange={(e)=>setForm({...form,stok:e.target.value})}/></div>
         <div><label className="label">Satuan</label><input required className="field" value={form.satuan} onChange={(e)=>setForm({...form,satuan:e.target.value})}/></div>
         <div className="sm:col-span-2"><label className="label">Informasi gizi</label><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{(["kalori","protein","karbohidrat","lemak"] as const).map((key)=><div key={key}><small className="mb-1 block capitalize text-slate-500">{key}</small><input type="number" min="0" step="0.1" required className="field" value={form[key]} onChange={(e)=>setForm({...form,[key]:e.target.value})}/></div>)}</div><small className="mt-1 block text-slate-400">Kalori dalam kkal; protein, karbohidrat, dan lemak dalam gram.</small></div>
         <div className="sm:col-span-2"><label className="label">Foto produk</label><div className="flex flex-col gap-2 sm:flex-row"><input className="field" placeholder="URL gambar (opsional)" value={form.foto_url} onChange={(e)=>setForm({...form,foto_url:e.target.value})}/><label className="btn-secondary shrink-0"><ImagePlus size={17}/>Upload<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" onChange={upload}/></label></div></div>

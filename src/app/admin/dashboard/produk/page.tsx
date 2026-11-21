@@ -45,6 +45,7 @@ type ProductForm = {
   karbohidrat: string;
   lemak: string;
   harga: string;
+  stok: string;
   satuan: string;
   foto_url: string;
   tersedia: boolean;
@@ -62,6 +63,7 @@ const empty: ProductForm = {
   karbohidrat: "0",
   lemak: "0",
   harga: "",
+  stok: "",
   satuan: "porsi",
   foto_url: "",
   tersedia: true,
@@ -124,6 +126,7 @@ export default function ProductsPage() {
         karbohidrat: String(product.informasi_gizi.karbohidrat),
         lemak: String(product.informasi_gizi.lemak),
         harga: String(product.harga),
+        stok: product.stok == null ? "" : String(product.stok),
         satuan: product.satuan,
         foto_url: product.foto_url || "",
         tersedia: product.tersedia,
@@ -253,6 +256,7 @@ export default function ProductsPage() {
         lemak: Number(form.lemak),
       },
       harga: Number(form.harga),
+      stok: form.stok.trim() === "" ? null : Number(form.stok),
       satuan: form.satuan,
       foto_url: form.foto_url || null,
       tersedia: form.tersedia,
@@ -986,6 +990,26 @@ export default function ProductsPage() {
                   setForm({ ...form, satuan: e.target.value })
                 }
                 placeholder="Unit / Kg / Porsi / Bulan"
+                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+              />
+            </div>
+
+            {/* STOCK */}
+            <div>
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Stok (opsional)
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                step="1"
+                value={form.stok}
+                onChange={(e) =>
+                  setForm({ ...form, stok: e.target.value })
+                }
+                placeholder="Belum dicatat"
                 className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
               />
             </div>
