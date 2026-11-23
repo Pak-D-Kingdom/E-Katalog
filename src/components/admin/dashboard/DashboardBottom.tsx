@@ -44,6 +44,7 @@ interface Order {
     namaSekolah: string | null;
     teleponPemesan: string | null;
     totalHarga: number;
+    totalHargaMax: number | null;
     dibuatPada: string;
     detailPesanan: OrderDetail[];
 }
@@ -623,7 +624,9 @@ export default function DashboardBottom() {
                                     </span>
 
                                     <span className="text-[11px] font-bold text-[#172B4D]">
-                                        {formatRupiah(order.totalHarga)}
+                                        {order.totalHargaMax == null
+                                            ? formatRupiah(order.totalHarga)
+                                            : `${formatRupiah(order.totalHarga)} – ${formatRupiah(order.totalHargaMax)} (estimasi)`}
                                     </span>
                                 </div>
                             </div>

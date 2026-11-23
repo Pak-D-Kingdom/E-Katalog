@@ -33,7 +33,9 @@ type Detail = {
   nama_produk: string;
   jumlah: number;
   harga_satuan: string | number;
+  harga_satuan_max: string | number | null;
   subtotal: string | number;
+  subtotal_max: string | number | null;
 };
 
 type Order = {
@@ -44,6 +46,7 @@ type Order = {
   telepon_pemesan: string | null;
   catatan: string | null;
   total_harga: string | number;
+  total_harga_max: string | number | null;
   dibuat_pada: string;
   status_pesanan: StatusPesanan;
   status_pembayaran: StatusPembayaran;
@@ -90,6 +93,13 @@ const orderColors: Record<StatusPesanan, string> = {
 
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-orange-700";
+
+function formatPriceRange(min: string | number, max: string | number | null) {
+  const minimum = rupiah(min);
+  return max == null
+    ? minimum
+    : `${minimum} – ${rupiah(max)} (estimasi)`;
+}
 
 function whatsappLink(phone: string | null, code: string) {
   if (!phone) return "";
@@ -326,7 +336,7 @@ export default function OrdersPage() {
                     </td>
 
                     <td className="px-5 py-4 font-bold">
-                      {rupiah(order.total_harga)}
+                      {formatPriceRange(order.total_harga, order.total_harga_max)}
                     </td>
 
                     <td className="px-5 py-4">
@@ -394,12 +404,12 @@ export default function OrdersPage() {
                                       {item.nama_produk}
                                     </p>
                                     <p className="mt-1 text-xs text-slate-500">
-                                      {item.jumlah} × {rupiah(item.harga_satuan)}
+                                      {item.jumlah} × {formatPriceRange(item.harga_satuan, item.harga_satuan_max)}
                                     </p>
                                   </div>
 
                                   <b className="text-sm text-slate-800">
-                                    {rupiah(item.subtotal)}
+                                    {formatPriceRange(item.subtotal, item.subtotal_max)}
                                   </b>
                                 </div>
                               ))}
@@ -408,7 +418,7 @@ export default function OrdersPage() {
                             <div className="mt-3 flex justify-between border-t border-slate-200 pt-3">
                               <b>Total Pesanan</b>
                               <b className="text-[#A83D00]">
-                                {rupiah(order.total_harga)}
+                                {formatPriceRange(order.total_harga, order.total_harga_max)}
                               </b>
                             </div>
                           </div>

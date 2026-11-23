@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Layers3, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
-import { formatProductPrice, slugify } from "@/lib/types";
+import { formatProductPrice, hargaRentang, hargaSatuan, slugify } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import type { CartItem } from "../types";
 
@@ -29,6 +29,8 @@ const productStatuses: Record<string, string> = {
   "DK-MNT-GRS92": "Layanan Rutin",
   "DK-MNT-REF34": "Layanan Rutin",
 };
+const PAGE_SIZE = 24;
+
 const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
   product: Product;
   onDetail: () => void;
@@ -47,7 +49,6 @@ const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
           <p className="truncate text-xs font-bold uppercase tracking-[.12em] text-slate-500">{product.kode_produk}</p>
           <span className="shrink-0 text-xs font-bold text-[#ad3b00]">★ 4.9</span>
         </div>
-        <button onClick={onDetail} className="mt-1 min-h-10 text-left text-sm font-extrabold leading-5 text-slate-900 hover:text-[#ad3b00]">{product.nama_produk}</button>
         <button onClick={onDetail} className="mt-1 min-h-[48px] text-left text-[13px] font-extrabold leading-4 text-slate-900 hover:text-[#ad3b00] sm:min-h-10 sm:text-sm sm:leading-5">{product.nama_produk}</button>
         <div className="mt-auto pt-2">
           <small className="block text-xs text-slate-600">Harga Satuan</small>
@@ -60,31 +61,25 @@ const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
               onClick={(event) => onAdd(event.currentTarget)}
               disabled={
                 !product.tersedia ||
-                product.jenis_harga === "rentang" ||
-                product.stok === 0
+                product.stok === 0 ||
+                (hargaSatuan(product) == null && hargaRentang(product) == null)
               }
               title={
                 product.jenis_harga === "rentang"
-                  ? "Produk ini memerlukan penawaran harga dari Admin"
+                  ? "Harga final produk ini akan dikonfirmasi Admin"
                   : "Tambah ke keranjang"
               }
-              aria-label={
-                product.jenis_harga === "rentang"
-                  ? `Harga ${product.nama_produk} perlu penawaran Admin`
-                  : `Tambah ${product.nama_produk} ke keranjang`
-              }
+              aria-label={`Tambah ${product.nama_produk} ke keranjang`}
               className="inline-flex min-w-0 items-center justify-center gap-1 rounded bg-[#ad3b00] px-1 py-1.5 text-[11px] font-bold text-white hover:bg-[#8e3000] disabled:cursor-not-allowed disabled:opacity-40 sm:px-2 sm:text-xs"
             >
               <ShoppingCart size={12} className="shrink-0" />
 
               <span className="hidden min-[375px]:inline sm:hidden">
-                {product.jenis_harga === "rentang" ? "Penawaran" : "Tambah"}
+                Tambah
               </span>
 
               <span className="hidden sm:inline">
-                {product.jenis_harga === "rentang"
-                  ? "Penawaran Admin"
-                  : "Keranjang"}
+                Keranjang
               </span>
             </button>
           </div>
@@ -124,6 +119,8 @@ function KatalogPage({
   const [priceRange, setPriceRange] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("recommended");
+  const [currentPage, setCurrentPage] = useState(1);
+  const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -139,6 +136,10 @@ function KatalogPage({
     );
     setCategory(match?.id ?? null);
   }, [categories, requestedCategory]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [category, requestedCategory, subcategoryFilter, priceRange, availabilityFilter, sortOrder, deferredSearch]);
 
   const catalogCategories = [...categories].sort((a, b) => {
     const aOrder = categoryOrder.indexOf(a.slug);
@@ -165,17 +166,24 @@ function KatalogPage({
     );
   const visible = useMemo(() => {
     if (requestedCategoryMissing) return [];
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
     const filtered = b2bProducts.filter((product) => {
-      const price = product.jenis_harga === "rentang" || product.harga == null ? null : Number(product.harga);
+      const price = hargaSatuan(product);
+      const range = hargaRentang(product);
       const status = productStatuses[product.kode_produk] || (product.tersedia ? "Ready Stock" : "Tidak Tersedia");
       const inPriceRange =
         priceRange === "all" ||
-        (price != null && (
+        (price !== null && (
           (priceRange === "under-1m" && price < 1000000) ||
           (priceRange === "1m-5m" && price >= 1000000 && price < 5000000) ||
           (priceRange === "5m-15m" && price >= 5000000 && price < 15000000) ||
           (priceRange === "over-15m" && price >= 15000000)
+        )) ||
+        (range !== null && (
+          (priceRange === "under-1m" && range.min < 1000000) ||
+          (priceRange === "1m-5m" && range.max >= 1000000 && range.min < 5000000) ||
+          (priceRange === "5m-15m" && range.max >= 5000000 && range.min < 15000000) ||
+          (priceRange === "over-15m" && range.max >= 15000000)
         ));
       return (category === null || product.kategori_id === category) &&
         (subcategoryFilter === "all" || product.subkategori?.nama_subkategori === subcategoryFilter) &&
@@ -186,8 +194,7 @@ function KatalogPage({
           (availabilityFilter === "unavailable" && !product.tersedia) ||
           status === availabilityFilter);
     });
-    const priceOf = (product: Product) =>
-      product.jenis_harga === "rentang" || product.harga == null ? null : Number(product.harga);
+    const priceOf = (product: Product) => hargaSatuan(product);
 
     if (sortOrder === "price-asc") filtered.sort((a, b) => {
       const pa = priceOf(a);
@@ -215,7 +222,11 @@ function KatalogPage({
       return aOrder - bOrder;
     });
     return filtered;
-  }, [b2bProducts, category, subcategoryFilter, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
+  }, [b2bProducts, category, subcategoryFilter, deferredSearch, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const pageProducts = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const selectedCartQuantity = selected
     ? cart.find((item) => item.product.id === selected.id)?.quantity ?? 0
@@ -257,13 +268,23 @@ function KatalogPage({
         <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
       </div>
       <div className="mb-3 mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2"><h2 className="text-base font-black text-slate-900">Daftar Produk &amp; Jasa</h2><span className="rounded bg-[#e8eeff] px-2 py-1 text-[10px] font-semibold text-slate-600">{loading ? "Memuat..." : `${visible.length} Item Ditampilkan`}</span></div>
+        <div className="flex items-center gap-2"><h2 className="text-base font-black text-slate-900">Daftar Produk &amp; Jasa</h2><span className="rounded bg-[#e8eeff] px-2 py-1 text-[10px] font-semibold text-slate-600">{loading ? "Memuat..." : `${visible.length} Item Ditemukan`}</span></div>
         <span className="inline-flex items-start gap-1 text-[11px] leading-4 text-slate-600"><BadgeCheck size={12} className="mt-0.5 shrink-0 text-[#ad3b00]" />Harga resmi tertera belum termasuk PPN faktur B2B</span>
       </div>
       {requestedCategoryMissing && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Kategori “{requestedCategory?.replace(/-/g, " ")}” belum tersedia. Tambahkan kategori ini melalui dashboard admin atau pilih kategori lain.</div>}
       {error && <div role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-base text-red-700">Katalog tidak dapat dimuat: {error}</div>}
       {loading ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <div key={n} className="aspect-[.8/1] animate-pulse rounded-lg bg-[#edf2ff]" />)}</div> :
-        visible.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{visible.map((product) => <ProductCard key={product.id} product={product} onDetail={() => setSelected(product)} onAdd={(source) => onAdd(product, source)} />)}</div> :
+        visible.length ? <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{pageProducts.map((product) => <ProductCard key={product.id} product={product} onDetail={() => setSelected(product)} onAdd={(source) => onAdd(product, source)} />)}</div>
+          {visible.length > PAGE_SIZE && <nav aria-label="Navigasi halaman katalog" className="mt-5 flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <p className="text-xs text-slate-600">Menampilkan {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, visible.length)} dari {visible.length} produk</p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setCurrentPage(page - 1)} disabled={page === 1} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Sebelumnya</button>
+              <span className="text-xs font-semibold text-slate-600">Halaman {page} dari {totalPages}</span>
+              <button type="button" onClick={() => setCurrentPage(page + 1)} disabled={page === totalPages} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Berikutnya</button>
+            </div>
+          </nav>}
+        </> :
           <div className="mt-4 rounded-xl bg-white py-16 text-center"><div className="text-4xl">⌕</div><h2 className="mt-3 font-bold text-slate-800">{error ? "Katalog belum dapat ditampilkan" : b2bProducts.length === 0 ? "Belum ada produk di katalog" : "Produk tidak ditemukan"}</h2><p className="mt-1 text-base text-slate-500">{error ? "Periksa koneksi database, lalu muat ulang halaman." : b2bProducts.length === 0 ? "Tambahkan produk melalui dashboard admin atau jalankan npm run db:seed untuk data contoh." : "Sesuaikan kata kunci atau filter untuk melihat produk lainnya."}</p></div>}
     </section>
 
@@ -307,18 +328,18 @@ function KatalogPage({
             </div>
           </div>
           <div className="mt-3">
-            {selected.jenis_harga === "rentang" ? (
+            {selected.jenis_harga === "rentang" && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="text-xs font-bold text-amber-800">
-                  Memerlukan Penawaran Harga
+                  Harga berupa rentang
                 </p>
                 <p className="mt-1 text-[11px] leading-5 text-amber-700">
-                  Produk ini menggunakan harga rentang. Silakan hubungi
-                  Admin untuk mendapatkan harga final sebelum melakukan pemesanan.
+                  Estimasi akan ditampilkan sebagai rentang. Admin akan
+                  mengonfirmasi harga final setelah permintaan dikirim.
                 </p>
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+            )}
+            <div className="mt-3 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-bold text-slate-600">
                     Kuantitas:
@@ -339,7 +360,11 @@ function KatalogPage({
 
                     <button
                       onClick={(event) => onAdd(selected, event.currentTarget)}
-                      disabled={!selected.tersedia || remainingStock === 0}
+                      disabled={
+                        !selected.tersedia ||
+                        remainingStock === 0 ||
+                        (hargaSatuan(selected) == null && hargaRentang(selected) == null)
+                      }
                       className="flex h-7 w-7 items-center justify-center text-slate-500 disabled:opacity-30"
                     >
                       <Plus size={13} />
@@ -353,14 +378,17 @@ function KatalogPage({
                     setSelected(null);
                     onOpenCart();
                   }}
-                  disabled={!selected.tersedia || remainingStock === 0}
+                  disabled={
+                    !selected.tersedia ||
+                    remainingStock === 0 ||
+                    (hargaSatuan(selected) == null && hargaRentang(selected) == null)
+                  }
                   className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                 >
                   <ShoppingCart size={14} />
                   Tambah ke keranjang
                 </button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

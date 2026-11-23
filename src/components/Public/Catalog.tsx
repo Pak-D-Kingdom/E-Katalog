@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
-import { api, formatProductPrice, hargaSatuan, rupiah, } from "@/lib/types";
+import { api, formatProductPrice, hargaRentang, hargaSatuan, rupiah, } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import Link from "next/link";
 import HomePage, { getHomeOffers } from "./Home/HomePage";
@@ -19,6 +19,16 @@ type FlyingItem = { key: number; left: number; top: number; x: number; y: number
 const cartKey = "mbg-cart-v1";
 const homeCartKey = "dapurkita-rfq-v1";
 const hiddenNavCategoryNames = new Set(["kudapan sehat", "paket makan siang"]);
+
+function getCartLineSubtotal(product: Product, quantity: number) {
+  const range = hargaRentang(product);
+  if (range) {
+    return `${rupiah(range.min * quantity)} – ${rupiah(range.max * quantity)}`;
+  }
+
+  const price = hargaSatuan(product);
+  return price === null ? "Harga belum tersedia" : rupiah(price * quantity);
+}
 
 export default function PublicCatalog({
   page = "home",
@@ -136,7 +146,11 @@ export default function PublicCatalog({
           ? productById.get(item.product.id)
           : undefined;
 
-        if (!fresh || !fresh.tersedia || hargaSatuan(fresh) == null) {
+        if (
+          !fresh ||
+          !fresh.tersedia ||
+          (hargaSatuan(fresh) == null && hargaRentang(fresh) == null)
+        ) {
           return [];
         }
 
@@ -150,7 +164,26 @@ export default function PublicCatalog({
   }, [products]);
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const total = cart.reduce((sum, item) => sum + (hargaSatuan(item.product) ?? 0) * item.quantity, 0);
+  const cartEstimate = cart.reduce(
+    (estimate, item) => {
+      const range = hargaRentang(item.product);
+      if (range) {
+        estimate.min += range.min * item.quantity;
+        estimate.max += range.max * item.quantity;
+        estimate.hasRange = true;
+      } else {
+        const price = hargaSatuan(item.product) ?? 0;
+        estimate.min += price * item.quantity;
+        estimate.max += price * item.quantity;
+      }
+
+      return estimate;
+    },
+    { min: 0, max: 0, hasRange: false }
+  );
+  const cartTotalLabel = cartEstimate.hasRange
+    ? `${rupiah(cartEstimate.min)} – ${rupiah(cartEstimate.max)}`
+    : rupiah(cartEstimate.min);
   const homeItemCount = homeCart.reduce((sum, item) => sum + item.quantity, 0);
   const homeTotal = homeCart.reduce((sum, item) => sum + item.offer.priceValue * item.quantity, 0);
   const navCategories = categories.filter(
@@ -196,7 +229,7 @@ export default function PublicCatalog({
   const add = useCallback((product: Product, source?: HTMLElement, quantity = 1) => {
     if (
       !product.tersedia ||
-      hargaSatuan(product) == null ||
+      (hargaSatuan(product) == null && hargaRentang(product) == null) ||
       quantity < 1
     ) {
       return;
@@ -263,12 +296,6 @@ export default function PublicCatalog({
     event.preventDefault();
     setError("");
     if (!cart.length) return;
-
-    const rangeItem = cart.find((item) => hargaSatuan(item.product) == null);
-    if (rangeItem) {
-      setError(`Produk ${rangeItem.product.nama_produk} memerlukan penawaran harga dari Admin.`);
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -733,7 +760,7 @@ export default function PublicCatalog({
                         </div>
                       </div>
                       <div className="flex w-[88px] flex-col items-end justify-between">
-                        <b className="text-[14px] text-[#ad3b00]">{hargaSatuan(product) == null ? "Penawaran" : rupiah(hargaSatuan(product)! * quantity)}</b>
+                        <b className="text-[14px] text-[#ad3b00]">{getCartLineSubtotal(product, quantity)}</b>
                         <button onClick={() => setCart((items) => items.filter((item) => item.product.id !== product.id))} className="text-slate-400 hover:text-red-500" aria-label="Hapus item"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -741,10 +768,10 @@ export default function PublicCatalog({
                 ))}
               </div>
               <div className="mt-3 rounded-lg border border-slate-100 p-3">
-                <div className="flex justify-between text-sm text-slate-600"><span>Subtotal pesanan ({itemCount} item)</span><b className="text-slate-800">{rupiah(total)}</b></div>
-                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-lg font-black text-slate-900">Total keseluruhan pesanan</span><b className="text-xl font-black text-[#ad3b00]">{rupiah(total)}</b></div>
+                <div className="flex justify-between text-sm text-slate-600"><span>Subtotal pesanan ({itemCount} item)</span><b className="text-slate-800">{cartTotalLabel}</b></div>
+                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-lg font-black text-slate-900">Total estimasi</span><b className="text-xl font-black text-[#ad3b00]">{cartTotalLabel}</b></div>
               </div>
-              <div className="mt-3 flex gap-2 rounded-md bg-[#fff7f2] px-3 py-2.5 text-[11px] leading-4 text-slate-600"><BadgeCheck size={14} className="shrink-0 text-[#ad3b00]" /><p>Pesan otomatis berisi data produk, jumlah, dan total estimasi untuk diteruskan ke tim E-Katalog MBG.</p></div>
+              <div className="mt-3 flex gap-2 rounded-md bg-[#fff7f2] px-3 py-2.5 text-[11px] leading-4 text-slate-600"><BadgeCheck size={14} className="shrink-0 text-[#ad3b00]" /><p>Pesan berisi produk, jumlah, dan estimasi harga. Untuk produk berharga rentang, Admin akan mengonfirmasi harga final.</p></div>
               <form onSubmit={checkout} className="mt-3 overflow-hidden rounded-lg border border-slate-100 bg-white">
                 <h3 className="flex items-center gap-2 bg-[#fff9f5] px-3.5 py-2.5 text-[13px] font-black text-[#ad3b00]"><ShoppingBag size={14} /> Informasi pemesan / lembaga</h3>
                 {error && <div className="mt-3 rounded-md bg-red-50 p-2 text-[12px] text-red-700">{error}</div>}

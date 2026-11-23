@@ -95,6 +95,9 @@ export async function GET() {
                 namaSekolah: item.nama_sekolah,
                 teleponPemesan: item.telepon_pemesan,
                 totalHarga: Number(item.total_harga),
+                totalHargaMax: item.total_harga_max != null
+                    ? Number(item.total_harga_max)
+                    : null,
                 dibuatPada: item.dibuat_pada,
                 detailPesanan: item.detail_pesanan.map(
                     (detail) => ({
