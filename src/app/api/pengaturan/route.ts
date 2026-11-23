@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { pengaturanSchema } from "@/lib/validation";
+import { pengaturanSchema, zodErrorMessage } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function PUT(request: Request) {
   try {
     await requireAdmin();
     const parsed = pengaturanSchema.safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: zodErrorMessage(parsed.error), details: parsed.error.flatten() }, { status: 400 });
     const existing = await prisma.pengaturan_katalog.findFirst({ orderBy: { id: "asc" } });
     const pengaturan = existing
       ? await prisma.pengaturan_katalog.update({ where: { id: existing.id }, data: parsed.data })

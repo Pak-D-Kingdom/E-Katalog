@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Catalog from "@/components/Catalog";
+import PublicCatalog from "@/components/Public/Catalog";
 
 export const metadata: Metadata = {
   title: "DapurKita | Kitchen Supply & B2B Solutions",
-  description: "Penyedia solusi pengadaan dapur komersial, bahan baku, legalitas, perawatan, dan peralatan heavy duty."
+  description: "Penyedia solusi pengadaan dapur profesional, peralatan heavy duty, bahan baku, legalitas, perawatan, dan maintenance HORECA."
 };
 
 export default function HomePage() {
-  return <Catalog page="home" />;
+  return <PublicCatalog page="home" />;
 }

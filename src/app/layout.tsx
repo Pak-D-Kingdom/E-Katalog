@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import "sweetalert2/dist/sweetalert2.min.css";
 import "./globals.css";
+import PageTransition from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "E-Katalog MBG | Makan Bergizi Gratis",
@@ -9,7 +11,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body>
+        <PageTransition>{children}</PageTransition>
+      </body>
     </html>
   );
 }

@@ -47,7 +47,39 @@ export async function POST(request: Request) {
   const requested = Array.from(consolidated, ([produk_id, jumlah]) => ({ produk_id, jumlah }));
   const products = await prisma.produk.findMany({ where: { id: { in: requested.map((item) => item.produk_id) }, tersedia: true } });
   if (products.length !== requested.length) return NextResponse.json({ error: "Ada produk yang sudah tidak tersedia. Muat ulang katalog." }, { status: 409 });
+  // Produk dengan harga rentang harus melalui proses penawaran Admin
+  const rangeProducts = products.filter(
+    (product) => product.jenis_harga === "rentang"
+  );
 
+  if (rangeProducts.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Produk dengan harga rentang belum dapat dipesan melalui checkout otomatis. Silakan hubungi Admin untuk meminta penawaran harga.",
+        products: rangeProducts.map((product) => product.nama_produk),
+      },
+      { status: 400 }
+    );
+  }
+
+  // Memastikan produk harga tetap memiliki nilai harga yang valid
+  const invalidPriceProducts = products.filter(
+    (product) =>
+      product.harga == null ||
+      Number(product.harga) <= 0 ||
+      !Number.isFinite(Number(product.harga))
+  );
+
+  if (invalidPriceProducts.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Ada produk yang belum memiliki harga tetap yang valid.",
+        products: invalidPriceProducts.map((product) => product.nama_produk),
+      },
+      { status: 400 }
+    );
+  }
   const byId = new Map(products.map((product) => [product.id, product]));
   const items = requested.map((item) => {
     const product = byId.get(item.produk_id)!;
