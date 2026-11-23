@@ -28,24 +28,28 @@ import {
   Category,
   Subcategory,
   Product,
-  rupiah,
+  formatProductPrice,
   slugify,
 } from "@/lib/types";
 
 type ProductForm = {
   kategori_id: string;
   subkategori_id: string;
-
   kode_produk: string;
   nama_produk: string;
   slug: string;
   deskripsi: string;
+
+  jenis_harga: "tetap" | "rentang";
+  harga: string;
+  stok: string;
+  harga_min: string;
+  harga_max: string;
+
   kalori: string;
   protein: string;
   karbohidrat: string;
   lemak: string;
-  harga: string;
-  stok: string;
   satuan: string;
   foto_url: string;
   tersedia: boolean;
@@ -58,12 +62,17 @@ const empty: ProductForm = {
   nama_produk: "",
   slug: "",
   deskripsi: "",
+
+  jenis_harga: "tetap",
+  harga: "",
+  stok: "",
+  harga_min: "",
+  harga_max: "",
+
   kalori: "0",
   protein: "0",
   karbohidrat: "0",
   lemak: "0",
-  harga: "",
-  stok: "",
   satuan: "porsi",
   foto_url: "",
   tersedia: true,
@@ -125,8 +134,11 @@ export default function ProductsPage() {
         protein: String(product.informasi_gizi.protein),
         karbohidrat: String(product.informasi_gizi.karbohidrat),
         lemak: String(product.informasi_gizi.lemak),
-        harga: String(product.harga),
+        jenis_harga: product.jenis_harga ?? "tetap",
+        harga: product.harga != null ? String(product.harga) : "",
         stok: product.stok == null ? "" : String(product.stok),
+        harga_min: product.harga_min != null ? String(product.harga_min) : "",
+        harga_max: product.harga_max != null ? String(product.harga_max) : "",
         satuan: product.satuan,
         foto_url: product.foto_url || "",
         tersedia: product.tersedia,
@@ -245,6 +257,7 @@ export default function ProductsPage() {
       subkategori_id: form.subkategori_id
         ? Number(form.subkategori_id)
         : null,
+
       kode_produk: generatedKode,
       nama_produk: form.nama_produk,
       slug: generatedSlug,
@@ -255,8 +268,21 @@ export default function ProductsPage() {
         karbohidrat: Number(form.karbohidrat),
         lemak: Number(form.lemak),
       },
-      harga: Number(form.harga),
       stok: form.stok.trim() === "" ? null : Number(form.stok),
+      jenis_harga: form.jenis_harga,
+      harga:
+        form.jenis_harga === "tetap" && form.harga.trim() !== ""
+          ? Number(form.harga)
+          : null,
+      harga_min:
+        form.jenis_harga === "rentang" && form.harga_min.trim() !== ""
+          ? Number(form.harga_min)
+          : null,
+      harga_max:
+        form.jenis_harga === "rentang" && form.harga_max.trim() !== ""
+          ? Number(form.harga_max)
+          : null,
+
       satuan: form.satuan,
       foto_url: form.foto_url || null,
       tersedia: form.tersedia,
@@ -601,15 +627,20 @@ export default function ProductsPage() {
           </div>
 
           {/* TABLE */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[590px] border-collapse text-left">
+          <div className="w-full overflow-x-auto rounded-md">
+            <table className="w-full min-w-[1500px] border-collapse text-left">
               <thead>
                 <tr className="bg-[#EEF3FF] text-[10px] font-bold uppercase tracking-wide text-[#596780]">
-                  <th className="px-3 py-3">Item & Identitas SKU</th>
-                  <th className="px-3 py-3">Kategori Logistik</th>
-                  <th className="px-3 py-3">Harga B2B Satuan</th>
+                  <th className="px-3 py-3">Foto, Produk & SKU</th>
+                  <th className="px-3 py-3">Kategori</th>
+                  <th className="px-3 py-3">Subkategori</th>
+                  <th className="px-3 py-3">Jenis Harga</th>
+                  <th className="px-3 py-3">Rincian Harga</th>
+                  <th className="px-3 py-3">Satuan Produk</th>
+                  <th className="px-3 py-3">Deskripsi</th>
+                  <th className="px-3 py-3">Slug URL</th>
                   <th className="px-3 py-3 text-center">Status</th>
-                  <th className="px-3 py-3 text-right">Aksi</th>
+                  <th className="px-3 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
 
@@ -617,9 +648,10 @@ export default function ProductsPage() {
                 {visibleProducts.map((product) => (
                   <tr
                     key={product.id}
-                    className="border-b border-[#EDF1F7] transition hover:bg-[#F8FAFD]"
+                    className="border-b border-[#EDF1F7] align-top transition hover:bg-[#F8FAFD]"
                   >
-                    <td className="px-3 py-4">
+                    {/* FOTO, NAMA, SKU */}
+                    <td className="min-w-[230px] px-3 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#EAF0FC] text-[#A83D00]">
                           {product.foto_url ? (
@@ -634,7 +666,7 @@ export default function ProductsPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="max-w-[210px] text-xs font-bold text-[#172B4D]">
+                          <p className="max-w-[190px] whitespace-normal text-xs font-bold text-[#172B4D]">
                             {product.nama_produk}
                           </p>
 
@@ -645,46 +677,79 @@ export default function ProductsPage() {
                       </div>
                     </td>
 
-                    <td className="px-3 py-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="inline-block max-w-[150px] rounded-sm bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
-                          {product.kategori?.nama_kategori || "Tanpa kategori"}
-                        </span>
-
-                        {product.subkategori?.nama_subkategori && (
-                          <span className="inline-block max-w-[150px] rounded-sm bg-[#FCE9E1] px-2 py-1 text-[9px] font-medium text-[#A83D00]">
-                            {product.subkategori.nama_subkategori}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="px-3 py-4 text-[11px] font-bold text-[#172B4D]">
-                      {rupiah(product.harga)}
-                      <span className="block text-[9px] font-normal text-[#64748B]">
-                        /{product.satuan}
+                    {/* KATEGORI */}
+                    <td className="min-w-[140px] px-3 py-4">
+                      <span className="inline-block max-w-[150px] rounded-sm bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
+                        {product.kategori?.nama_kategori || "Tanpa kategori"}
                       </span>
                     </td>
 
-                    <td className="px-3 py-4 text-center">
+                    {/* SUBKATEGORI */}
+                    <td className="min-w-[150px] px-3 py-4">
+                      <span className="inline-block max-w-[160px] rounded-sm bg-[#FCE9E1] px-2 py-1 text-[9px] font-medium text-[#A83D00]">
+                        {product.subkategori?.nama_subkategori || "—"}
+                      </span>
+                    </td>
+
+                    {/* JENIS HARGA */}
+                    <td className="min-w-[120px] px-3 py-4">
+                      <span
+                        className={`inline-block whitespace-nowrap rounded-md px-2 py-1 text-[9px] font-bold ${product.jenis_harga === "rentang"
+                            ? "bg-orange-50 text-orange-700"
+                            : "bg-blue-50 text-blue-700"
+                          }`}
+                      >
+                        {product.jenis_harga === "rentang"
+                          ? "Harga Rentang"
+                          : "Harga Tetap"}
+                      </span>
+                    </td>
+
+                    {/* RINCIAN HARGA */}
+                    <td className="min-w-[180px] px-3 py-4 text-[11px] font-bold text-[#172B4D]">
+                      {formatProductPrice(product)}
+                    </td>
+
+                    {/* SATUAN */}
+                    <td className="min-w-[110px] px-3 py-4 text-[10px] text-[#172B4D]">
+                      {product.satuan || "—"}
+                    </td>
+
+                    {/* DESKRIPSI */}
+                    <td className="min-w-[260px] max-w-[300px] px-3 py-4">
+                      <p className="whitespace-normal break-words text-[10px] leading-5 text-[#596780]">
+                        {product.deskripsi || "Belum ada deskripsi"}
+                      </p>
+                    </td>
+
+                    {/* SLUG */}
+                    <td className="min-w-[160px] max-w-[190px] px-3 py-4">
+                      <p className="break-all text-[10px] text-[#596780]">
+                        {product.slug || "—"}
+                      </p>
+                    </td>
+
+                    {/* STATUS */}
+                    <td className="min-w-[110px] px-3 py-4 text-center">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${product.tersedia
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-500"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-slate-100 text-slate-500"
                           }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${product.tersedia
-                            ? "bg-emerald-500"
-                            : "bg-slate-400"
+                              ? "bg-emerald-500"
+                              : "bg-slate-400"
                             }`}
                         />
                         {product.tersedia ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
 
-                    <td className="px-3 py-4">
-                      <div className="flex justify-end gap-1">
+                    {/* AKSI */}
+                    <td className="min-w-[100px] px-3 py-4">
+                      <div className="flex justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => startEdit(product)}
@@ -710,7 +775,7 @@ export default function ProductsPage() {
                 {visibleProducts.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={10}
                       className="px-4 py-12 text-center text-xs text-[#64748B]"
                     >
                       Produk tidak ditemukan.
@@ -959,28 +1024,105 @@ export default function ProductsPage() {
             </div>
 
             {/* PRICE */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Harga B2B (IDR)
-              </label>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                  Jenis Harga
+                </label>
 
-              <input
-                required
-                type="number"
-                min="1"
-                value={form.harga}
-                onChange={(e) =>
-                  setForm({ ...form, harga: e.target.value })
-                }
-                placeholder="25000000"
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-              />
+                <select
+                  value={form.jenis_harga}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      jenis_harga: e.target.value as ProductForm["jenis_harga"],
+                      harga: "",
+                      harga_min: "",
+                      harga_max: "",
+                    }))
+                  }
+                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                >
+                  <option value="tetap">Harga Tetap</option>
+                  <option value="rentang">Harga Rentang</option>
+                </select>
+              </div>
+
+              {form.jenis_harga === "tetap" ? (
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Harga Tetap (IDR)
+                  </label>
+
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={form.harga}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        harga: e.target.value,
+                      }))
+                    }
+                    placeholder="25000000"
+                    className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                      Harga Minimal (IDR)
+                    </label>
+
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={form.harga_min}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          harga_min: e.target.value,
+                        }))
+                      }
+                      placeholder="1000000"
+                      className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                      Harga Maksimal (IDR)
+                    </label>
+
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={form.harga_max}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          harga_max: e.target.value,
+                        }))
+                      }
+                      placeholder="1500000"
+                      className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* UNIT */}
             <div>
               <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Satuan Harga
+                Satuan Produk
               </label>
 
               <input
@@ -989,7 +1131,7 @@ export default function ProductsPage() {
                 onChange={(e) =>
                   setForm({ ...form, satuan: e.target.value })
                 }
-                placeholder="Unit / Kg / Porsi / Bulan"
+                placeholder="Unit / Kg / Porsi"
                 className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
               />
             </div>
@@ -1014,6 +1156,34 @@ export default function ProductsPage() {
               />
             </div>
 
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Informasi Gizi
+              </label>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(["kalori", "protein", "karbohidrat", "lemak"] as const).map(
+                  (key) => (
+                    <label key={key} className="text-[11px] capitalize text-[#64748B]">
+                      {key}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={form[key]}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                      />
+                    </label>
+                  )
+                )}
+              </div>
+            </div>
+
             {/* DESCRIPTION */}
             <div>
               <label className="mb-2 block text-xs font-bold text-[#172B4D]">
@@ -1031,42 +1201,6 @@ export default function ProductsPage() {
                 className="w-full resize-y rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs leading-relaxed text-[#172B4D] outline-none focus:border-[#A83D00]"
               />
             </div>
-
-            {/* NUTRITION */}
-            <div className="rounded-lg bg-[#EEF3FF] p-3">
-              <h3 className="mb-3 text-[10px] font-bold uppercase tracking-wide text-[#42577E]">
-                Informasi Gizi
-              </h3>
-
-              <div className="grid grid-cols-2 gap-3">
-                {(
-                  ["kalori", "protein", "karbohidrat", "lemak"] as const
-                ).map((key) => (
-                  <div key={key}>
-                    <label className="mb-1 block text-[10px] font-semibold capitalize text-[#596780]">
-                      {key}
-                    </label>
-
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm({ ...form, [key]: e.target.value })
-                      }
-                      className="w-full rounded-md border border-[#DCE4F0] bg-white px-2 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <p className="mt-2 text-[9px] text-[#64748B]">
-                Kalori dalam kkal; protein, karbohidrat, dan lemak dalam gram.
-              </p>
-            </div>
-
             {/* SLUG */}
             <div>
               <label className="mb-2 block text-xs font-bold text-[#172B4D]">

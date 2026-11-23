@@ -27,8 +27,16 @@ const initial: Settings = {
   nama_instansi: "",
   nomor_whatsapp: "",
   alamat: "",
-  template_pesan:
-    "Halo {nama_instansi}, saya {nama_pemesan} dari {nama_sekolah} ingin memesan:\n{daftar_pesanan}\nTotal: {total_harga}\nCatatan: {catatan}\nKode pesanan: {kode_pesanan}",
+  template_pesan: `Halo {nama_instansi}, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:
+
+Nomor telepon: {telepon_pemesan}
+
+Rangkuman pilihan:
+{daftar_pesanan}
+
+Total estimasi: {total_harga}
+Catatan: {catatan}
+Kode permintaan: {kode_pesanan}`,
 };
 
 const variables = [

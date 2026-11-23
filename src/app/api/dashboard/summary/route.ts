@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getProdukUnggulanPerKategori } from "@/lib/produk-unggulan";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export async function GET() {
       produkAktif,
       totalKategori,
       totalSubkategori,
+      totalInquiry,
+      produkUnggulan,
     ] = await Promise.all([
       prisma.produk.count({
         where: {
@@ -23,12 +26,16 @@ export async function GET() {
       }),
       prisma.kategori.count(),
       prisma.subkategori.count(),
+      prisma.riwayat_pesanan.count(),
+      getProdukUnggulanPerKategori(),
     ]);
 
     return NextResponse.json({
       produkAktif,
       totalKategori,
       totalSubkategori,
+      totalInquiry,
+      totalProdukUnggulan: produkUnggulan.totalProdukUnggulan,
     });
   } catch (error) {
     if (
@@ -44,7 +51,12 @@ export async function GET() {
     console.error("Dashboard summary error:", error);
 
     return NextResponse.json(
-      { error: "Gagal mengambil statistik dashboard." },
+      {
+        error: "Gagal mengambil statistik dashboard.",
+        ...(process.env.NODE_ENV === "development" && {
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+      },
       { status: 500 }
     );
   }

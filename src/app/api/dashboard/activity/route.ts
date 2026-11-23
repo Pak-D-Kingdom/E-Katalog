@@ -19,7 +19,12 @@ export async function GET() {
                     id: true,
                     kode_produk: true,
                     nama_produk: true,
+                    slug: true,
+                    deskripsi: true,
+                    jenis_harga: true,
                     harga: true,
+                    harga_min: true,
+                    harga_max: true,
                     satuan: true,
                     foto_url: true,
                     tersedia: true,
@@ -27,6 +32,11 @@ export async function GET() {
                     kategori: {
                         select: {
                             nama_kategori: true,
+                        },
+                    },
+                    subkategori: {
+                        select: {
+                            nama_subkategori: true,
                         },
                     },
                 },
@@ -64,13 +74,17 @@ export async function GET() {
                 id: item.id,
                 kodeProduk: item.kode_produk,
                 namaProduk: item.nama_produk,
-                harga: Number(item.harga),
+                slug: item.slug,
+                deskripsi: item.deskripsi,
+                jenisHarga: item.jenis_harga,
+                harga: item.harga != null ? Number(item.harga) : null,
+                hargaMin: item.harga_min != null ? Number(item.harga_min) : null,
+                hargaMax: item.harga_max != null ? Number(item.harga_max) : null,
                 satuan: item.satuan,
                 fotoUrl: item.foto_url,
                 tersedia: item.tersedia,
-                kategori:
-                    item.kategori?.nama_kategori ??
-                    "Belum Dikategorikan",
+                kategori: item.kategori?.nama_kategori ?? "Belum Dikategorikan",
+                subkategori: item.subkategori?.nama_subkategori ?? "Belum Ada Subkategori",
                 diperbaruiPada: item.diperbarui_pada,
             })),
 

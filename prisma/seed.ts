@@ -45,12 +45,12 @@ async function main() {
       ?? await prisma.kategori.findUnique({ where: { slug: item.previousSlug } });
     const category = existingCategory
       ? await prisma.kategori.update({
-          where: { id: existingCategory.id },
-          data: { nama_kategori: item.nama_kategori, slug: item.slug }
-        })
+        where: { id: existingCategory.id },
+        data: { nama_kategori: item.nama_kategori, slug: item.slug }
+      })
       : await prisma.kategori.create({
-          data: { nama_kategori: item.nama_kategori, slug: item.slug }
-        });
+        data: { nama_kategori: item.nama_kategori, slug: item.slug }
+      });
     categories.set(item.key, category.id);
   }
 

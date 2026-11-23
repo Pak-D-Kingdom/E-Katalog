@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { kategoriSchema } from "@/lib/validation";
+import { kategoriSchema, zodErrorMessage } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,10 @@ export async function PUT(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.flatten() },
+        {
+          error: zodErrorMessage(parsed.error),
+          details: parsed.error.flatten(),
+        },
         { status: 400 }
       );
     }

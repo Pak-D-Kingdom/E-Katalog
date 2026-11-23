@@ -185,7 +185,7 @@ function ImportExcel() {
     dilewati?: number;
     gagal: number;
     jenis?: "rekap_subkategori" | "produk";
-    detailGagal: { baris: number; pesan: string }[];
+    detailGagal: { sheet?: string; baris: number; pesan: string }[];
   } | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -334,7 +334,10 @@ function ImportExcel() {
               <div className="mt-2 max-h-32 space-y-1 overflow-y-auto border-t border-[#E8ECF4] pt-2">
                 {result.detailGagal.map((item, index) => (
                   <p key={index} className="text-red-600">
-                    Baris {item.baris}: {item.pesan}
+                    {item.sheet
+                      ? `Sheet ${item.sheet}, baris ${item.baris}`
+                      : `Baris ${item.baris}`}
+                    : {item.pesan}
                   </p>
                 ))}
               </div>

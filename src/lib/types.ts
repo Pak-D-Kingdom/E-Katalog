@@ -1,10 +1,3 @@
-export type Gizi = {
-  kalori: number;
-  protein: number;
-  karbohidrat: number;
-  lemak: number;
-};
-
 export type Category = {
   id: number;
   nama_kategori: string;
@@ -25,6 +18,14 @@ export type Subcategory = {
 };
 
 
+export type JenisHarga = "tetap" | "rentang";
+
+export type Gizi = {
+  kalori: number;
+  protein: number;
+  karbohidrat: number;
+  lemak: number;
+};
 
 export type Product = {
   id: number;
@@ -35,7 +36,10 @@ export type Product = {
   slug: string;
   deskripsi: string;
   informasi_gizi: Gizi;
-  harga: string | number;
+  jenis_harga: JenisHarga;
+  harga: string | number | null;
+  harga_min: string | number | null;
+  harga_max: string | number | null;
   stok: number | null;
   satuan: string;
   foto_url: string | null;
@@ -44,6 +48,7 @@ export type Product = {
   kategori?: Category | null;
   subkategori?: Subcategory | null;
 };
+
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -64,6 +69,44 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const rupiah = (value: number | string) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(value));
+
+// Mengambil harga satuan untuk produk harga tetap
+export function hargaSatuan(product: Product): number | null {
+  if (product.jenis_harga !== "tetap" || product.harga == null) {
+    return null;
+  }
+
+  const price = Number(product.harga);
+
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+// Menampilkan harga produk sesuai jenis harganya
+export function formatProductPrice(product: Product): string {
+  if (product.jenis_harga === "rentang") {
+    if (product.harga_min == null || product.harga_max == null) {
+      return "Hubungi Admin";
+    }
+
+    const min = Number(product.harga_min);
+    const max = Number(product.harga_max);
+
+    if (
+      !Number.isFinite(min) ||
+      !Number.isFinite(max) ||
+      min <= 0 ||
+      max < min
+    ) {
+      return "Hubungi Admin";
+    }
+
+    return `${rupiah(min)} – ${rupiah(max)}`;
+  }
+
+  const price = hargaSatuan(product);
+
+  return price !== null ? rupiah(price) : "Harga belum tersedia";
+}
 
 export function slugify(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

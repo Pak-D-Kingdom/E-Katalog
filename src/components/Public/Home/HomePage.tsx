@@ -3,7 +3,7 @@
 import { useEffect, useState, type TransitionEvent } from "react";
 import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
 import Link from "next/link";
-import { rupiah } from "@/lib/types";
+import { hargaSatuan, rupiah } from "@/lib/types";
 import type { Product } from "@/lib/types";
 
 export type HomeOffer = {
@@ -29,7 +29,11 @@ export function getHomeOffers(products: Product[]): HomeOffer[] {
 
   for (const product of products) {
     const categoryId = product.kategori?.id;
-    if (categoryId !== undefined && !firstProductByCategory.has(categoryId)) {
+    if (
+      categoryId !== undefined &&
+      !firstProductByCategory.has(categoryId) &&
+      hargaSatuan(product) !== null
+    ) {
       firstProductByCategory.set(categoryId, product);
     }
   }
@@ -42,7 +46,7 @@ export function getHomeOffers(products: Product[]): HomeOffer[] {
         (bOrder < 0 ? Number.MAX_SAFE_INTEGER : bOrder);
     })
     .map((product) => {
-      const priceValue = Number(product.harga);
+      const priceValue = hargaSatuan(product) ?? 0;
       const description = product.deskripsi.trim();
       const unit = product.satuan.trim();
       return {

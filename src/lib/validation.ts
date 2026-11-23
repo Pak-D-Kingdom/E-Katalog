@@ -1,6 +1,10 @@
 
 import { z } from "zod";
 
+export function zodErrorMessage(error: z.ZodError): string {
+  return error.issues.map((issue) => issue.message).filter(Boolean).join("; ");
+}
+
 // Pola slug: huruf kecil, angka, dan tanda hubung
 const slugSchema = z
   .string()
@@ -13,42 +17,105 @@ const slugSchema = z
   );
 
 // VALIDASI PRODUK
-export const produkSchema = z.object({
-  // Kategori utama wajib dipilih
-  kategori_id: z.number().int().positive(),
+export const produkSchema = z
+  .object({
+    // Kategori utama wajib dipilih
+    kategori_id: z.number().int().positive(),
 
-  // Subkategori boleh kosong
-  subkategori_id: z
-    .number()
-    .int()
-    .positive()
-    .nullable()
-    .optional(),
-  kode_produk: z.string().trim().min(1).max(80),
+    // Subkategori boleh kosong
+    subkategori_id: z
+      .number()
+      .int()
+      .positive()
+      .nullable()
+      .optional(),
 
-  nama_produk: z.string().trim().min(1).max(191),
+    kode_produk: z.string().trim().min(1).max(80),
 
-  slug: slugSchema,
+    nama_produk: z.string().trim().min(1).max(191),
 
-  deskripsi: z.string().trim().min(1),
+    slug: slugSchema,
 
-  informasi_gizi: z.object({
-    kalori: z.number().nonnegative(),
-    protein: z.number().nonnegative(),
-    karbohidrat: z.number().nonnegative(),
-    lemak: z.number().nonnegative(),
-  }),
+    deskripsi: z.string().trim().min(1),
 
-  harga: z.number().positive(),
+    informasi_gizi: z
+      .object({
+        kalori: z.number().nonnegative(),
+        protein: z.number().nonnegative(),
+        karbohidrat: z.number().nonnegative(),
+        lemak: z.number().nonnegative(),
+      })
+      .default({ kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 }),
 
-  stok: z.number().int().nonnegative().max(4294967295).nullable().optional(),
+    // Jenis harga
+    jenis_harga: z.enum(["tetap", "rentang"]).default("tetap"),
 
-  satuan: z.string().trim().min(1).max(40),
+    stok: z.number().int().nonnegative().max(4294967295).nullable().optional(),
 
-  foto_url: z.string().trim().max(500).nullable().optional(),
+    // Harga tetap
+    harga: z.number().positive().nullable().optional(),
 
-  tersedia: z.boolean(),
-});
+    // Harga rentang
+    harga_min: z.number().positive().nullable().optional(),
+    harga_max: z.number().positive().nullable().optional(),
+
+    satuan: z.string().trim().min(1).max(40),
+
+    foto_url: z.string().trim().max(500).nullable().optional(),
+
+    tersedia: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.jenis_harga === "tetap") {
+      if (data.harga == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["harga"],
+          message: "Harga tetap wajib diisi.",
+        });
+      }
+    }
+
+    if (data.jenis_harga === "rentang") {
+      if (data.harga_min == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["harga_min"],
+          message: "Harga minimal wajib diisi.",
+        });
+      }
+
+      if (data.harga_max == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["harga_max"],
+          message: "Harga maksimal wajib diisi.",
+        });
+      }
+
+      if (
+        data.harga_min != null &&
+        data.harga_max != null &&
+        data.harga_max < data.harga_min
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["harga_max"],
+          message: "Harga maksimal tidak boleh lebih kecil dari harga minimal.",
+        });
+      }
+    }
+  })
+  .transform((data) => ({
+    ...data,
+
+    // Kosongkan kolom harga yang tidak digunakan
+    harga: data.jenis_harga === "tetap" ? data.harga! : null,
+
+    harga_min: data.jenis_harga === "rentang" ? data.harga_min! : null,
+
+    harga_max: data.jenis_harga === "rentang" ? data.harga_max! : null,
+  }));
 
 // VALIDASI KATEGORI
 export const kategoriSchema = z.object({
