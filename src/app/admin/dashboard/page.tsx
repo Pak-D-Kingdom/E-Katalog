@@ -33,10 +33,6 @@ function WelcomePanel() {
             <h1 className="text-xl font-bold tracking-tight text-[#172B4D]">
               Pusat Kendali Pengadaan
             </h1>
-
-            <span className="rounded-full bg-[#E5EDFF] px-2 py-1 text-[9px] font-bold text-[#42577E]">
-              LIVE SYSTEM
-            </span>
           </div>
 
           <p className="mt-1 max-w-xl text-xs leading-5 text-[#64748B]">
@@ -46,17 +42,6 @@ function WelcomePanel() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 rounded-lg bg-[#E8F0FF] px-4 py-3">
-        <Activity size={16} className="text-[#A83D00]" />
-        <div>
-          <p className="text-[10px] font-bold text-[#172B4D]">
-            Sinkronisasi Marunda Hub: 2
-          </p>
-          <p className="text-[10px] font-semibold text-[#172B4D]">
-            menit lalu
-          </p>
-        </div>
-      </div>
     </section>
   );
 }
@@ -67,6 +52,10 @@ function Statistics() {
     totalKategori: 0,
     totalSubkategori: 0,
     totalInquiry: 0,
+    produkPalingBanyakDibeli: null as {
+      namaProduk: string;
+      jumlah: number;
+    } | null,
   });
 
   useEffect(() => {
@@ -117,10 +106,12 @@ function Statistics() {
       footer: "bg-[#FAEEE8]",
     },
     {
-      title: "PRODUK UNGGULAN",
-      value: "8 / 12",
-      suffix: "Slot",
-      description: "Aktif di beranda storefront utama",
+      title: "PRODUK PALING BANYAK DIBELI",
+      value: data.produkPalingBanyakDibeli?.jumlah ?? 0,
+      suffix: "Dibeli",
+      description:
+        data.produkPalingBanyakDibeli?.namaProduk ??
+        "Belum ada data pembelian",
       icon: Star,
       color: "text-[#A83D00]",
       background: "bg-[#E8F0FF]",

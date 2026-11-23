@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  ChevronRight,
+  Handshake,
+  MessageCircle,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingBag,
+  ShoppingCart,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 
 export type HomeOffer = {
@@ -12,7 +23,7 @@ export type HomeOffer = {
   details: string[];
   priceLabel: string;
   price: string;
-  priceValue: number; 
+  priceValue: number;
   unit?: string;
   image: string;
   overlayBadges?: boolean;
@@ -24,107 +35,184 @@ export const homeOffers: HomeOffer[] = [
     badge: "Garansi 2 Thn",
     sku: "DK-OVN-18M",
     title: "Commercial Combi Steam Oven 10-Tray GN 1/1",
-    details: ["Kapasitas: 10 Tray GN 1/1 (Gas / 18kW)", "Material: SUS 304 Thick Chamber"],
+    details: [
+      "Kapasitas: 10 Tray GN 1/1 (Gas / 18kW)",
+      "Material: SUS 304 Thick Chamber",
+    ],
     priceLabel: "Harga Satuan",
     price: "Rp 68.500.000",
     priceValue: 68500000,
-    image: "/commercial-combi-steam-oven.png"
+    image: "/commercial-combi-steam-oven.png",
   },
   {
     category: "Perizinan",
     badge: "Audit Terverifikasi",
     sku: "DK-SFT-HACCP",
     title: "Paket Sertifikasi HACCP & Food Safety Audit",
-    details: ["Termasuk GAP Analysis & Dokumen SOP", "Pelatihan Staff Dapur (10 Orang)"],
+    details: [
+      "Termasuk GAP Analysis & Dokumen SOP",
+      "Pelatihan Staff Dapur (10 Orang)",
+    ],
     priceLabel: "Paket Mulai Dari",
     price: "Rp 14.500.000",
     priceValue: 14500000,
-    image: "/haccp-food-safety-audit.png"
+    image: "/haccp-food-safety-audit.png",
   },
   {
     category: "Perawatan",
     badge: "SLA 24 Jam",
     sku: "DK-MNT-KITCHEN",
     title: "Kontrak Maintenance & Deep Cleaning Bulanan",
-    details: ["2x Kunjungan Preventif Bulanan", "Pembersihan Grease Trap & Ducting Hood"],
+    details: [
+      "2x Kunjungan Preventif Bulanan",
+      "Pembersihan Grease Trap & Ducting Hood",
+    ],
     priceLabel: "Langganan Rutin",
     price: "Rp 4.750.000",
     priceValue: 4750000,
     unit: "/ bln",
     image: "/maintenance-deep-cleaning.png",
-    overlayBadges: true
+    overlayBadges: true,
   },
   {
     category: "Bahan Baku",
     badge: "Halal & Cold-Chain",
     sku: "DK-BEEF-STRIP29",
     title: "Daging Sapi Australian Striploin MB2+ (Karton 20kg)",
-    details: ["Karton Master 20 kg Vacuum Sealed", "Suhu Pengiriman: -18°C Controlled"],
+    details: [
+      "Karton Master 20 kg Vacuum Sealed",
+      "Suhu Pengiriman: -18°C Controlled",
+    ],
     priceLabel: "Harga Grosir B2B",
     price: "Rp 3.850.000",
     priceValue: 3850000,
     unit: "/ karton",
-    image: "/daging-sapi-australian-striploin.png"
-  }
+    image: "/daging-sapi-australian-striploin.png",
+  },
 ];
 
-const homeCategories = ["Semua Kategori", "Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
+const homeCategories = [
+  "Semua Kategori",
+  "Bahan Baku",
+  "Perizinan",
+  "Perawatan",
+  "Peralatan",
+];
 const homePillars = [
   {
     icon: "◉",
     title: "Bahan Baku",
     categorySlug: "bahan-baku",
     badge: "Fresh & Dry",
-    description: "Komoditas pangan bermutu tinggi, pasokan tepat dan terverifikasi halal, serta sembako grosir dan sanitasi kimia.",
-    action: "Lihat Pasokan Pangan"
+    description:
+      "Komoditas pangan bermutu tinggi, pasokan tepat dan terverifikasi halal, serta sembako grosir dan sanitasi kimia.",
+    action: "Lihat Pasokan Pangan",
   },
   {
     icon: "✿",
     title: "Perizinan",
     categorySlug: "perizinan",
     badge: "Audit Standard",
-    description: "Pendampingan sertifikasi kelayakan hygiene dan sertifikasi tata ruang dapur industri oleh auditor resmi.",
-    action: "Lihat Paket Perizinan"
+    description:
+      "Pendampingan sertifikasi kelayakan hygiene dan sertifikasi tata ruang dapur industri oleh auditor resmi.",
+    action: "Lihat Paket Perizinan",
   },
   {
     icon: "▣",
     title: "Perawatan",
     categorySlug: "perawatan",
     badge: "Preventif 24/7",
-    description: "Kontrak inspeksi pipa gas bertekanan, servis cold-storage berkala, deep cleaning exhaust, dan penanggulangan hama.",
-    action: "Lihat Paket Servis"
+    description:
+      "Kontrak inspeksi pipa gas bertekanan, servis cold-storage berkala, deep cleaning exhaust, dan penanggulangan hama.",
+    action: "Lihat Paket Servis",
   },
   {
     icon: "♨",
     title: "Peralatan",
     categorySlug: "peralatan",
     badge: "Garansi 2 Thn",
-    description: "Peralatan memasak kapasitas tinggi berbahan stainless steel food grade 304 tahan banting untuk produksi nonstop.",
-    action: "Lihat Kitchen Hardware"
-  }
+    description:
+      "Peralatan memasak kapasitas tinggi berbahan stainless steel food grade 304 tahan banting untuk produksi nonstop.",
+    action: "Lihat Kitchen Hardware",
+  },
 ];
 
-function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: () => void; onAdd: (source: HTMLElement) => void }) {
+function HomeOfferCard({
+  item,
+  onDetail,
+  onAdd,
+}: {
+  item: HomeOffer;
+  onDetail: () => void;
+  onAdd: (source: HTMLElement) => void;
+}) {
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="relative aspect-[1.4/1] overflow-hidden bg-[#e7edf4]">
-        <img src={item.image} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/>
-        {item.overlayBadges && <>
-          <span className="absolute left-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">{item.category}</span>
-          <span className="absolute right-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">{item.badge}</span>
-        </>}
+        <img
+          src={item.image}
+          alt={item.title}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        />
+        {item.overlayBadges && (
+          <>
+            <span className="absolute left-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
+              {item.category}
+            </span>
+            <span className="absolute right-2.5 top-2.5 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
+              {item.badge}
+            </span>
+          </>
+        )}
       </div>
-      <div className="flex min-h-[185px] flex-col p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[.13em] text-slate-500">SKU: {item.sku}</p>
-        <h3 className="mt-1.5 min-h-9 text-[14px] font-extrabold leading-4 text-slate-900">{item.title}</h3>
-        <div className="mt-1.5 space-y-1 text-[10px] leading-3.5 text-slate-600">
-          {item.details.map((detail) => <p key={detail} className="flex gap-1.5"><BadgeCheck size={10} className="mt-0.5 shrink-0 text-[#ad3b00]"/>{detail}</p>)}
+      <div className="flex min-h-[195px] flex-col p-3">
+        <p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">
+          SKU: {item.sku}
+        </p>
+        <h3 className="mt-1.5 min-h-10 text-[15px] font-extrabold leading-[1.25rem] text-slate-900">
+          {item.title}
+        </h3>
+        <div className="mt-1.5 space-y-1 text-[12px] leading-4 text-slate-600">
+          {item.details.map((detail) => (
+            <p key={detail} className="flex gap-1.5">
+              <BadgeCheck
+                size={11}
+                className="mt-0.5 shrink-0 text-[#ad3b00]"
+              />
+              {detail}
+            </p>
+          ))}
         </div>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <div className="min-w-0"><small className="block text-[10px] text-slate-500">{item.priceLabel}</small><b className="text-base font-extrabold text-[#b63d00]">{item.price}</b>{item.unit && <small className="ml-1 text-[10px] text-slate-500">{item.unit}</small>}</div>
+          <div className="min-w-0">
+            <small className="block text-[10px] text-slate-500">
+              {item.priceLabel}
+            </small>
+            <b className="text-base font-extrabold text-[#b63d00]">
+              {item.price}
+            </b>
+            {item.unit && (
+              <small className="ml-1 text-[10px] text-slate-500">
+                {item.unit}
+              </small>
+            )}
+          </div>
           <div className="flex shrink-0 gap-1.5">
-            <button type="button" onClick={onDetail} className="rounded bg-[#e7efff] px-4 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-[#dbe7ff]">Detail</button>
-            <button type="button" onClick={(event) => onAdd(event.currentTarget)} aria-label={`Tambah ${item.title} ke keranjang`} className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8e3000]"><ShoppingCart size={13}/></button>
+            <button
+              type="button"
+              onClick={onDetail}
+              className="rounded bg-[#e7efff] px-4 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-[#dbe7ff]"
+            >
+              Detail
+            </button>
+            <button
+              type="button"
+              onClick={(event) => onAdd(event.currentTarget)}
+              aria-label={`Tambah ${item.title} ke keranjang`}
+              className="flex h-7 w-8 items-center justify-center rounded bg-[#ad3b00] text-white hover:bg-[#8e3000]"
+            >
+              <ShoppingCart size={13} />
+            </button>
           </div>
         </div>
       </div>
@@ -135,113 +223,346 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
 export default function HomePage({
   onAddOffer,
   onOpenCart,
-  whatsappHref
+  whatsappHref,
 }: {
   onAddOffer: (offer: HomeOffer, source?: HTMLElement) => void;
   onOpenCart: () => void;
   whatsappHref: string;
 }) {
   const [homeCategory, setHomeCategory] = useState("Semua Kategori");
-  const [selectedHomeOffer, setSelectedHomeOffer] = useState<HomeOffer | null>(null);
-  const featuredHomeOffers = homeCategory === "Semua Kategori"
-    ? homeOffers
-    : homeOffers.filter((item) => item.category.toLowerCase().includes(homeCategory.toLowerCase()));
+  const [selectedHomeOffer, setSelectedHomeOffer] = useState<HomeOffer | null>(
+    null,
+  );
+  const featuredHomeOffers =
+    homeCategory === "Semua Kategori"
+      ? homeOffers
+      : homeOffers.filter((item) =>
+          item.category.toLowerCase().includes(homeCategory.toLowerCase()),
+        );
 
-  return <>
-    <section id="home" className="bg-[#eef3ff]">
-      <div className="mx-auto max-w-7xl px-5 pb-8 pt-7 lg:px-8 lg:pb-10 lg:pt-9">
-        <div className="mb-6 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dce6ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600"><BadgeCheck size={12} className="text-[#b63d00]"/> KATALOG UNGGULAN B2B</span>
-            <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">Produk &amp; Layanan Paling Diminati</h1>
-            <p className="mt-2 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">Peralatan bersertifikasi, paket legalitas instan, kontrak servis dapur, dan pasokan bahan pokok siap kirim.</p>
-          </div>
-          <div className="scrollbar-hide flex max-w-full gap-1 overflow-x-auto rounded-lg bg-[#e5edff] p-1">
-            {homeCategories.map((item) => <button key={item} onClick={() => setHomeCategory(item)} className={`shrink-0 rounded-md px-3 py-2 text-[12px] font-semibold ${homeCategory === item ? "bg-white text-slate-800 shadow-sm" : "text-slate-600 hover:bg-white/60"}`}>{item}</button>)}
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)}
-        </div>
-        <div className="mt-7 flex justify-center">
-          <Link href="/katalog" className="inline-flex items-center gap-2 rounded-md bg-[#ad3b00] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#8f3000]"><ShoppingBag size={13}/> Lihat Semua 250+ Produk di Katalog Lengkap <ArrowRight size={15}/></Link>
-        </div>
-      </div>
-    </section>
-
-    <section className="bg-[#f8f9ff]">
-      <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
-        <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dce6ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600"><BadgeCheck size={12} className="text-[#b63d00]"/> PLATFORM PENGADAAN KOMERSIAL TERPADU</span>
-            <h2 className="mt-3 max-w-xl text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">Solusi Lengkap untuk Setiap Kebutuhan <span className="text-[#ad3b00]">Dapur Profesional</span></h2>
-            <p className="mt-3 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">Mitra pengadaan B2B terpercaya untuk restoran, hotel, catering, dan cloud kitchen di seluruh Indonesia. Dari pasokan bahan baku segar, sertifikasi HACCP berlisensi, instalasi peralatan berat, hingga servis preventif terencana.</p>
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[["500+","Dapur Terlayani"],["99.4%","On-Time Delivery"],["ISO & HACCP","Certified Partner"],["4.8 ⭐","Rating Kepuasan"]].map(([value,label])=><div key={label} className="rounded-lg bg-[#eef3ff] p-3"><b className="block text-base font-black text-[#ad3b00]">{value}</b><small className="mt-1 block text-[11px] text-slate-600">{label}</small></div>)}
+  return (
+    <>
+      <section className="bg-[#f8f9ff]">
+        <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dce6ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <BadgeCheck size={12} className="text-[#b63d00]" /> PLATFORM
+                PENGADAAN KOMERSIAL TERPADU
+              </span>
+              <h2 className="mt-3 max-w-xl text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">
+                Solusi Lengkap untuk Setiap Kebutuhan{" "}
+                <span className="text-[#ad3b00]">Dapur Profesional</span>
+              </h2>
+              <p className="mt-3 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">
+                Mitra pengadaan terintegrasi untuk dapur sentral, unit pelayanan
+                gizi, dan penyedia makanan sehat berskala besar di seluruh
+                Indonesia. Menjamin kepatuhan standar higienitas pangan,
+                kesiapan peralatan saji & masak berkapasitas tinggi, pasokan
+                bahan pokok terstandar gizi, serta kelengkapan dokumen kepatuhan
+                resmi.
+              </p>
+              <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[
+                  {
+                    title: "Garansi Resmi",
+                    subtitle: "Perlindungan Unit & Mesin",
+                    icon: ShieldCheck,
+                  },
+                  {
+                    title: "Material Food-Grade",
+                    subtitle: "Standar Higienis Teruji",
+                    icon: BadgeCheck,
+                  },
+                  {
+                    title: "Faktur Pajak",
+                    subtitle: "PPN & Legalitas Lengkap",
+                    icon: ReceiptText,
+                  },
+                  {
+                    title: "Konsultasi & RAB",
+                    subtitle: "Perencanaan Desain Dapur",
+                    icon: Handshake,
+                  },
+                ].map(({ title, subtitle, icon: Icon }) => (
+                  <div
+                    key={title}
+                    className="flex min-h-[68px] items-center gap-3 rounded-lg border border-slate-100 bg-white px-3 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#fff1e8] text-[#ad3b00]">
+                      <Icon size={17} strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0">
+                      <b className="block text-[14px] font-black leading-4 text-slate-800">
+                        {title}
+                      </b>
+                      <small className="mt-1 block text-[12px] leading-4 text-slate-500">
+                        {subtitle}
+                      </small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="relative flex aspect-[1.35/1] items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#dce9d5] via-[#f2e7ca] to-[#e9effb]">
+                <img
+                  src="/horeca-standardisasi.png"
+                  alt="Standarisasi HORECA Pro"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-            <div className="relative flex aspect-[1.35/1] items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#dce9d5] via-[#f2e7ca] to-[#e9effb]">
-              <img src="/horeca-standardisasi.png" alt="Standarisasi HORECA Pro" className="absolute inset-0 h-full w-full object-cover"/>
-              <span className="absolute left-3 top-2 text-[9px] text-slate-500">DapurKita - Horeca & Leading Pros</span>
-              <span className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-lg bg-white/95 px-3 py-2 shadow"><span><b className="block text-[13px] text-slate-800">Standarisasi HORECA Pro</b><small className="text-[11px] text-slate-500">Grade SUS 304 & Halal Supply Chain</small></span><span className="rounded bg-[#dfe8ff] px-2 py-1 text-[11px] font-bold text-slate-700">Aktif</span></span>
+        </div>
+      </section>
+
+      <section id="home" className="bg-[#eef3ff]">
+        <div className="mx-auto max-w-7xl px-5 pb-8 pt-7 lg:px-8 lg:pb-10 lg:pt-9">
+          <div className="mb-6 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dce6ff] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <BadgeCheck size={12} className="text-[#b63d00]" /> KATALOG
+                UNGGULAN B2B
+              </span>
+              <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">
+                Pengadaan Dapur Komersial &amp; Bahan Pokok
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">
+                Menyediakan peralatan stainless SUS 304 food-grade, bahan pangan
+                higienis terverifikasi, serta pendampingan sertifikasi dapur
+                dengan jaminan keaslian dan layanan purna jual.
+              </p>
+            </div>
+            <div className="scrollbar-hide flex max-w-full gap-1 overflow-x-auto rounded-lg bg-[#e5edff] p-1">
+              {homeCategories.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setHomeCategory(item)}
+                  className={`shrink-0 rounded-md px-3 py-2 text-[12px] font-semibold ${homeCategory === item ? "bg-white text-slate-800 shadow-sm" : "text-slate-600 hover:bg-white/60"}`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {featuredHomeOffers.map((item) => (
+              <HomeOfferCard
+                key={item.sku}
+                item={item}
+                onDetail={() => setSelectedHomeOffer(item)}
+                onAdd={(source) => onAddOffer(item, source)}
+              />
+            ))}
+          </div>
+          <div className="mt-7 flex justify-center">
+            <Link
+              href="/katalog"
+              className="inline-flex items-center gap-2 rounded-md bg-[#ad3b00] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#8f3000]"
+            >
+              <ShoppingBag size={13} /> Lihat Semua Produk di Katalog Lengkap{" "}
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f8f9ff] pb-12">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[#ad3b00]">
+                INFRASTRUKTUR PENGADAAN LENGKAP
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
+                4 Pilar Utama Solusi Dapur Komersial
+              </h2>
+              <p className="mt-1 max-w-xl text-sm leading-5 text-slate-600">
+                Dukungan hulu ke hilir untuk menjamin kepatuhan sanitasi,
+                kelancaran operasional harian, dan keandalan alat pemanas maupun
+                pendingin berdaya tinggi.
+              </p>
+            </div>
+            <Link
+              href="/katalog"
+              className="hidden items-center gap-1 pb-1 text-[13px] font-bold text-[#ad3b00] sm:flex"
+            >
+              Buka Seluruh Katalog B2B <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {homePillars.map((item) => (
+              <article
+                key={item.title}
+                className="flex min-h-[265px] flex-col rounded-xl bg-white p-4 shadow-sm"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff4e8] text-lg font-bold text-[#ad3b00]">
+                  {item.icon}
+                </span>
+                <h3 className="mt-3 text-base font-extrabold text-slate-900">
+                  {item.title}
+                </h3>
+                <span className="mt-1 w-fit rounded bg-[#e7efff] px-2 py-1 text-[11px] text-slate-600">
+                  {item.badge}
+                </span>
+                <p className="mt-2 min-h-16 text-[13px] leading-5 text-slate-600">
+                  {item.description}
+                </p>
+                <Link
+                  href={`/katalog?kategori=${item.categorySlug}`}
+                  className="mt-auto flex items-center justify-between rounded-md bg-[#e7efff] px-3 py-2 text-[12px] font-bold text-slate-700 hover:bg-[#dbe7ff]"
+                >
+                  {item.action}
+                  <ChevronRight size={13} />
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {selectedHomeOffer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5"
+          onMouseDown={(event) =>
+            event.target === event.currentTarget && setSelectedHomeOffer(null)
+          }
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="home-offer-title"
+            className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-500">
+                {selectedHomeOffer.category}
+                <span className="mx-2 text-slate-300">|</span>
+                <span className="normal-case tracking-normal">
+                  SKU: {selectedHomeOffer.sku}
+                </span>
+              </p>
+              <button
+                onClick={() => setSelectedHomeOffer(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+                aria-label="Tutup detail produk"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="grid gap-5 p-5 md:grid-cols-[1fr_1fr]">
+              <div className="relative min-h-[205px] overflow-hidden rounded-md bg-[#edf2ff]">
+                <img
+                  src={selectedHomeOffer.image}
+                  alt={selectedHomeOffer.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                {selectedHomeOffer.overlayBadges && (
+                  <span className="absolute left-2 top-2 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700">
+                    {selectedHomeOffer.badge}
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#ad3b00]">
+                  {selectedHomeOffer.category}
+                </p>
+                <h2
+                  id="home-offer-title"
+                  className="mt-1.5 text-xl font-black leading-tight text-slate-900"
+                >
+                  {selectedHomeOffer.title}
+                </h2>
+                <div className="mt-2 flex items-end gap-1.5">
+                  <b className="text-2xl font-black text-[#ad3b00]">
+                    {selectedHomeOffer.price}
+                  </b>
+                  {selectedHomeOffer.unit && (
+                    <span className="pb-1 text-[11px] text-slate-500">
+                      {selectedHomeOffer.unit}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-[#edf7ef] px-2 py-1.5 text-[11px] font-bold text-forest-700">
+                    <BadgeCheck size={12} />
+                    {selectedHomeOffer.badge}
+                  </span>
+                  <span className="inline-flex items-center rounded-md bg-[#edf2ff] px-2 py-1.5 text-[11px] font-bold text-slate-700">
+                    Pengadaan B2B
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="px-5 pb-5">
+              <div className="rounded-lg border border-slate-100 p-3.5">
+                <h3 className="flex items-center gap-2 text-[13px] font-black text-slate-900">
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-[#fff1e8] text-[#ad3b00]">
+                    <BadgeCheck size={12} />
+                  </span>
+                  Informasi Produk
+                </h3>
+                <div className="mt-3 grid gap-2 text-[13px] sm:grid-cols-2">
+                  <div>
+                    <span className="block text-slate-400">Kategori</span>
+                    <b className="mt-0.5 block text-slate-700">
+                      {selectedHomeOffer.category}
+                    </b>
+                  </div>
+                  <div>
+                    <span className="block text-slate-400">SKU</span>
+                    <b className="mt-0.5 block text-slate-700">
+                      {selectedHomeOffer.sku}
+                    </b>
+                  </div>
+                  {selectedHomeOffer.details.map((detail) => (
+                    <p key={detail} className="flex gap-1.5 text-slate-600">
+                      <BadgeCheck
+                        size={12}
+                        className="shrink-0 text-[#ad3b00]"
+                      />
+                      {detail}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <button
+                  onClick={(event) => {
+                    onAddOffer(selectedHomeOffer, event.currentTarget);
+                    setSelectedHomeOffer(null);
+                    onOpenCart();
+                  }}
+                  className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[12px] font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <ShoppingCart size={14} />
+                  Tambah ke keranjang
+                </button>
+                <a
+                  href={
+                    whatsappHref.startsWith("https://")
+                      ? `${whatsappHref}?text=${encodeURIComponent(`Halo DapurKita, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}`
+                      : "/#kontak"
+                  }
+                  target={
+                    whatsappHref.startsWith("https://") ? "_blank" : undefined
+                  }
+                  rel={
+                    whatsappHref.startsWith("https://")
+                      ? "noreferrer"
+                      : undefined
+                  }
+                  className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000]"
+                >
+                  <MessageCircle size={14} />
+                  Tanya via WhatsApp
+                </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section className="bg-[#f8f9ff] pb-12">
-      <div className="mx-auto max-w-7xl px-5 lg:px-8">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div><p className="text-[11px] font-bold uppercase tracking-widest text-[#ad3b00]">INFRASTRUKTUR PENGADAAN LENGKAP</p><h2 className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">4 Pilar Utama Solusi Dapur Komersial</h2><p className="mt-1 max-w-xl text-sm leading-5 text-slate-600">Dukungan hulu ke hilir untuk menjamin kepatuhan sanitasi, kelancaran operasional harian, dan keandalan alat pemanas maupun pendingin berdaya tinggi.</p></div>
-          <Link href="/katalog" className="hidden items-center gap-1 pb-1 text-[13px] font-bold text-[#ad3b00] sm:flex">Buka Seluruh Katalog B2B <ArrowRight size={14}/></Link>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {homePillars.map((item)=><article key={item.title} className="flex min-h-[265px] flex-col rounded-xl bg-white p-4 shadow-sm">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff4e8] text-lg font-bold text-[#ad3b00]">{item.icon}</span>
-            <h3 className="mt-3 text-base font-extrabold text-slate-900">{item.title}</h3>
-            <span className="mt-1 w-fit rounded bg-[#e7efff] px-2 py-1 text-[11px] text-slate-600">{item.badge}</span>
-            <p className="mt-2 min-h-12 text-[12px] leading-4 text-slate-500">{item.description}</p>
-            <Link href={`/katalog?kategori=${item.categorySlug}`} className="mt-auto flex items-center justify-between rounded-md bg-[#e7efff] px-3 py-2 text-[12px] font-bold text-slate-700 hover:bg-[#dbe7ff]">{item.action}<ChevronRight size={13}/></Link>
-          </article>)}
-        </div>
-      </div>
-    </section>
-
-    {selectedHomeOffer && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && setSelectedHomeOffer(null)}>
-      <div role="dialog" aria-modal="true" aria-labelledby="home-offer-title" className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <p className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-500">{selectedHomeOffer.category}<span className="mx-2 text-slate-300">|</span><span className="normal-case tracking-normal">SKU: {selectedHomeOffer.sku}</span></p>
-          <button onClick={() => setSelectedHomeOffer(null)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup detail produk"><X size={16}/></button>
-        </div>
-        <div className="grid gap-5 p-5 md:grid-cols-[1fr_1fr]">
-          <div className="relative min-h-[205px] overflow-hidden rounded-md bg-[#edf2ff]">
-            <img src={selectedHomeOffer.image} alt={selectedHomeOffer.title} className="absolute inset-0 h-full w-full object-cover"/>
-            {selectedHomeOffer.overlayBadges && <span className="absolute left-2 top-2 rounded bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-700">{selectedHomeOffer.badge}</span>}
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#ad3b00]">{selectedHomeOffer.category}</p>
-            <h2 id="home-offer-title" className="mt-1.5 text-xl font-black leading-tight text-slate-900">{selectedHomeOffer.title}</h2>
-            <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#ad3b00]">{selectedHomeOffer.price}</b>{selectedHomeOffer.unit && <span className="pb-1 text-[11px] text-slate-500">{selectedHomeOffer.unit}</span>}</div>
-            <div className="mt-3 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-md bg-[#edf7ef] px-2 py-1.5 text-[11px] font-bold text-forest-700"><BadgeCheck size={12}/>{selectedHomeOffer.badge}</span><span className="inline-flex items-center rounded-md bg-[#edf2ff] px-2 py-1.5 text-[11px] font-bold text-slate-700">Pengadaan B2B</span></div>
-          </div>
-        </div>
-        <div className="px-5 pb-5">
-          <div className="rounded-lg border border-slate-100 p-3.5">
-            <h3 className="flex items-center gap-2 text-[13px] font-black text-slate-900"><span className="flex h-5 w-5 items-center justify-center rounded bg-[#fff1e8] text-[#ad3b00]"><BadgeCheck size={12}/></span>Informasi Produk</h3>
-            <div className="mt-3 grid gap-2 text-[12px] sm:grid-cols-2">
-              <div><span className="block text-slate-400">Kategori</span><b className="mt-0.5 block text-slate-700">{selectedHomeOffer.category}</b></div>
-              <div><span className="block text-slate-400">SKU</span><b className="mt-0.5 block text-slate-700">{selectedHomeOffer.sku}</b></div>
-              {selectedHomeOffer.details.map((detail) => <p key={detail} className="flex gap-1.5 text-slate-600"><BadgeCheck size={12} className="shrink-0 text-[#ad3b00]"/>{detail}</p>)}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <button onClick={(event) => { onAddOffer(selectedHomeOffer, event.currentTarget); setSelectedHomeOffer(null); onOpenCart(); }} className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[12px] font-bold text-slate-700 hover:bg-slate-50"><ShoppingCart size={14}/>Tambah ke keranjang</button>
-            <a href={whatsappHref.startsWith("https://") ? `${whatsappHref}?text=${encodeURIComponent(`Halo DapurKita, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}` : "/#kontak"} target={whatsappHref.startsWith("https://") ? "_blank" : undefined} rel={whatsappHref.startsWith("https://") ? "noreferrer" : undefined} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000]"><MessageCircle size={14}/>Tanya via WhatsApp</a>
-          </div>
-        </div>
-      </div>
-    </div>}
-  </>;
+      )}
+    </>
+  );
 }

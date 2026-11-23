@@ -399,7 +399,7 @@ export default function CategoryCard({
                   type="button"
                   onClick={() => setModalOpen(false)}
                   disabled={saving}
-                  className="btn-secondary"
+                  className="rounded-lg border border-[#DCE4F0] bg-white px-4 py-2.5 text-sm font-bold text-[#172B4D] transition hover:bg-[#EEF3FF]"
                 >
                   Batal
                 </button>
@@ -407,7 +407,7 @@ export default function CategoryCard({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#A83D00] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? "Menyimpan..."
