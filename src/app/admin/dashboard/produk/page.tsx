@@ -39,9 +39,14 @@ type ProductForm = {
 
   jenis_harga: "tetap" | "rentang";
   harga: string;
+  stok: string;
   harga_min: string;
   harga_max: string;
 
+  kalori: string;
+  protein: string;
+  karbohidrat: string;
+  lemak: string;
   satuan: string;
   foto_url: string;
   tersedia: boolean;
@@ -57,10 +62,15 @@ const empty: ProductForm = {
 
   jenis_harga: "tetap",
   harga: "",
+  stok: "",
   harga_min: "",
   harga_max: "",
 
-  satuan: "",
+  kalori: "0",
+  protein: "0",
+  karbohidrat: "0",
+  lemak: "0",
+  satuan: "porsi",
   foto_url: "",
   tersedia: true,
 };
@@ -158,9 +168,13 @@ export default function ProductsPage() {
         nama_produk: product.nama_produk,
         slug: product.slug,
         deskripsi: product.deskripsi,
-
+        kalori: String(product.informasi_gizi.kalori),
+        protein: String(product.informasi_gizi.protein),
+        karbohidrat: String(product.informasi_gizi.karbohidrat),
+        lemak: String(product.informasi_gizi.lemak),
         jenis_harga: product.jenis_harga ?? "tetap",
         harga: product.harga != null ? String(product.harga) : "",
+        stok: product.stok == null ? "" : String(product.stok),
         harga_min: product.harga_min != null ? String(product.harga_min) : "",
         harga_max: product.harga_max != null ? String(product.harga_max) : "",
         satuan: product.satuan,
@@ -294,7 +308,13 @@ export default function ProductsPage() {
       nama_produk: form.nama_produk,
       slug: generatedSlug,
       deskripsi: form.deskripsi,
-
+      informasi_gizi: {
+        kalori: Number(form.kalori),
+        protein: Number(form.protein),
+        karbohidrat: Number(form.karbohidrat),
+        lemak: Number(form.lemak),
+      },
+      stok: form.stok.trim() === "" ? null : Number(form.stok),
       jenis_harga: form.jenis_harga,
       harga:
         form.jenis_harga === "tetap" && form.harga.trim() !== ""
@@ -1151,6 +1171,54 @@ export default function ProductsPage() {
                 placeholder="Unit / Kg / Porsi"
                 className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
               />
+            </div>
+
+            {/* STOCK */}
+            <div>
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Stok (opsional)
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                step="1"
+                value={form.stok}
+                onChange={(e) =>
+                  setForm({ ...form, stok: e.target.value })
+                }
+                placeholder="Belum dicatat"
+                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Informasi Gizi
+              </label>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(["kalori", "protein", "karbohidrat", "lemak"] as const).map(
+                  (key) => (
+                    <label key={key} className="text-[11px] capitalize text-[#64748B]">
+                      {key}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={form[key]}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                      />
+                    </label>
+                  )
+                )}
+              </div>
             </div>
 
             {/* DESCRIPTION */}

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
 import { api, formatProductPrice, hargaSatuan, rupiah, } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import Link from "next/link";
-import HomePage, { homeOffers } from "./Home/HomePage";
+import { useSearchParams } from "next/navigation";
+import HomePage, { getHomeOffers } from "./Home/HomePage";
 import type { HomeOffer } from "./Home/HomePage";
 import KatalogPage from "./Katalog/KatalogPage";
 import type { CartItem } from "./types";
@@ -23,6 +24,7 @@ const hiddenNavCategoryNames = new Set(["kudapan sehat", "paket makan siang"]);
 export default function PublicCatalog({
   page = "home",
 }: PublicCatalogProps) {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
@@ -30,21 +32,54 @@ export default function PublicCatalog({
   const [settings, setSettings] = useState<Settings | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
-  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogSearch, setCatalogSearch] = useState(
+    () => page === "catalog" ? searchParams.get("q") || "" : ""
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
+  const [desktopExpandedCategoryId, setDesktopExpandedCategoryId] = useState<number | null>(null);
+  const [mobileExpandedCategoryId, setMobileExpandedCategoryId] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [homeCart, setHomeCart] = useState<HomeCartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [loading, setLoading] = useState(page === "catalog");
   const [cartInitialized, setCartInitialized] = useState(false);
+  const [homeCartInitialized, setHomeCartInitialized] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nama_pemesan: "", nama_sekolah: "", telepon_pemesan: "", catatan: "" });
   const [flyingItem, setFlyingItem] = useState<FlyingItem | null>(null);
   const [cartPulseKey, setCartPulseKey] = useState(0);
+  const cartRef = useRef(cart);
   const cartButtonRef = useRef<HTMLButtonElement>(null);
   const flyingKeyRef = useRef(0);
+  const ourCatalogActive =
+    page === "catalog" && searchParams.has("kategori");
+  const catalogHref = catalogSearch.trim()
+    ? `/katalog?q=${encodeURIComponent(catalogSearch.trim())}`
+    : "/katalog";
+
+  useEffect(() => {
+    if (page !== "catalog") return;
+    const querySearch = searchParams.get("q") || "";
+    setCatalogSearch((current) => current === querySearch ? current : querySearch);
+  }, [page, searchParams]);
+
+  useEffect(() => {
+    if (page !== "catalog") return;
+    const url = new URL(window.location.href);
+    const trimmedSearch = catalogSearch.trim();
+
+    if (trimmedSearch) {
+      url.searchParams.set("q", trimmedSearch);
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [catalogSearch, page]);
 
   useEffect(() => {
     setLoading(page === "catalog");
@@ -69,7 +104,28 @@ export default function PublicCatalog({
     );
     requests.push(
       api<{ produk: Product[] }>("/api/produk")
-        .then(({ produk }) => setProducts(produk))
+        .then(({ produk }) => {
+          setProducts(produk);
+          if (page === "home") {
+            try {
+              const saved = JSON.parse(localStorage.getItem(homeCartKey) || "[]") as Array<{ offer?: { sku?: string }; quantity?: number }>;
+              if (Array.isArray(saved)) {
+                const offers = getHomeOffers(produk);
+                const restored: HomeCartItem[] = [];
+                for (const item of saved) {
+                  const offer = offers.find((candidate) => candidate.sku === item?.offer?.sku);
+                  if (offer && typeof item.quantity === "number" && Number.isInteger(item.quantity) && item.quantity > 0) {
+                    restored.push({ offer, quantity: item.quantity });
+                  }
+                }
+                setHomeCart(restored);
+              }
+            } catch {
+              localStorage.removeItem(homeCartKey);
+            }
+            setHomeCartInitialized(true);
+          }
+        })
         .catch((e: Error) => {
           setProductsError(e.message);
           if (page === "catalog") setError(e.message);
@@ -83,32 +139,18 @@ export default function PublicCatalog({
     } catch {
       localStorage.removeItem(cartKey);
     }
-    if (page === "home") {
-      try {
-        const saved = JSON.parse(localStorage.getItem(homeCartKey) || "[]") as Array<{ offer?: { sku?: string }; quantity?: number }>;
-        if (Array.isArray(saved)) {
-          const restored: HomeCartItem[] = [];
-          for (const item of saved) {
-            const offer = homeOffers.find((candidate) => candidate.sku === item?.offer?.sku);
-            if (offer && typeof item.quantity === "number" && Number.isInteger(item.quantity) && item.quantity > 0) {
-              restored.push({ offer, quantity: item.quantity });
-            }
-          }
-          setHomeCart(restored);
-        }
-      } catch {
-        localStorage.removeItem(homeCartKey);
-      }
-    }
     setCartInitialized(true);
   }, [page]);
 
   useEffect(() => {
+    cartRef.current = cart;
     if (cartInitialized) {
       localStorage.setItem(cartKey, JSON.stringify(cart));
-      if (page === "home") localStorage.setItem(homeCartKey, JSON.stringify(homeCart));
     }
-  }, [cart, homeCart, cartInitialized, page]);
+    if (page === "home" && homeCartInitialized) {
+      localStorage.setItem(homeCartKey, JSON.stringify(homeCart));
+    }
+  }, [cart, homeCart, cartInitialized, homeCartInitialized, page]);
 
   useEffect(() => {
     if (!products.length) return;
@@ -128,7 +170,11 @@ export default function PublicCatalog({
           return [];
         }
 
-        return [{ ...item, product: fresh }];
+        const quantity =
+          fresh.stok == null
+            ? item.quantity
+            : Math.min(item.quantity, fresh.stok);
+        return quantity > 0 ? [{ ...item, product: fresh, quantity }] : [];
       })
     );
   }, [products]);
@@ -145,7 +191,23 @@ export default function PublicCatalog({
     ? `https://wa.me/${whatsappNumber}`
     : page === "home" ? "https://wa.me/622155578900" : "/#kontak";
 
-  function animateIntoCart(source: HTMLElement | undefined | null, image: string | null) {
+  const homeOffers = useMemo(() => getHomeOffers(products), [products]);
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+    setMobileExpandedCategoryId(null);
+  }
+
+  function getCategoryProducts(categoryId: number) {
+    return products.filter((product) => product.kategori_id === categoryId);
+  }
+
+  const openCart = useCallback(() => setCartOpen(true), []);
+
+  const animateIntoCart = useCallback((
+    source: HTMLElement | undefined | null,
+    image: string | null
+  ) => {
     setCartPulseKey((key) => key + 1);
     if (!source || !cartButtonRef.current) return;
 
@@ -159,20 +221,58 @@ export default function PublicCatalog({
       y: targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2),
       image,
     });
-  }
+  }, []);
 
-  function add(product: Product, source?: HTMLElement) {
-    if (hargaSatuan(product) == null) return;
+  const add = useCallback((product: Product, source?: HTMLElement, quantity = 1) => {
+    if (
+      !product.tersedia ||
+      hargaSatuan(product) == null ||
+      quantity < 1
+    ) {
+      return;
+    }
+
+    const alreadyInCart =
+      cartRef.current.find((item) => item.product.id === product.id)?.quantity ?? 0;
+    const requestedQuantity =
+      product.stok == null
+        ? quantity
+        : Math.min(quantity, Math.max(0, product.stok - alreadyInCart));
+    if (requestedQuantity < 1) return;
+
     animateIntoCart(source, product.foto_url);
     setCart((items) => {
       const current = items.find((item) => item.product.id === product.id);
+      const currentQuantity = current?.quantity ?? 0;
+      const nextQuantity =
+        product.stok == null
+          ? currentQuantity + requestedQuantity
+          : Math.min(product.stok, currentQuantity + requestedQuantity);
+      if (nextQuantity <= currentQuantity) return items;
+
       return current
-        ? items.map((item) => item.product.id === product.id ? { ...item, product, quantity: item.quantity + 1 } : item)
-        : [...items, { product, quantity: 1 }];
+        ? items.map((item) => item.product.id === product.id ? { ...item, product, quantity: nextQuantity } : item)
+        : [...items, { product, quantity: nextQuantity }];
     });
-  }
+  }, [animateIntoCart]);
+
   function adjust(id: number, delta: number) {
-    setCart((items) => items.map((item) => item.product.id === id ? { ...item, quantity: item.quantity + delta } : item).filter((item) => item.quantity > 0));
+    setCart((items) =>
+      items
+        .map((item) => {
+          if (item.product.id !== id) return item;
+          if (
+            delta > 0 &&
+            (!item.product.tersedia ||
+              (item.product.stok != null &&
+                item.quantity >= item.product.stok))
+          ) {
+            return item;
+          }
+          return { ...item, quantity: item.quantity + delta };
+        })
+        .filter((item) => item.quantity > 0)
+    );
   }
 
   function addHomeOffer(offer: HomeOffer, source?: HTMLElement) {
@@ -247,32 +347,59 @@ export default function PublicCatalog({
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:gap-y-3 sm:px-5 sm:py-3 lg:px-8">
           <Link href="/" aria-label="Beranda DapurKita" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white"><Leaf size={21} /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ad3b00] text-white"><Leaf size={21} /></span>
             <span><b className="block text-base leading-tight text-slate-900">DapurKita</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
           </Link>
-          <div className="ml-auto flex items-center gap-1 sm:hidden">
-            {page === "catalog" && (
+          <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
+            {page === "catalog" && (mobileSearchOpen ? (
+              <>
+                <label id="mobile-catalog-search" className="relative min-w-0 flex-1">
+                  <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="search"
+                    aria-label="Cari produk katalog"
+                    autoFocus
+                    value={catalogSearch}
+                    onChange={(event) => setCatalogSearch(event.target.value)}
+                    placeholder="Cari produk..."
+                    className="h-10 w-full min-w-0 rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#ad3b00] focus:ring-2 focus:ring-[#ad3b00]/20"
+                  />
+                </label>
+                <button
+                  type="button"
+                  aria-label="Tutup pencarian"
+                  aria-expanded="true"
+                  aria-controls="mobile-catalog-search"
+                  onClick={() => setMobileSearchOpen(false)}
+                  className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
+                >
+                  <X size={20} />
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                aria-label={mobileSearchOpen ? "Tutup pencarian" : "Cari produk"}
-                aria-expanded={mobileSearchOpen}
+                aria-label="Cari produk"
+                aria-expanded="false"
                 aria-controls="mobile-catalog-search"
                 onClick={() => {
-                  setMobileSearchOpen((open) => !open);
+                  setMobileSearchOpen(true);
                   setMobileMenuOpen(false);
+                  setMobileExpandedCategoryId(null);
                 }}
                 className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
               >
                 <Search size={20} />
               </button>
-            )}
+            ))}
             <button
               type="button"
               aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu"}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-main-navigation"
               onClick={() => {
-                setMobileMenuOpen((open) => !open);
+                if (mobileMenuOpen) setMobileExpandedCategoryId(null);
+                setMobileMenuOpen(!mobileMenuOpen);
                 setMobileSearchOpen(false);
               }}
               className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
@@ -282,22 +409,80 @@ export default function PublicCatalog({
           </div>
           <nav aria-label="Navigasi utama" className="ml-auto hidden items-center gap-3 text-sm font-semibold text-slate-700 sm:flex sm:max-w-full sm:flex-wrap sm:justify-end">
             {page === "catalog" && (
-              <label className="relative block w-full sm:w-44">
-                <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="search"
-                  aria-label="Cari produk katalog"
-                  value={catalogSearch}
-                  onChange={(event) => setCatalogSearch(event.target.value)}
-                  placeholder="Cari produk..."
-                  className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#ad3b00] focus:ring-2 focus:ring-[#ad3b00]/20"
-                />
-              </label>
+              <div
+                className={`flex shrink-0 items-center transition-[width] duration-300 ease-out ${
+                  desktopSearchOpen ? "w-64" : "w-9"
+                }`}
+              >
+                {desktopSearchOpen ? (
+                  <>
+                    <label className="relative min-w-0 flex-1">
+                      <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="search"
+                        aria-label="Cari produk katalog"
+                        autoFocus
+                        value={catalogSearch}
+                        onChange={(event) => setCatalogSearch(event.target.value)}
+                        placeholder="Cari produk..."
+                        className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#ad3b00] focus:ring-2 focus:ring-[#ad3b00]/20"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      aria-label="Tutup pencarian"
+                      onClick={() => setDesktopSearchOpen(false)}
+                      className="ml-1 rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <X size={18} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label="Cari produk"
+                    onClick={() => setDesktopSearchOpen(true)}
+                    className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
+                  >
+                    <Search size={20} />
+                  </button>
+                )}
+              </div>
             )}
-            <Link href="/" className={`px-2 py-2 transition-colors hover:text-slate-950 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}>Home</Link>
-            <Link href="/katalog" className="px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">Katalog</Link>
-            <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center gap-1 whitespace-nowrap px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">
+            <Link
+              href="/"
+              aria-current={page === "home" ? "page" : undefined}
+              className={`px-2 py-2 transition-colors hover:text-slate-950 ${page === "home" ? "border-b-2 border-[#ad3b00] font-extrabold text-[#ad3b00]" : "text-slate-700"}`}
+            >
+              Home
+            </Link>
+            <Link
+              href={catalogHref}
+              aria-current={page === "catalog" && !ourCatalogActive ? "page" : undefined}
+              className={`border-b-2 px-2 py-2 transition-colors hover:text-slate-950 ${
+                page === "catalog" && !ourCatalogActive
+                  ? "border-[#ad3b00] font-extrabold text-[#ad3b00]"
+                  : "border-transparent text-slate-700"
+              }`}
+            >
+              Katalog
+            </Link>
+            <details
+              className="group relative"
+              onToggle={(event) => {
+                if (!event.currentTarget.open) {
+                  setDesktopExpandedCategoryId(null);
+                }
+              }}
+            >
+              <summary
+                aria-current={page === "catalog" && ourCatalogActive ? "page" : undefined}
+                className={`flex cursor-pointer list-none items-center gap-1 whitespace-nowrap border-b-2 px-2 py-2 transition-colors hover:text-slate-950 ${
+                  page === "catalog" && ourCatalogActive
+                    ? "border-[#ad3b00] font-extrabold text-[#ad3b00]"
+                    : "border-transparent text-slate-700"
+                }`}
+              >
                 Our Catalog
                 <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
               </summary>
@@ -309,14 +494,26 @@ export default function PublicCatalog({
                   <p role="alert" className="px-3 py-2 text-sm text-red-600">Kategori tidak dapat dimuat: {categoryError}</p>
                 ) : navCategories.length ? (
                   navCategories.map((category) => {
-                    const categoryProducts = products.filter((product) => product.kategori_id === category.id);
                     return (
-                      <details key={category.id} className="group">
+                      <details
+                        key={category.id}
+                        className="group"
+                        onToggle={(event) => {
+                          const isOpen = event.currentTarget.open;
+                          setDesktopExpandedCategoryId((current) =>
+                            isOpen
+                              ? category.id
+                              : current === category.id
+                                ? null
+                                : current
+                          );
+                        }}
+                      >
                         <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-[#fff1e8] hover:text-[#ad3b00]">
                           {category.nama_kategori}
                           <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
                         </summary>
-                        <div className="ml-3 border-l border-slate-100 py-1 pl-2">
+                        {desktopExpandedCategoryId === category.id && <div className="ml-3 border-l border-slate-100 py-1 pl-2">
                           <a
                             href={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
                             className="block rounded-md px-3 py-2 text-sm font-semibold text-[#ad3b00] hover:bg-[#fff1e8]"
@@ -327,8 +524,8 @@ export default function PublicCatalog({
                             <p className="px-3 py-2 text-sm text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
                             <p role="alert" className="px-3 py-2 text-sm text-red-600">Produk tidak dapat dimuat: {productsError}</p>
-                          ) : categoryProducts.length ? (
-                            categoryProducts.map((product) => (
+                          ) : getCategoryProducts(category.id).length ? (
+                            getCategoryProducts(category.id).map((product) => (
                               <a
                                 key={product.id}
                                 href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
@@ -340,7 +537,7 @@ export default function PublicCatalog({
                           ) : (
                             <p className="px-3 py-2 text-sm text-slate-500">Belum ada produk.</p>
                           )}
-                        </div>
+                        </div>}
                       </details>
                     );
                   })
@@ -350,55 +547,68 @@ export default function PublicCatalog({
               </div>
             </details>
           </nav>
-          {page === "catalog" && mobileSearchOpen && (
-            <label id="mobile-catalog-search" className="relative block w-full pb-1 sm:hidden">
-              <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="search"
-                aria-label="Cari produk katalog"
-                autoFocus
-                value={catalogSearch}
-                onChange={(event) => setCatalogSearch(event.target.value)}
-                placeholder="Cari produk..."
-                className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#ad3b00] focus:ring-2 focus:ring-[#ad3b00]/20"
-              />
-            </label>
-          )}
           {mobileMenuOpen && (
             <nav id="mobile-main-navigation" aria-label="Navigasi mobile" className="max-h-[70vh] w-full overflow-y-auto border-t border-slate-100 pb-2 pt-2 text-sm font-semibold text-slate-700 sm:hidden">
               <Link
                 href="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block rounded-md px-3 py-2.5 hover:bg-slate-50 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}
+                onClick={closeMobileMenu}
+                aria-current={page === "home" ? "page" : undefined}
+                className={`block rounded-md border-l-2 px-3 py-2.5 hover:bg-slate-50 ${
+                  page === "home"
+                    ? "border-[#ad3b00] bg-[#fff1e8] font-extrabold text-[#ad3b00]"
+                    : "border-transparent"
+                }`}
               >
                 Home
               </Link>
               <Link
-                href="/katalog"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-md px-3 py-2.5 hover:bg-slate-50"
+                href={catalogHref}
+                onClick={closeMobileMenu}
+                aria-current={page === "catalog" && !ourCatalogActive ? "page" : undefined}
+                className={`block rounded-md border-l-2 px-3 py-2.5 hover:bg-slate-50 ${
+                  page === "catalog" && !ourCatalogActive
+                    ? "border-[#ad3b00] bg-[#fff1e8] font-extrabold text-[#ad3b00]"
+                    : "border-transparent"
+                }`}
               >
                 Katalog
               </Link>
               <div className="mt-1 border-t border-slate-100 pt-2">
-                <p className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">Our Catalog</p>
+                <p
+                  aria-current={page === "catalog" && ourCatalogActive ? "page" : undefined}
+                  className={`px-3 py-2 text-xs font-bold uppercase tracking-wide ${
+                    page === "catalog" && ourCatalogActive ? "border-l-2 border-[#ad3b00] bg-[#fff1e8] text-[#ad3b00]" : "text-slate-500"
+                  }`}
+                >
+                  Our Catalog
+                </p>
                 {categoriesLoading ? (
                   <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat kategori...</p>
                 ) : categoryError ? (
                   <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">Kategori tidak dapat dimuat: {categoryError}</p>
                 ) : navCategories.length ? (
                   navCategories.map((category) => {
-                    const categoryProducts = products.filter((product) => product.kategori_id === category.id);
+                    const expanded = mobileExpandedCategoryId === category.id;
                     return (
-                      <details key={category.id} className="group">
-                        <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2.5 hover:bg-[#fff1e8] hover:text-[#ad3b00]">
+                      <div key={category.id}>
+                        <button
+                          type="button"
+                          aria-expanded={expanded}
+                          aria-controls={`mobile-category-products-${category.id}`}
+                          onClick={() =>
+                            setMobileExpandedCategoryId((current) =>
+                              current === category.id ? null : category.id
+                            )
+                          }
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                        >
                           {category.nama_kategori}
-                          <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
-                        </summary>
-                        <div className="ml-3 border-l border-slate-100 pb-2 pl-2">
+                          <ChevronDown size={16} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+                        </button>
+                        {expanded && <div id={`mobile-category-products-${category.id}`} className="ml-3 border-l border-slate-100 pb-2 pl-2">
                           <Link
                             href={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
-                            onClick={() => setMobileMenuOpen(false)}
+                            onClick={closeMobileMenu}
                             className="block rounded-md px-3 py-2 text-sm font-semibold text-[#ad3b00] hover:bg-[#fff1e8]"
                           >
                             Lihat semua produk kategori
@@ -407,12 +617,12 @@ export default function PublicCatalog({
                             <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
                             <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">Produk tidak dapat dimuat: {productsError}</p>
-                          ) : categoryProducts.length ? (
-                            categoryProducts.map((product) => (
+                          ) : getCategoryProducts(category.id).length ? (
+                            getCategoryProducts(category.id).map((product) => (
                               <Link
                                 key={product.id}
                                 href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
-                                onClick={() => setMobileMenuOpen(false)}
+                                onClick={closeMobileMenu}
                                 className="block rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]"
                               >
                                 {product.nama_produk}
@@ -421,8 +631,8 @@ export default function PublicCatalog({
                           ) : (
                             <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada produk.</p>
                           )}
-                        </div>
-                      </details>
+                        </div>}
+                      </div>
                     );
                   })
                 ) : (
@@ -435,8 +645,10 @@ export default function PublicCatalog({
       </header>
 
       {page === "home" ? <HomePage
+        offers={homeOffers}
+        loading={productsLoading}
         onAddOffer={addHomeOffer}
-        onOpenCart={() => setCartOpen(true)}
+        onOpenCart={openCart}
         whatsappHref={whatsappHref}
       /> : <KatalogPage
         products={products}
@@ -448,12 +660,12 @@ export default function PublicCatalog({
         onSearchChange={setCatalogSearch}
         onAdd={add}
         onAdjust={adjust}
-        onOpenCart={() => setCartOpen(true)}
+        onOpenCart={openCart}
       />}
       <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
         <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest-700 text-white"><Leaf size={17} /></span>DapurKita</Link>
+            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ad3b00] text-white"><Leaf size={17} /></span>DapurKita</Link>
             <p className="mt-3 max-w-xs text-[12px] leading-4">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
             <div className="mt-3 flex gap-2 text-[11px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
           </div>
@@ -486,7 +698,13 @@ export default function PublicCatalog({
         title="WhatsApp"
         className="fixed bottom-[88px] right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xl transition hover:bg-[#1fa855]"
       >
-        <MessageCircle size={24} aria-hidden="true" />
+        <svg
+          viewBox="0 0 448 512"
+          className="h-7 w-7 fill-current"
+          aria-hidden="true"
+        >
+          <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32 101.5 32 1.9 131.5 1.9 253.9c0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224-99.6 224-222 0-59.3-24.7-115-67-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3 18.6-68-4.4-7c-18.5-29.4-28.2-63.4-28.2-98.3C39.4 147.1 121 65.5 221 65.5c48.5 0 94.1 18.9 128.4 53.2 34.3 34.3 56.3 79.9 56.3 128.4-.1 100-81.7 191.6-181.8 191.6zm101.2-143.4c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8s-14.3 18-17.6 21.8c-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.2-17.1-41.4-4.5-10.9-9.1-9.4-12.5-9.6-3.2-.2-6.9-.2-10.6-.2s-9.7 1.4-14.8 6.9-19.4 19-19.4 46.3 19.9 53.7 22.6 57.4c2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4s4.6-24.1 3.2-26.4c-1.3-2.3-5-3.7-10.5-6.5z" />
+        </svg>
       </a>
       <button ref={cartButtonRef} onClick={() => setCartOpen(true)} className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-slate-800" aria-label={`Buka keranjang, ${page === "home" ? homeItemCount : itemCount} item`}>
         <span key={`cart-icon-${cartPulseKey}`} className={cartPulseKey ? "animate-cart-arrival" : ""}><ShoppingBag size={16} /></span>Keranjang {(page === "home" ? homeItemCount : itemCount) > 0 && <span key={`cart-count-${cartPulseKey}`} className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c24a06] px-1 text-[12px] ${cartPulseKey ? "animate-cart-count" : ""}`}>{page === "home" ? homeItemCount : itemCount}</span>}
@@ -506,11 +724,15 @@ export default function PublicCatalog({
               <div className="space-y-2.5">
                 {homeCart.map(({ offer, quantity }) => <div key={offer.sku} className="rounded-lg border border-slate-100 bg-white p-3">
                   <div className="flex gap-3">
-                    <img src={offer.image} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
+                    {offer.image ? (
+                      <img src={offer.image} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <span aria-hidden="true" className="h-14 w-14 shrink-0 rounded-md bg-[#e7edf4]" />
+                    )}
                     <div className="min-w-0 flex-1">
-                      <b className="block text-[13px] text-slate-900">{offer.title}</b>
-                      <p className="mt-0.5 text-[11px] text-slate-500">SKU: {offer.sku}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">Harga satuan: <b className="text-slate-700">{rupiah(offer.priceValue)}</b></p>
+                      <b className="block text-sm text-slate-900">{offer.title}</b>
+                      <p className="mt-0.5 text-xs text-slate-500">SKU: {offer.sku}</p>
+                      <p className="mt-1 text-xs text-slate-500">Harga satuan: <b className="text-slate-700">{rupiah(offer.priceValue)}</b></p>
                       <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-slate-100 p-0.5 w-fit">
                         <button type="button" onClick={() => adjustHomeOffer(offer.sku, -1)} className="flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-slate-100" aria-label="Kurangi jumlah"><Minus size={12} /></button>
                         <span className="w-5 text-center text-[12px] font-bold text-slate-800">{quantity}</span>
@@ -525,10 +747,10 @@ export default function PublicCatalog({
                 </div>)}
               </div>
               <div className="mt-3 rounded-lg border border-slate-100 p-3">
-                <div className="flex justify-between text-[12px] text-slate-600"><span>Subtotal permintaan ({homeItemCount} item)</span><b className="text-slate-800">{rupiah(homeTotal)}</b></div>
-                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-base font-black text-slate-900">Total estimasi</span><b className="text-lg font-black text-[#ad3b00]">{rupiah(homeTotal)}</b></div>
+                <div className="flex justify-between text-sm text-slate-600"><span>Subtotal permintaan ({homeItemCount} item)</span><b className="text-slate-800">{rupiah(homeTotal)}</b></div>
+                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-lg font-black text-slate-900">Total estimasi</span><b className="text-xl font-black text-[#ad3b00]">{rupiah(homeTotal)}</b></div>
               </div>
-              {error && <div role="alert" className="mt-3 rounded-md bg-red-50 p-2 text-[12px] text-red-700">{error}</div>}
+              {error && <div role="alert" className="mt-3 rounded-md bg-red-50 p-2 text-[13px] text-red-700">{error}</div>}
               <div className="mt-3 grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
                 <label className="block text-[11px] font-bold leading-4 text-slate-600">Nama pemesan *
                   <input required minLength={2} className="field mt-1 h-9 rounded-md border-slate-200 px-3 py-2 text-[12px] font-normal" placeholder="Nama Anda" value={form.nama_pemesan} onChange={(event) => setForm({ ...form, nama_pemesan: event.target.value })} />
@@ -569,8 +791,8 @@ export default function PublicCatalog({
                     <div className="flex gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff1e8] text-[#ad3b00]">{product.foto_url ? <img src={product.foto_url} alt="" className="h-full w-full object-cover" /> : <Utensils size={21} />}</div>
                       <div className="min-w-0 flex-1">
-                        <b className="block truncate text-[13px] text-slate-900">{product.nama_produk}</b>
-                        <p className="mt-0.5 text-[11px] text-slate-500">SKU: {product.kode_produk}</p>
+                        <b className="block truncate text-sm text-slate-900">{product.nama_produk}</b>
+                        <p className="mt-0.5 text-xs text-slate-500">SKU: {product.kode_produk}</p>
                         <div className="mt-1.5 flex items-center justify-between">
                           <span className="text-[11px] text-slate-500">Harga satuan: <b className="text-slate-700">{formatProductPrice(product)}</b></span>
                           <div className="flex items-center gap-1.5 rounded-md border border-slate-100 p-0.5">
@@ -589,8 +811,8 @@ export default function PublicCatalog({
                 ))}
               </div>
               <div className="mt-3 rounded-lg border border-slate-100 p-3">
-                <div className="flex justify-between text-[12px] text-slate-600"><span>Subtotal pesanan ({itemCount} item)</span><b className="text-slate-800">{rupiah(total)}</b></div>
-                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-base font-black text-slate-900">Total keseluruhan pesanan</span><b className="text-lg font-black text-[#ad3b00]">{rupiah(total)}</b></div>
+                <div className="flex justify-between text-sm text-slate-600"><span>Subtotal pesanan ({itemCount} item)</span><b className="text-slate-800">{rupiah(total)}</b></div>
+                <div className="mt-2.5 flex justify-between border-t border-slate-100 pt-2.5"><span className="text-lg font-black text-slate-900">Total keseluruhan pesanan</span><b className="text-xl font-black text-[#ad3b00]">{rupiah(total)}</b></div>
               </div>
               <div className="mt-3 flex gap-2 rounded-md bg-[#fff7f2] px-3 py-2.5 text-[11px] leading-4 text-slate-600"><BadgeCheck size={14} className="shrink-0 text-[#ad3b00]" /><p>Pesan otomatis berisi data produk, jumlah, dan total estimasi untuk diteruskan ke tim E-Katalog MBG.</p></div>
               <form onSubmit={checkout} className="mt-3 overflow-hidden rounded-lg border border-slate-100 bg-white">

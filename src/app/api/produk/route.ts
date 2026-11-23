@@ -23,7 +23,8 @@ export async function GET() {
   try {
     const session = await getSession();
 
-    const produk = await prisma.produk.findMany({
+    const [produk, rekapBarang] = await Promise.all([
+      prisma.produk.findMany({
       where: session ? {} : { tersedia: true },
       include: {
         kategori: true,
@@ -32,9 +33,33 @@ export async function GET() {
       orderBy: {
         dibuat_pada: "desc",
       },
-    });
+      }),
+      prisma.rekap_barang.findMany({
+        select: {
+          kategori: true,
+          subkategori: true,
+          jumlah_barang: true,
+        },
+      }),
+    ]);
 
-    return NextResponse.json({ produk });
+    const rekapBySubcategory = new Map(
+      rekapBarang.map((item) => [
+        `${item.kategori.trim().toLocaleLowerCase()}|${item.subkategori.trim().toLocaleLowerCase()}`,
+        item.jumlah_barang,
+      ])
+    );
+    const produkDenganRekap = produk.map((item) => ({
+      ...item,
+      jumlah_barang_subkategori:
+        item.kategori && item.subkategori
+          ? rekapBySubcategory.get(
+              `${item.kategori.nama_kategori.trim().toLocaleLowerCase()}|${item.subkategori.nama_subkategori.trim().toLocaleLowerCase()}`
+            ) ?? null
+          : null,
+    }));
+
+    return NextResponse.json({ produk: produkDenganRekap });
   } catch (error) {
     console.error("Get produk error:", error);
 
