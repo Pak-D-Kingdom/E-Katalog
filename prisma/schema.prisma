@@ -10,7 +10,7 @@ datasource db {
 model admin {
   id          Int      @id @default(autoincrement())
   nama        String   @db.VarChar(120)
-  email       String   @unique
+  email       String   @unique @db.VarChar(191)
   kata_sandi  String   @db.VarChar(255)
   peran       String   @default("admin") @db.VarChar(40)
   dibuat_pada DateTime @default(now())
@@ -19,7 +19,7 @@ model admin {
 model kategori {
   id            Int           @id @default(autoincrement())
   nama_kategori String        @db.VarChar(120)
-  slug          String        @unique
+  slug          String        @unique @db.VarChar(191)
   ikon_url      String?       @db.VarChar(500)
   dibuat_pada   DateTime      @default(now())
   produk        produk[]
@@ -30,45 +30,56 @@ model subkategori {
   id               Int      @id @default(autoincrement())
   kategori_id      Int
   nama_subkategori String   @db.VarChar(120)
-  slug             String
+  slug             String   @db.VarChar(191)
   dibuat_pada      DateTime @default(now())
   produk           produk[]
-  kategori         kategori @relation(fields: [kategori_id], references: [id])
+  kategori         kategori @relation(fields: [kategori_id], references: [id], onDelete: Restrict)
 
   @@unique([kategori_id, slug])
   @@index([kategori_id])
 }
 
 model produk {
-  id               Int              @id @default(autoincrement())
-  kategori_id      Int?
-  subkategori_id   Int?
-  kode_produk      String           @unique @db.VarChar(80)
-  nama_produk      String           @db.VarChar(191)
-  slug             String           @unique @db.VarChar(191)
-  deskripsi        String           @db.Text
-  informasi_gizi   String           @default("") @db.LongText
-  jenis_harga      String           @default("tetap") @db.VarChar(20)
-  harga            Decimal?         @db.Decimal(12, 2)
-  harga_min        Decimal?         @db.Decimal(12, 2)
-  harga_max        Decimal?         @db.Decimal(12, 2)
-  satuan           String           @default("porsi") @db.VarChar(40)
-  foto_url         String?          @db.VarChar(500)
-  tersedia         Boolean          @default(true)
-  dibuat_pada      DateTime         @default(now())
-  diperbarui_pada  DateTime         @updatedAt
-  kategori         kategori?        @relation(fields: [kategori_id], references: [id], onDelete: SetNull)
-  subkategori      subkategori?     @relation(fields: [subkategori_id], references: [id], onDelete: SetNull)
-  detail_pesanan   detail_pesanan[]
+  id              Int              @id @default(autoincrement())
+  kategori_id     Int?
+  subkategori_id  Int?
+  kode_produk     String           @unique @db.VarChar(80)
+  nama_produk     String           @db.VarChar(191)
+  slug            String           @unique @db.VarChar(191)
+  deskripsi       String           @db.Text
+  informasi_gizi  Json
+  jenis_harga     String           @default("tetap") @db.VarChar(20)
+  harga           Decimal?         @db.Decimal(12, 2)
+  harga_min       Decimal?         @db.Decimal(12, 2)
+  harga_max       Decimal?         @db.Decimal(12, 2)
+  stok            Int?             @db.UnsignedInt
+  satuan          String           @default("porsi") @db.VarChar(40)
+  foto_url        String?          @db.VarChar(500)
+  tersedia        Boolean          @default(true)
+  dibuat_pada     DateTime         @default(now())
+  diperbarui_pada DateTime         @updatedAt
+  kategori        kategori?        @relation(fields: [kategori_id], references: [id], onDelete: SetNull)
+  subkategori     subkategori?     @relation(fields: [subkategori_id], references: [id], onDelete: SetNull)
+  detail_pesanan  detail_pesanan[]
 
   @@index([kategori_id])
   @@index([subkategori_id])
   @@index([tersedia])
 }
 
+model rekap_barang {
+  id            Int    @id @default(autoincrement())
+  kategori      String @db.VarChar(120)
+  subkategori   String @db.VarChar(120)
+  jumlah_barang Int
+
+  @@unique([kategori, subkategori])
+  @@index([kategori])
+}
+
 model pengaturan_katalog {
   id              Int      @id @default(autoincrement())
-  nama_instansi   String
+  nama_instansi   String   @db.VarChar(191)
   nomor_whatsapp  String   @db.VarChar(30)
   alamat          String?  @db.Text
   template_pesan  String   @db.Text
@@ -76,17 +87,17 @@ model pengaturan_katalog {
 }
 
 model riwayat_pesanan {
-  id               Int              @id @default(autoincrement())
-  kode_pesanan     String           @unique @db.VarChar(40)
-  nama_pemesan     String           @db.VarChar(160)
-  nama_sekolah     String?          @db.VarChar(191)
-  telepon_pemesan  String?          @db.VarChar(30)
-  catatan          String?          @db.Text
-  total_harga      Decimal          @db.Decimal(12, 2)
-  status_pesanan   String           @default("menunggu_konfirmasi") @db.VarChar(40)
-  status_pembayaran String          @default("belum_dibayar") @db.VarChar(40)
-  dibuat_pada      DateTime         @default(now())
-  detail_pesanan   detail_pesanan[]
+  id                Int              @id @default(autoincrement())
+  kode_pesanan      String           @unique @db.VarChar(40)
+  nama_pemesan      String           @db.VarChar(160)
+  nama_sekolah      String?          @db.VarChar(191)
+  telepon_pemesan   String?          @db.VarChar(30)
+  catatan           String?          @db.Text
+  total_harga       Decimal          @db.Decimal(12, 2)
+  status_pesanan    String           @default("menunggu_konfirmasi") @db.VarChar(40)
+  status_pembayaran String           @default("belum_dibayar") @db.VarChar(40)
+  dibuat_pada       DateTime         @default(now())
+  detail_pesanan    detail_pesanan[]
 
   @@index([dibuat_pada])
   @@index([status_pesanan])
@@ -97,12 +108,12 @@ model detail_pesanan {
   id           Int             @id @default(autoincrement())
   pesanan_id   Int
   produk_id    Int?
-  nama_produk  String
+  nama_produk  String          @db.VarChar(191)
   harga_satuan Decimal         @db.Decimal(12, 2)
   jumlah       Int
   subtotal     Decimal         @db.Decimal(12, 2)
   pesanan      riwayat_pesanan @relation(fields: [pesanan_id], references: [id], onDelete: Cascade)
-  produk       produk?         @relation(fields: [produk_id], references: [id])
+  produk       produk?         @relation(fields: [produk_id], references: [id], onDelete: SetNull)
 
   @@index([pesanan_id])
   @@index([produk_id])

@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Layers3, Leaf, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { BadgeCheck, Layers3, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
 import { formatProductPrice, slugify } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import type { CartItem } from "../types";
 
-const categorySlugs = new Set([
-  "peralatan",
-  "bahan-baku",
-  "perizinan",
-  "perawatan"
-]);
 const categoryOrder = [
   "bahan-baku",
   "perizinan",
@@ -33,26 +28,26 @@ const productStatuses: Record<string, string> = {
   "DK-MNT-PEST4": "Layanan Rutin",
   "DK-MNT-GAS01": "Layanan Rutin",
   "DK-MNT-GRS92": "Layanan Rutin",
-  "DK-MNT-REF34": "Layanan Rutin"
+  "DK-MNT-REF34": "Layanan Rutin",
 };
-function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail: () => void; onAdd: (source: HTMLElement) => void }) {
+const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
+  product: Product;
+  onDetail: () => void;
+  onAdd: (source: HTMLElement) => void;
+}) {
   return (
     <article className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
-      <button onClick={onDetail} aria-label={`Lihat detail ${product.nama_produk}`} className="relative block aspect-[1.2/1] w-full overflow-hidden bg-[#edf2ff] text-left">
+      <button onClick={onDetail} aria-label={`Lihat detail ${product.nama_produk}`} className="relative block aspect-[1.55/1] w-full overflow-hidden bg-[#edf2ff] text-left sm:aspect-[1.2/1]">
         {product.foto_url
-          ? <img src={product.foto_url} alt={product.nama_produk} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-          : <span className="block h-full w-full" aria-hidden="true" />}
+          ? <img src={product.foto_url} alt={product.nama_produk} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          : <span className="flex h-full w-full items-center justify-center text-[#ad3b00]/35" aria-hidden="true"><PackageOpen size={30}/></span>}
         <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.subkategori?.nama_subkategori || product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
-      <div className="flex min-h-[170px] flex-col p-3">
+      <div className="flex min-h-[155px] flex-col p-2 sm:min-h-[170px] sm:p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-xs font-bold uppercase tracking-[.12em] text-slate-500">{product.kode_produk}</p>
-          <span className="shrink-0 text-xs font-bold text-[#ad3b00]">★ 4.9</span>
         </div>
         <button onClick={onDetail} className="mt-1 min-h-10 text-left text-sm font-extrabold leading-5 text-slate-900 hover:text-[#ad3b00]">{product.nama_produk}</button>
-        <div className="mt-2 min-h-9 sm:min-h-5">
-
-        </div>
         <div className="mt-auto pt-2">
           <small className="block text-xs text-slate-600">Harga Satuan</small>
           <b className="block text-base font-extrabold leading-6 text-[#b63d00]">
@@ -63,7 +58,9 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
             <button
               onClick={(event) => onAdd(event.currentTarget)}
               disabled={
-                !product.tersedia || product.jenis_harga === "rentang"
+                !product.tersedia ||
+                product.jenis_harga === "rentang" ||
+                product.stok === 0
               }
               title={
                 product.jenis_harga === "rentang"
@@ -94,9 +91,9 @@ function ProductCard({ product, onDetail, onAdd }: { product: Product; onDetail:
       </div>
     </article>
   );
-}
+});
 
-export default function KatalogPage({
+function KatalogPage({
   products,
   categories,
   loading,
@@ -115,10 +112,11 @@ export default function KatalogPage({
   cart: CartItem[];
   search: string;
   onSearchChange: (value: string) => void;
-  onAdd: (product: Product, source?: HTMLElement) => void;
+  onAdd: (product: Product, source?: HTMLElement, quantity?: number) => void;
   onAdjust: (id: number, delta: number) => void;
   onOpenCart: () => void;
 }) {
+  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<Product | null>(null);
   const [category, setCategory] = useState<number | null>(null);
   const [requestedCategory, setRequestedCategory] = useState<string | null>(null);
@@ -128,11 +126,10 @@ export default function KatalogPage({
   const [sortOrder, setSortOrder] = useState("recommended");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setRequestedCategory(params.get("kategori"));
+    setRequestedCategory(searchParams.get("kategori"));
     setSubcategoryFilter("all");
-    onSearchChange(params.get("q") || "");
-  }, [onSearchChange]);
+    onSearchChange(searchParams.get("q") || "");
+  }, [onSearchChange, searchParams]);
 
   useEffect(() => {
     if (!requestedCategory) return;
@@ -142,13 +139,14 @@ export default function KatalogPage({
     setCategory(match?.id ?? null);
   }, [categories, requestedCategory]);
 
-  const catalogCategories = categories
-    .filter((item) => categorySlugs.has(item.slug))
-    .sort((a, b) => categoryOrder.indexOf(a.slug) - categoryOrder.indexOf(b.slug));
+  const catalogCategories = [...categories].sort((a, b) => {
+    const aOrder = categoryOrder.indexOf(a.slug);
+    const bOrder = categoryOrder.indexOf(b.slug);
+    return (aOrder < 0 ? Number.MAX_SAFE_INTEGER : aOrder) -
+      (bOrder < 0 ? Number.MAX_SAFE_INTEGER : bOrder);
+  });
   const b2bProducts = useMemo(
-    () => products.filter((product) =>
-      product.kategori?.slug && categorySlugs.has(product.kategori.slug)
-    ),
+    () => products.filter((product) => product.kategori),
     [products]
   );
   const subcategories = useMemo(
@@ -217,6 +215,15 @@ export default function KatalogPage({
     });
     return filtered;
   }, [b2bProducts, category, subcategoryFilter, search, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
+
+  const selectedCartQuantity = selected
+    ? cart.find((item) => item.product.id === selected.id)?.quantity ?? 0
+    : 0;
+  const remainingStock = selected
+    ? selected.stok == null
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(0, selected.stok - selectedCartQuantity)
+    : 0;
 
   return <>
     <section className="border-b border-slate-100 bg-[#f7f8ff]">
@@ -331,7 +338,7 @@ export default function KatalogPage({
 
                     <button
                       onClick={(event) => onAdd(selected, event.currentTarget)}
-                      disabled={!selected.tersedia}
+                      disabled={!selected.tersedia || remainingStock === 0}
                       className="flex h-7 w-7 items-center justify-center text-slate-500 disabled:opacity-30"
                     >
                       <Plus size={13} />
@@ -345,7 +352,7 @@ export default function KatalogPage({
                     setSelected(null);
                     onOpenCart();
                   }}
-                  disabled={!selected.tersedia}
+                  disabled={!selected.tersedia || remainingStock === 0}
                   className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                 >
                   <ShoppingCart size={14} />
@@ -356,6 +363,9 @@ export default function KatalogPage({
           </div>
         </div>
       </div>
-    </div>}
+      </div>
+    }
   </>;
 }
+
+export default memo(KatalogPage);

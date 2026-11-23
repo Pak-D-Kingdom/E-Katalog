@@ -20,6 +20,13 @@ export type Subcategory = {
 
 export type JenisHarga = "tetap" | "rentang";
 
+export type Gizi = {
+  kalori: number;
+  protein: number;
+  karbohidrat: number;
+  lemak: number;
+};
+
 export type Product = {
   id: number;
   kategori_id: number | null;
@@ -28,16 +35,16 @@ export type Product = {
   nama_produk: string;
   slug: string;
   deskripsi: string;
-
-  // Informasi harga
+  informasi_gizi: Gizi;
   jenis_harga: JenisHarga;
   harga: string | number | null;
   harga_min: string | number | null;
   harga_max: string | number | null;
-
+  stok: number | null;
   satuan: string;
   foto_url: string | null;
   tersedia: boolean;
+  jumlah_barang_subkategori?: number | null;
   kategori?: Category | null;
   subkategori?: Subcategory | null;
 };

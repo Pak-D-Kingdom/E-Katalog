@@ -64,7 +64,7 @@ async function main() {
         nama_produk: item.name,
         slug: item.slug,
         deskripsi: item.description,
-        // informasi_gizi: { kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 },
+        informasi_gizi: { kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 },
         harga: item.price,
         satuan: item.unit
       }
