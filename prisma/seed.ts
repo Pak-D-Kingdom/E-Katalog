@@ -45,12 +45,12 @@ async function main() {
       ?? await prisma.kategori.findUnique({ where: { slug: item.previousSlug } });
     const category = existingCategory
       ? await prisma.kategori.update({
-          where: { id: existingCategory.id },
-          data: { nama_kategori: item.nama_kategori, slug: item.slug }
-        })
+        where: { id: existingCategory.id },
+        data: { nama_kategori: item.nama_kategori, slug: item.slug }
+      })
       : await prisma.kategori.create({
-          data: { nama_kategori: item.nama_kategori, slug: item.slug }
-        });
+        data: { nama_kategori: item.nama_kategori, slug: item.slug }
+      });
     categories.set(item.key, category.id);
   }
 
@@ -64,7 +64,7 @@ async function main() {
         nama_produk: item.name,
         slug: item.slug,
         deskripsi: item.description,
-        informasi_gizi: { kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 },
+        // informasi_gizi: { kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 },
         harga: item.price,
         satuan: item.unit
       }

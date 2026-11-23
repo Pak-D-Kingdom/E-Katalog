@@ -18,11 +18,17 @@ interface Product {
     id: number;
     kodeProduk: string;
     namaProduk: string;
-    harga: number;
+    slug: string;
+    deskripsi: string;
+    jenisHarga: "tetap" | "rentang";
+    harga: number | null;
+    hargaMin: number | null;
+    hargaMax: number | null;
     satuan: string;
     fotoUrl: string | null;
     tersedia: boolean;
     kategori: string;
+    subkategori: string;
     diperbaruiPada: string;
 }
 
@@ -180,6 +186,46 @@ export default function DashboardBottom() {
 
     const currentPage = Math.min(page, totalPages);
 
+    const paginationItems = useMemo(() => {
+        if (totalPages <= 5) {
+            return Array.from(
+                { length: totalPages },
+                (_, index) => index + 1
+            );
+        }
+
+        let start = Math.max(2, currentPage - 1);
+        let end = Math.min(totalPages - 1, currentPage + 1);
+
+        if (currentPage <= 2) {
+            start = 2;
+            end = Math.min(3, totalPages - 1);
+        }
+
+        if (currentPage >= totalPages - 1) {
+            start = Math.max(2, totalPages - 2);
+            end = totalPages - 1;
+        }
+
+        const items: (number | string)[] = [1];
+
+        if (start > 2) {
+            items.push("ellipsis-left");
+        }
+
+        for (let number = start; number <= end; number++) {
+            items.push(number);
+        }
+
+        if (end < totalPages - 1) {
+            items.push("ellipsis-right");
+        }
+
+        items.push(totalPages);
+
+        return items;
+    }, [totalPages, currentPage]);
+
     const visibleProducts = filteredProducts.slice(
         (currentPage - 1) * pageSize,
         currentPage * pageSize
@@ -198,13 +244,15 @@ export default function DashboardBottom() {
     const safeWhatsapp = nomorWhatsapp?.replace(/\D/g, "") ?? "";
 
     return (
-        <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.6fr_1fr]">
+        <section className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
 
             {/* KATALOG PRODUK */}
             <div className="min-w-0 rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
 
-                <div className="mb-5 flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-                    <div>
+                {/* HEADER KATALOG PRODUK */}
+                <div className="mb-5 flex min-w-0 flex-col gap-3">
+                    {/* Judul */}
+                    <div className="min-w-0">
                         <h2 className="text-[19px] font-semibold text-[#172B4D]">
                             Katalog Produk
                         </h2>
@@ -214,29 +262,41 @@ export default function DashboardBottom() {
                         </p>
                     </div>
 
-                    <div className="flex min-w-0 items-center gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-[#EAF0FC] px-3 py-2 lg:w-[190px] lg:flex-none">
-                            <Search size={15} className="shrink-0 text-[#64748B]" />
+                    {/* Pencarian dan Filter Kategori */}
+                    <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+
+                        {/* Search */}
+                        <div className="flex min-w-0 flex-1 basis-[190px] items-center gap-2 rounded-md bg-[#EAF0FC] px-3 py-2">
+                            <Search
+                                size={15}
+                                className="shrink-0 text-[#64748B]"
+                            />
 
                             <input
                                 value={search}
-                                onChange={(event) => changeSearch(event.target.value)}
+                                onChange={(event) =>
+                                    changeSearch(event.target.value)
+                                }
                                 placeholder="Cari nama / SKU..."
                                 className="w-full min-w-0 bg-transparent text-[11px] text-[#172B4D] outline-none placeholder:text-[#94A3B8]"
                             />
                         </div>
 
-                        <div className="flex items-center rounded-md bg-[#EAF0FC] px-2">
+                        {/* Filter Kategori */}
+                        <div className="flex min-w-0 flex-1 basis-[140px] items-center gap-2 rounded-md bg-[#EAF0FC] px-2 sm:w-[170px] sm:flex-none">
+
                             <SlidersHorizontal
                                 size={16}
-                                className="text-[#172B4D]"
+                                className="shrink-0 text-[#172B4D]"
                             />
 
                             <select
                                 value={category}
-                                onChange={(event) => changeCategory(event.target.value)}
+                                onChange={(event) =>
+                                    changeCategory(event.target.value)
+                                }
                                 aria-label="Filter kategori produk"
-                                className="max-w-[150px] cursor-pointer bg-transparent py-2 text-[10px] text-[#172B4D] outline-none"
+                                className="w-full min-w-0 flex-1 cursor-pointer bg-transparent py-2 text-[10px] text-[#172B4D] outline-none"
                             >
                                 <option value="Semua">Semua</option>
 
@@ -258,16 +318,19 @@ export default function DashboardBottom() {
                 )}
 
                 {/* TABEL PRODUK */}
-                <div className="w-full overflow-x-auto">
-                    <table className="w-full min-w-[590px] border-collapse text-left">
+                <div className="w-full overflow-x-auto rounded-md">
+                    <table className="w-full min-w-[1450px] border-collapse text-left">
                         <thead>
                             <tr className="bg-[#EEF3FF] text-[10px] font-bold uppercase tracking-wide text-[#596780]">
-                                <th className="px-3 py-3">Produk & SKU</th>
+                                <th className="px-3 py-3">Foto, Produk & SKU</th>
                                 <th className="px-3 py-3">Kategori</th>
-                                <th className="px-3 py-3">Harga Satuan</th>
-                                <th className="px-3 py-3 text-center">
-                                    Ketersediaan
-                                </th>
+                                <th className="px-3 py-3">Subkategori</th>
+                                <th className="px-3 py-3">Jenis Harga</th>
+                                <th className="px-3 py-3">Rincian Harga</th>
+                                <th className="px-3 py-3">Satuan Produk</th>
+                                <th className="px-3 py-3">Deskripsi</th>
+                                <th className="px-3 py-3">Slug URL</th>
+                                <th className="px-3 py-3 text-center">Ketersediaan</th>
                             </tr>
                         </thead>
 
@@ -276,9 +339,10 @@ export default function DashboardBottom() {
                                 visibleProducts.map((product) => (
                                     <tr
                                         key={product.id}
-                                        className="border-b border-[#EAF0F8] last:border-0"
+                                        className="border-b border-[#EAF0F8] last:border-0 align-top"
                                     >
-                                        <td className="px-3 py-3">
+                                        {/* Foto, Nama, SKU */}
+                                        <td className="min-w-[230px] px-3 py-3">
                                             <div className="flex items-center gap-3">
                                                 <ProductThumbnail
                                                     image={product.fotoUrl}
@@ -289,7 +353,6 @@ export default function DashboardBottom() {
                                                     <p className="text-[12px] font-bold text-[#172B4D]">
                                                         {product.namaProduk}
                                                     </p>
-
                                                     <p className="mt-1 text-[9px] text-[#64748B]">
                                                         SKU: {product.kodeProduk}
                                                     </p>
@@ -297,20 +360,76 @@ export default function DashboardBottom() {
                                             </div>
                                         </td>
 
-                                        <td className="px-3 py-3">
+                                        {/* Kategori */}
+                                        <td className="min-w-[140px] px-3 py-3">
                                             <span className="inline-block rounded-md bg-[#DCE7FF] px-2 py-1 text-[9px] font-medium text-[#172B4D]">
                                                 {product.kategori}
                                             </span>
                                         </td>
 
-                                        <td className="px-3 py-3 text-[11px] font-bold text-[#172B4D]">
-                                            {formatRupiah(product.harga)}
-                                            <span className="block text-[9px] font-normal text-[#64748B]">
-                                                / {product.satuan}
+                                        {/* Subkategori */}
+                                        <td className="min-w-[150px] px-3 py-3 text-[10px] text-[#172B4D]">
+                                            {product.subkategori || "—"}
+                                        </td>
+
+                                        {/* Jenis Harga */}
+                                        <td className="min-w-[120px] px-3 py-3">
+                                            <span
+                                                className={`inline-block rounded-md px-2 py-1 text-[9px] font-bold ${product.jenisHarga === "rentang"
+                                                        ? "bg-orange-50 text-orange-700"
+                                                        : "bg-blue-50 text-blue-700"
+                                                    }`}
+                                            >
+                                                {product.jenisHarga === "rentang"
+                                                    ? "Harga Rentang"
+                                                    : "Harga Tetap"}
                                             </span>
                                         </td>
 
-                                        <td className="px-3 py-3 text-center">
+                                        {/* Rincian Harga */}
+                                        <td className="min-w-[180px] px-3 py-3 text-[11px] font-bold text-[#172B4D]">
+                                            {product.jenisHarga === "rentang" ? (
+                                                product.hargaMin != null &&
+                                                    product.hargaMax != null ? (
+                                                    <div>
+                                                        <p>
+                                                            {formatRupiah(product.hargaMin)}
+                                                        </p>
+                                                        <p className="mt-1">
+                                                            s.d. {formatRupiah(product.hargaMax)}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    "Hubungi Admin"
+                                                )
+                                            ) : product.harga != null ? (
+                                                formatRupiah(product.harga)
+                                            ) : (
+                                                "Harga belum tersedia"
+                                            )}
+                                        </td>
+
+                                        {/* Satuan */}
+                                        <td className="min-w-[110px] px-3 py-3 text-[10px] text-[#172B4D]">
+                                            {product.satuan || "—"}
+                                        </td>
+
+                                        {/* Deskripsi */}
+                                        <td className="min-w-[260px] max-w-[300px] px-3 py-3">
+                                            <p className="whitespace-normal break-words text-[10px] leading-5 text-[#596780]">
+                                                {product.deskripsi || "Belum ada deskripsi"}
+                                            </p>
+                                        </td>
+
+                                        {/* Slug */}
+                                        <td className="min-w-[160px] max-w-[190px] px-3 py-3">
+                                            <p className="break-all text-[10px] text-[#596780]">
+                                                {product.slug || "—"}
+                                            </p>
+                                        </td>
+
+                                        {/* Status */}
+                                        <td className="min-w-[120px] px-3 py-3 text-center">
                                             {product.tersedia ? (
                                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600">
                                                     <CheckCircle2 size={15} />
@@ -329,7 +448,7 @@ export default function DashboardBottom() {
                             {loading && (
                                 <tr>
                                     <td
-                                        colSpan={4}
+                                        colSpan={9}
                                         className="px-3 py-10 text-center text-[12px] text-[#64748B]"
                                     >
                                         Memuat katalog produk...
@@ -340,7 +459,7 @@ export default function DashboardBottom() {
                             {!loading && !error && visibleProducts.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={4}
+                                        colSpan={9}
                                         className="px-3 py-10 text-center text-[12px] text-[#64748B]"
                                     >
                                         Produk tidak ditemukan.
@@ -351,8 +470,9 @@ export default function DashboardBottom() {
                     </table>
                 </div>
 
+
                 {/* PAGINATION */}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#EAF0F8] pt-4">
+                <div className="mt-4 flex flex-col gap-3 border-t border-[#EAF0F8] pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[11px] text-[#596780]">
                         Menampilkan{" "}
                         <span className="font-semibold text-[#172B4D]">
@@ -365,35 +485,42 @@ export default function DashboardBottom() {
                         produk terdaftar
                     </p>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                         <button
                             type="button"
                             disabled={currentPage === 1 || loading}
                             onClick={() =>
                                 setPage((value) => Math.max(1, value - 1))
                             }
-                            className="rounded-md bg-[#E5EDFF] px-2 py-2 text-[10px] font-medium text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Halaman sebelumnya"
                         >
                             <ChevronLeft size={14} />
                         </button>
 
-                        {Array.from(
-                            { length: totalPages },
-                            (_, index) => index + 1
-                        ).map((number) => (
-                            <button
-                                type="button"
-                                key={number}
-                                onClick={() => setPage(number)}
-                                disabled={loading}
-                                className={`min-w-8 rounded-md px-2 py-2 text-[10px] font-bold ${currentPage === number
+                        {paginationItems.map((item, index) =>
+                            typeof item === "number" ? (
+                                <button
+                                    type="button"
+                                    key={item}
+                                    onClick={() => setPage(item)}
+                                    disabled={loading}
+                                    className={`min-w-8 rounded-md px-2 py-2 text-[10px] font-bold ${currentPage === item
                                         ? "bg-[#A83D00] text-white"
                                         : "bg-[#E5EDFF] text-[#172B4D] hover:bg-[#D5E2FA]"
-                                    }`}
-                            >
-                                {number}
-                            </button>
-                        ))}
+                                        }`}
+                                >
+                                    {item}
+                                </button>
+                            ) : (
+                                <span
+                                    key={`${item}-${index}`}
+                                    className="px-1 text-xs text-[#94A3B8]"
+                                >
+                                    ...
+                                </span>
+                            )
+                        )}
 
                         <button
                             type="button"
@@ -403,12 +530,14 @@ export default function DashboardBottom() {
                                     Math.min(totalPages, value + 1)
                                 )
                             }
-                            className="rounded-md bg-[#E5EDFF] px-2 py-2 text-[10px] font-medium text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Halaman selanjutnya"
                         >
                             <ChevronRight size={14} />
                         </button>
                     </div>
                 </div>
+
             </div>
 
             {/* AKTIVITAS PESANAN TERBARU */}

@@ -49,8 +49,10 @@ model produk {
   nama_produk      String          @db.VarChar(191)
   slug             String          @unique @db.VarChar(191)
   deskripsi        String          @db.Text
-  informasi_gizi   Json
-  harga            Decimal         @db.Decimal(12, 2)
+  jenis_harga      String          @default("tetap") @db.VarChar(20)
+  harga            Decimal?        @db.Decimal(12, 2)
+  harga_min        Decimal?        @db.Decimal(12, 2)
+  harga_max        Decimal?        @db.Decimal(12, 2)
   satuan           String          @default("porsi") @db.VarChar(40)
   foto_url         String?         @db.VarChar(500)
   tersedia         Boolean         @default(true)
@@ -88,14 +90,20 @@ model riwayat_pesanan {
   id               Int              @id @default(autoincrement())
   kode_pesanan     String           @unique @db.VarChar(40)
   nama_pemesan     String           @db.VarChar(160)
-  nama_sekolah    String?          @db.VarChar(191)
+  nama_sekolah     String?          @db.VarChar(191)
   telepon_pemesan  String?          @db.VarChar(30)
   catatan          String?          @db.Text
   total_harga      Decimal          @db.Decimal(12, 2)
+
+  status_pesanan    String           @default("menunggu_konfirmasi") @db.VarChar(40)
+  status_pembayaran String           @default("belum_dibayar") @db.VarChar(40)
+
   dibuat_pada      DateTime         @default(now())
   detail_pesanan   detail_pesanan[]
 
   @@index([dibuat_pada])
+  @@index([status_pesanan])
+  @@index([status_pembayaran])
 }
 
 model detail_pesanan {

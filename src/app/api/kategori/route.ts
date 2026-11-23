@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { kategoriSchema } from "@/lib/validation";
+import { kategoriSchema, zodErrorMessage } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     await requireAdmin();
     const parsed = kategoriSchema.safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: zodErrorMessage(parsed.error), details: parsed.error.flatten() }, { status: 400 });
     const kategori = await prisma.kategori.create({ data: parsed.data });
     return NextResponse.json({ kategori }, { status: 201 });
   } catch (error) {
