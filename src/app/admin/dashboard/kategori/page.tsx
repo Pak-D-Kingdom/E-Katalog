@@ -39,6 +39,20 @@ export default function CategoriesPage() {
     load().catch((cause: Error) => setError(cause.message));
   }, []);
 
+  useEffect(() => {
+    const action = new URLSearchParams(window.location.search).get("action");
+    if (action === "tambah") {
+      setEditing(null);
+      setForm(emptyForm);
+      setError("");
+      setOpen(true);
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("action");
+      window.history.replaceState({}, "", url);
+    }
+  }, []);
+
   function startEdit(category?: Category) {
     setEditing(category?.id ?? null);
     setForm(category
@@ -120,7 +134,11 @@ export default function CategoriesPage() {
           <h1 className="text-xl font-black text-[#172B4D]">Daftar kategori</h1>
           <p className="mt-1 text-sm text-slate-500">Atur kategori yang digunakan pada katalog produk.</p>
         </div>
-        <button type="button" onClick={() => startEdit()} className="btn-primary">
+        <button
+          type="button"
+          onClick={() => startEdit()}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#A83D00] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#873100]"
+        >
           <Plus size={18} /> Tambah kategori
         </button>
       </div>
@@ -206,8 +224,18 @@ export default function CategoriesPage() {
               </div>
               {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="btn-secondary">Batal</button>
-                <button type="submit" disabled={loading} className="btn-primary">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg border border-[#DCE4F0] bg-white px-4 py-2.5 text-sm font-bold text-[#172B4D] transition hover:bg-[#EEF3FF]"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-lg bg-[#A83D00] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   {loading ? "Menyimpan..." : editing ? "Simpan perubahan" : "Simpan kategori"}
                 </button>
               </div>

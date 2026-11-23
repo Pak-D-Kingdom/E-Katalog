@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle,
 import { api, formatProductPrice, hargaRentang, hargaSatuan, rupiah, } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import HomePage, { getHomeOffers } from "./Home/HomePage";
 import type { HomeOffer } from "./Home/HomePage";
 import KatalogPage from "./Katalog/KatalogPage";
@@ -33,6 +34,7 @@ function getCartLineSubtotal(product: Product, quantity: number) {
 export default function PublicCatalog({
   page = "home",
 }: PublicCatalogProps) {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
@@ -40,7 +42,9 @@ export default function PublicCatalog({
   const [settings, setSettings] = useState<Settings | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
-  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogSearch, setCatalogSearch] = useState(
+    () => page === "catalog" ? searchParams.get("q") || "" : ""
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
@@ -60,6 +64,32 @@ export default function PublicCatalog({
   const cartRef = useRef(cart);
   const cartButtonRef = useRef<HTMLButtonElement>(null);
   const flyingKeyRef = useRef(0);
+  const ourCatalogActive =
+    page === "catalog" && searchParams.has("kategori");
+  const catalogHref = catalogSearch.trim()
+    ? `/katalog?q=${encodeURIComponent(catalogSearch.trim())}`
+    : "/katalog";
+
+  useEffect(() => {
+    if (page !== "catalog") return;
+    const querySearch = searchParams.get("q") || "";
+    setCatalogSearch((current) => current === querySearch ? current : querySearch);
+  }, [page, searchParams]);
+
+  useEffect(() => {
+    if (page !== "catalog") return;
+    const url = new URL(window.location.href);
+    const trimmedSearch = catalogSearch.trim();
+
+    if (trimmedSearch) {
+      url.searchParams.set("q", trimmedSearch);
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [catalogSearch, page]);
 
   useEffect(() => {
     setLoading(page === "catalog");
@@ -344,7 +374,7 @@ export default function PublicCatalog({
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:gap-y-3 sm:px-5 sm:py-3 lg:px-8">
           <Link href="/" aria-label="Beranda DapurKita" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white"><Leaf size={21} /></span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ad3b00] text-white"><Leaf size={21} /></span>
             <span><b className="block text-base leading-tight text-slate-900">DapurKita</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
@@ -446,8 +476,24 @@ export default function PublicCatalog({
                 )}
               </div>
             )}
-            <Link href="/" className={`px-2 py-2 transition-colors hover:text-slate-950 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}>Home</Link>
-            <Link href="/katalog" className="px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">Katalog</Link>
+            <Link
+              href="/"
+              aria-current={page === "home" ? "page" : undefined}
+              className={`px-2 py-2 transition-colors hover:text-slate-950 ${page === "home" ? "border-b-2 border-[#ad3b00] font-extrabold text-[#ad3b00]" : "text-slate-700"}`}
+            >
+              Home
+            </Link>
+            <Link
+              href={catalogHref}
+              aria-current={page === "catalog" && !ourCatalogActive ? "page" : undefined}
+              className={`border-b-2 px-2 py-2 transition-colors hover:text-slate-950 ${
+                page === "catalog" && !ourCatalogActive
+                  ? "border-[#ad3b00] font-extrabold text-[#ad3b00]"
+                  : "border-transparent text-slate-700"
+              }`}
+            >
+              Katalog
+            </Link>
             <details
               className="group relative"
               onToggle={(event) => {
@@ -456,7 +502,14 @@ export default function PublicCatalog({
                 }
               }}
             >
-              <summary className="flex cursor-pointer list-none items-center gap-1 whitespace-nowrap px-2 py-2 text-slate-700 transition-colors hover:text-slate-950">
+              <summary
+                aria-current={page === "catalog" && ourCatalogActive ? "page" : undefined}
+                className={`flex cursor-pointer list-none items-center gap-1 whitespace-nowrap border-b-2 px-2 py-2 transition-colors hover:text-slate-950 ${
+                  page === "catalog" && ourCatalogActive
+                    ? "border-[#ad3b00] font-extrabold text-[#ad3b00]"
+                    : "border-transparent text-slate-700"
+                }`}
+              >
                 Our Catalog
                 <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
               </summary>
@@ -526,19 +579,36 @@ export default function PublicCatalog({
               <Link
                 href="/"
                 onClick={closeMobileMenu}
-                className={`block rounded-md px-3 py-2.5 hover:bg-slate-50 ${page === "home" ? "font-extrabold text-slate-950" : ""}`}
+                aria-current={page === "home" ? "page" : undefined}
+                className={`block rounded-md border-l-2 px-3 py-2.5 hover:bg-slate-50 ${
+                  page === "home"
+                    ? "border-[#ad3b00] bg-[#fff1e8] font-extrabold text-[#ad3b00]"
+                    : "border-transparent"
+                }`}
               >
                 Home
               </Link>
               <Link
-                href="/katalog"
+                href={catalogHref}
                 onClick={closeMobileMenu}
-                className="block rounded-md px-3 py-2.5 hover:bg-slate-50"
+                aria-current={page === "catalog" && !ourCatalogActive ? "page" : undefined}
+                className={`block rounded-md border-l-2 px-3 py-2.5 hover:bg-slate-50 ${
+                  page === "catalog" && !ourCatalogActive
+                    ? "border-[#ad3b00] bg-[#fff1e8] font-extrabold text-[#ad3b00]"
+                    : "border-transparent"
+                }`}
               >
                 Katalog
               </Link>
               <div className="mt-1 border-t border-slate-100 pt-2">
-                <p className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">Our Catalog</p>
+                <p
+                  aria-current={page === "catalog" && ourCatalogActive ? "page" : undefined}
+                  className={`px-3 py-2 text-xs font-bold uppercase tracking-wide ${
+                    page === "catalog" && ourCatalogActive ? "border-l-2 border-[#ad3b00] bg-[#fff1e8] text-[#ad3b00]" : "text-slate-500"
+                  }`}
+                >
+                  Our Catalog
+                </p>
                 {categoriesLoading ? (
                   <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat kategori...</p>
                 ) : categoryError ? (
@@ -622,7 +692,7 @@ export default function PublicCatalog({
       <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
         <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest-700 text-white"><Leaf size={17} /></span>DapurKita</Link>
+            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ad3b00] text-white"><Leaf size={17} /></span>DapurKita</Link>
             <p className="mt-3 max-w-xs text-[12px] leading-4">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
             <div className="mt-3 flex gap-2 text-[11px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
           </div>

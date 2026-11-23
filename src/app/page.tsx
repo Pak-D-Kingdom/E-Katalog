@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import PublicCatalog from "@/components/Public/Catalog";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <PublicCatalog page="home" />;
+  return (
+    <Suspense fallback={null}>
+      <PublicCatalog page="home" />
+    </Suspense>
+  );
 }

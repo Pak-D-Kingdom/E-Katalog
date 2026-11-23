@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type TransitionEvent } from "react";
-import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, ReceiptText, ShieldCheck, ShoppingBag, ShoppingCart, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { hargaSatuan, rupiah } from "@/lib/types";
 import type { Product } from "@/lib/types";
@@ -287,7 +287,8 @@ export default function HomePage({
           {loading ? (
             <p className="col-span-full py-8 text-center text-sm text-slate-500">Memuat produk unggulan...</p>
           ) : featuredHomeOffers.length ? (
-            featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku} item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)
+            featuredHomeOffers.map((item) => <HomeOfferCard key={item.sku}
+             item={item} onDetail={() => setSelectedHomeOffer(item)} onAdd={(source) => onAddOffer(item, source)}/>)
           ) : (
             <p className="col-span-full py-8 text-center text-sm text-slate-500">Belum ada produk pada kategori ini.</p>
           )}
@@ -306,7 +307,20 @@ export default function HomePage({
             <h2 className="mt-3 max-w-xl text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">Solusi Lengkap untuk Setiap Kebutuhan <span className="text-[#ad3b00]">Dapur Profesional</span></h2>
             <p className="mt-3 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">Mitra pengadaan B2B terpercaya untuk restoran, hotel, catering, dan cloud kitchen di seluruh Indonesia. Dari pasokan bahan baku segar, sertifikasi HACCP berlisensi, instalasi peralatan berat, hingga servis preventif terencana.</p>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[["500+","Dapur Terlayani"],["99.4%","On-Time Delivery"],["ISO & HACCP","Certified Partner"],["4.8 ⭐","Rating Kepuasan"]].map(([value,label])=><div key={label} className="rounded-lg bg-[#eef3ff] p-3"><b className="block text-base font-black text-[#ad3b00]">{value}</b><small className="mt-1 block text-[11px] text-slate-600">{label}</small></div>)}
+              {[
+                { icon: ShieldCheck, value: "1–2 Thn", label: "Garansi Mesin Resmi" },
+                { icon: BadgeCheck, value: "SUS 304", label: "100% Food-Grade" },
+                { icon: ReceiptText, value: "Faktur Pajak", label: "PPN & Legalitas Valid" },
+                { icon: UsersRound, value: "Gratis RAB", label: "Konsultasi & Desain" },
+              ].map(({ icon: Icon, value, label }) => (
+                <div key={label} className="flex min-h-[62px] items-start gap-2 rounded-lg bg-[#eef3ff] px-3 py-2.5">
+                  <Icon size={14} className="mt-0.5 shrink-0 text-[#ad3b00]" />
+                  <span>
+                    <b className="block text-sm font-black leading-4 text-slate-800">{value}</b>
+                    <small className="mt-1 block text-[9px] leading-3 text-slate-600">{label}</small>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
           <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">

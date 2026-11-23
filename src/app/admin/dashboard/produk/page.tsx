@@ -14,14 +14,11 @@ import {
   Star,
   Wallet,
   RefreshCw,
-  MessageSquare,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
   Save,
-  RotateCcw,
-  Building2,
 } from "lucide-react";
 import {
   api,
@@ -87,6 +84,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState<ProductForm>(empty);
 
   const [editing, setEditing] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
@@ -115,7 +113,47 @@ export default function ProductsPage() {
     load().catch((e: Error) => setError(e.message));
   }, []);
 
+  useEffect(() => {
+    const action = new URLSearchParams(window.location.search).get("action");
+    if (action === "tambah") {
+      setEditing(null);
+      setForm(empty);
+      setError("");
+      setMessage("");
+      setFormOpen(true);
+    }
+    if (action === "tambah") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("action");
+      window.history.replaceState({}, "", url);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!formOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !loading && !uploading) {
+        setFormOpen(false);
+        setEditing(null);
+        setForm(empty);
+        setError("");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [formOpen, loading, uploading]);
+
   function startEdit(product?: Product) {
+    setFormOpen(true);
+
     if (product) {
       setEditing(product.id);
 
@@ -150,6 +188,14 @@ export default function ProductsPage() {
 
     setError("");
     setMessage("");
+  }
+
+  function closeForm() {
+    if (loading || uploading) return;
+    setFormOpen(false);
+    setEditing(null);
+    setForm(empty);
+    setError("");
   }
 
   function changeName(value: string) {
@@ -300,6 +346,7 @@ export default function ProductsPage() {
       await load();
       setForm(empty);
       setEditing(null);
+      setFormOpen(false);
       setMessage(
         editing
           ? "Produk berhasil diperbarui."
@@ -418,30 +465,6 @@ export default function ProductsPage() {
 
       {/* HEADER */}
       <section className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-md bg-[#EAF0FC] px-3 py-2 text-[11px] font-semibold text-[#42577E]">
-            <Building2 size={14} />
-            Warehouse Utama: Marunda Logistik Hub
-          </div>
-
-          <div className="flex items-center gap-3 text-[#596780]">
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="rounded-lg p-2 hover:bg-white"
-            >
-              <MessageSquare size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label="Muat ulang data"
-              onClick={() => load().catch((e: Error) => setError(e.message))}
-              className="rounded-lg p-2 hover:bg-white"
-            >
-              <RefreshCw size={18} />
-            </button>
-          </div>
-        </div>
 
         <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
           <div className="max-w-2xl">
@@ -460,7 +483,7 @@ export default function ProductsPage() {
             </p>
           </div>
 
-          {/* TAB NAVIGATION */}
+          {/* TAB NAVIGATION
           <div className="flex w-full rounded-xl bg-[#EAF0FC] p-1.5 xl:w-[340px]">
             <div className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-[#172B4D] shadow-sm">
               <Package size={17} className="shrink-0 text-[#A83D00]" />
@@ -482,6 +505,7 @@ export default function ProductsPage() {
               </span>
             </a>
           </div>
+          */}
         </div>
       </section>
 
@@ -540,7 +564,7 @@ export default function ProductsPage() {
       )}
 
       {/* MAIN TWO-COLUMN LAYOUT */}
-      <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.55fr_0.85fr]">
+      <section className="grid grid-cols-1 items-start gap-5">
 
         {/* PRODUCT LIST */}
         <div className="min-w-0 rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
@@ -838,7 +862,20 @@ export default function ProductsPage() {
         </div>
 
         {/* PRODUCT FORM */}
-        <div className="min-w-0 rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
+        {formOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-[1px] sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={editing ? "Edit produk" : "Tambah produk"}
+        >
+          <button
+            type="button"
+            aria-label="Tutup form produk"
+            className="absolute inset-0 cursor-default"
+            onClick={closeForm}
+          />
+          <div className="relative my-auto max-h-[calc(100vh-1.5rem)] w-full max-w-[680px] overflow-y-auto rounded-xl border border-[#E5EAF3] bg-white p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6">
 
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
@@ -863,11 +900,11 @@ export default function ProductsPage() {
 
             <button
               type="button"
-              onClick={() => startEdit()}
-              title="Reset form"
+              onClick={closeForm}
+              title="Tutup form"
               className="rounded-md p-2 text-[#64748B] hover:bg-[#EEF3FF] hover:text-[#A83D00]"
             >
-              <RotateCcw size={17} />
+              <X size={18} />
             </button>
           </div>
 
@@ -1253,7 +1290,7 @@ export default function ProductsPage() {
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#EAF0F8] pt-4">
               <button
                 type="button"
-                onClick={() => startEdit()}
+                onClick={closeForm}
                 disabled={loading || uploading}
                 className="rounded-md bg-[#E5EDFF] px-4 py-3 text-xs font-bold text-[#172B4D] transition hover:bg-[#D5E2FA] disabled:opacity-50"
               >
@@ -1274,7 +1311,9 @@ export default function ProductsPage() {
               </button>
             </div>
           </form>
+          </div>
         </div>
+        )}
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BadgeCheck, Layers3, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
 import { formatProductPrice, hargaRentang, hargaSatuan, slugify } from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
@@ -18,17 +19,6 @@ const productOrder = [
   "DK-SRV-SLHS1", "DK-SRV-HACCP", "DK-SRV-IPAL3", "DK-SRV-ERL18",
   "DK-MNT-PEST4", "DK-MNT-GAS01", "DK-MNT-GRS92", "DK-MNT-REF34"
 ];
-const productStatuses: Record<string, string> = {
-  "DK-EXH-BF24": "Indent 7 Hari",
-  "DK-SRV-SLHS1": "Layanan Resmi",
-  "DK-SRV-HACCP": "Layanan Resmi",
-  "DK-SRV-IPAL3": "Layanan Resmi",
-  "DK-SRV-ERL18": "Layanan Resmi",
-  "DK-MNT-PEST4": "Layanan Rutin",
-  "DK-MNT-GAS01": "Layanan Rutin",
-  "DK-MNT-GRS92": "Layanan Rutin",
-  "DK-MNT-REF34": "Layanan Rutin",
-};
 const PAGE_SIZE = 24;
 
 const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
@@ -47,9 +37,8 @@ const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
       <div className="flex min-h-[155px] flex-col p-2 sm:min-h-[170px] sm:p-3">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-xs font-bold uppercase tracking-[.12em] text-slate-500">{product.kode_produk}</p>
-          <span className="shrink-0 text-xs font-bold text-[#ad3b00]">★ 4.9</span>
         </div>
-        <button onClick={onDetail} className="mt-1 min-h-[48px] text-left text-[13px] font-extrabold leading-4 text-slate-900 hover:text-[#ad3b00] sm:min-h-10 sm:text-sm sm:leading-5">{product.nama_produk}</button>
+        <button onClick={onDetail} className="mt-1 min-h-10 text-left text-sm font-extrabold leading-5 text-slate-900 hover:text-[#ad3b00]">{product.nama_produk}</button>
         <div className="mt-auto pt-2">
           <small className="block text-xs text-slate-600">Harga Satuan</small>
           <b className="block text-base font-extrabold leading-6 text-[#b63d00]">
@@ -112,22 +101,20 @@ function KatalogPage({
   onAdjust: (id: number, delta: number) => void;
   onOpenCart: () => void;
 }) {
+  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<Product | null>(null);
   const [category, setCategory] = useState<number | null>(null);
   const [requestedCategory, setRequestedCategory] = useState<string | null>(null);
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
-  const [availabilityFilter, setAvailabilityFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setRequestedCategory(params.get("kategori"));
+    setRequestedCategory(searchParams.get("kategori"));
     setSubcategoryFilter("all");
-    onSearchChange(params.get("q") || "");
-  }, [onSearchChange]);
+    onSearchChange(searchParams.get("q") || "");
+  }, [onSearchChange, searchParams]);
 
   useEffect(() => {
     if (!requestedCategory) return;
@@ -139,7 +126,7 @@ function KatalogPage({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [category, requestedCategory, subcategoryFilter, priceRange, availabilityFilter, sortOrder, deferredSearch]);
+  }, [category, requestedCategory, subcategoryFilter, priceRange, deferredSearch]);
 
   const catalogCategories = [...categories].sort((a, b) => {
     const aOrder = categoryOrder.indexOf(a.slug);
@@ -170,7 +157,6 @@ function KatalogPage({
     const filtered = b2bProducts.filter((product) => {
       const price = hargaSatuan(product);
       const range = hargaRentang(product);
-      const status = productStatuses[product.kode_produk] || (product.tersedia ? "Ready Stock" : "Tidak Tersedia");
       const inPriceRange =
         priceRange === "all" ||
         (price !== null && (
@@ -188,32 +174,9 @@ function KatalogPage({
       return (category === null || product.kategori_id === category) &&
         (subcategoryFilter === "all" || product.subkategori?.nama_subkategori === subcategoryFilter) &&
         (!query || `${product.nama_produk} ${product.kode_produk} ${product.subkategori?.nama_subkategori || ""} ${product.deskripsi}`.toLowerCase().includes(query)) &&
-        inPriceRange &&
-        (availabilityFilter === "all" ||
-          (availabilityFilter === "available" && product.tersedia) ||
-          (availabilityFilter === "unavailable" && !product.tersedia) ||
-          status === availabilityFilter);
+        inPriceRange;
     });
-    const priceOf = (product: Product) => hargaSatuan(product);
-
-    if (sortOrder === "price-asc") filtered.sort((a, b) => {
-      const pa = priceOf(a);
-      const pb = priceOf(b);
-      if (pa == null && pb == null) return 0;
-      if (pa == null) return 1;
-      if (pb == null) return -1;
-      return pa - pb;
-    });
-    else if (sortOrder === "price-desc") filtered.sort((a, b) => {
-      const pa = priceOf(a);
-      const pb = priceOf(b);
-      if (pa == null && pb == null) return 0;
-      if (pa == null) return 1;
-      if (pb == null) return -1;
-      return pb - pa;
-    });
-    else if (sortOrder === "name") filtered.sort((a, b) => a.nama_produk.localeCompare(b.nama_produk));
-    else filtered.sort((a, b) => {
+    filtered.sort((a, b) => {
       const aOrder = productOrder.indexOf(a.kode_produk);
       const bOrder = productOrder.indexOf(b.kode_produk);
       if (aOrder === -1 && bOrder === -1) return a.nama_produk.localeCompare(b.nama_produk);
@@ -222,7 +185,7 @@ function KatalogPage({
       return aOrder - bOrder;
     });
     return filtered;
-  }, [b2bProducts, category, subcategoryFilter, deferredSearch, priceRange, availabilityFilter, sortOrder, requestedCategoryMissing]);
+  }, [b2bProducts, category, subcategoryFilter, deferredSearch, priceRange, requestedCategoryMissing]);
 
   const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const page = Math.min(currentPage, totalPages);
@@ -261,11 +224,9 @@ function KatalogPage({
           {catalogCategories.map((item) => <button key={item.id} onClick={() => { setRequestedCategory(null); setCategory(item.id); setSubcategoryFilter("all"); }} className={`shrink-0 rounded px-4 py-2 text-sm font-semibold transition ${category === item.id ? "bg-[#ad3b00] text-white" : "bg-[#edf2ff] text-slate-700 hover:bg-[#dfe8ff]"}`}>{item.nama_kategori} ({b2bProducts.filter((product) => product.kategori_id === item.id).length})</button>)}
         </div>
       </div>
-      <div className="grid gap-2 rounded-lg border border-slate-100 bg-white p-2.5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 lg:p-3">
-        <select value={subcategoryFilter} onChange={(event) => setSubcategoryFilter(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Subkategori: Semua</option>{subcategories.map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory}</option>)}</select>
-        <select value={priceRange} onChange={(event) => setPriceRange(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Semua Rentang Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
-        <select value={availabilityFilter} onChange={(event) => setAvailabilityFilter(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Ketersediaan: Semua</option><option value="available">Tersedia saja</option><option value="unavailable">Tidak tersedia</option><option value="Ready Stock">Ready Stock</option><option value="Indent 7 Hari">Indent 7 Hari</option><option value="Layanan Resmi">Layanan Resmi</option><option value="Layanan Rutin">Layanan Rutin</option></select>
-        <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="h-11 min-w-0 rounded-md border-0 bg-[#edf2ff] px-3 text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="recommended">Urutkan: Rekomendasi</option><option value="price-asc">Harga: Terendah</option><option value="price-desc">Harga: Tertinggi</option><option value="name">Nama: A–Z</option></select>
+      <div className="flex flex-wrap items-center justify-start gap-2">
+        <select value={subcategoryFilter} onChange={(event) => setSubcategoryFilter(event.target.value)} className="h-9 w-[210px] max-w-full min-w-0 rounded-md border-0 bg-[#edf2ff] px-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Subkategori: Semua</option>{subcategories.map((subcategory) => <option key={subcategory} value={subcategory}>{subcategory}</option>)}</select>
+        <select value={priceRange} onChange={(event) => setPriceRange(event.target.value)} className="h-9 w-[160px] max-w-full min-w-0 rounded-md border-0 bg-[#edf2ff] px-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#ad3b00]/20"><option value="all">Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
       </div>
       <div className="mb-3 mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2"><h2 className="text-base font-black text-slate-900">Daftar Produk &amp; Jasa</h2><span className="rounded bg-[#e8eeff] px-2 py-1 text-[10px] font-semibold text-slate-600">{loading ? "Memuat..." : `${visible.length} Item Ditemukan`}</span></div>

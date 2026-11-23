@@ -32,9 +32,8 @@ model subkategori {
   nama_subkategori String   @db.VarChar(120)
   slug             String   @db.VarChar(191)
   dibuat_pada      DateTime @default(now())
-
-  kategori kategori @relation(fields: [kategori_id], references: [id], onDelete: Restrict)
-  produk   produk[]
+  produk           produk[]
+  kategori         kategori @relation(fields: [kategori_id], references: [id], onDelete: Restrict)
 
   @@unique([kategori_id, slug])
   @@index([kategori_id])
@@ -96,12 +95,10 @@ model riwayat_pesanan {
   catatan         String?  @db.Text
   total_harga     Decimal  @db.Decimal(12, 2)
   total_harga_max Decimal? @db.Decimal(12, 2)
-
   status_pesanan    String @default("menunggu_konfirmasi") @db.VarChar(40)
   status_pembayaran String @default("belum_dibayar") @db.VarChar(40)
-
-  dibuat_pada    DateTime         @default(now())
-  detail_pesanan detail_pesanan[]
+  dibuat_pada      DateTime         @default(now())
+  detail_pesanan   detail_pesanan[]
 
   @@index([dibuat_pada])
   @@index([status_pesanan])

@@ -192,7 +192,7 @@ export default function OrdersPage() {
   ).length;
 
   return (
-    <div className="space-y-5">
+    <div className="min-h-screen space-y-5 bg-[#F2F5FC] p-4 sm:p-6 lg:p-7">
       {/* HEADER */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -307,16 +307,25 @@ export default function OrdersPage() {
         </form>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] text-left text-sm">
+          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[17%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[15%]" />
+              <col className="w-[12%]" />
+            </colgroup>
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3">Kode Pesanan</th>
-                <th className="px-5 py-3">Pemesan</th>
-                <th className="px-5 py-3">Total</th>
-                <th className="px-5 py-3">Pembayaran</th>
-                <th className="px-5 py-3">Status Pesanan</th>
-                <th className="px-5 py-3">Tanggal</th>
-                <th className="px-5 py-3">Detail</th>
+                <th className="px-3 py-3">Kode Pesanan</th>
+                <th className="px-3 py-3">Pemesan</th>
+                <th className="px-3 py-3">Total</th>
+                <th className="px-3 py-3">Pembayaran</th>
+                <th className="px-3 py-3">Status Pesanan</th>
+                <th className="px-3 py-3">Tanggal</th>
+                <th className="px-3 py-3 text-right">Detail</th>
               </tr>
             </thead>
 
@@ -541,6 +550,11 @@ export default function OrdersPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="border-t border-slate-200 px-4 py-4">
+          <p className="text-xs text-slate-500">
+            Menampilkan <b className="text-slate-800">{orders.length}</b> pesanan
+          </p>
         </div>
       </section>
     </div>
