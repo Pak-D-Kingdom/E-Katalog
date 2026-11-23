@@ -5,42 +5,93 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         await requireAdmin();
 
-        const [produk, pesanan, pengaturan] = await Promise.all([
-            // Mengambil seluruh produk untuk tabel katalog
-            prisma.produk.findMany({
-                orderBy: {
-                    diperbarui_pada: "desc",
-                },
-                select: {
-                    id: true,
-                    kode_produk: true,
-                    nama_produk: true,
-                    slug: true,
-                    deskripsi: true,
-                    jenis_harga: true,
-                    harga: true,
-                    harga_min: true,
-                    harga_max: true,
-                    satuan: true,
-                    foto_url: true,
-                    tersedia: true,
-                    diperbarui_pada: true,
-                    kategori: {
-                        select: {
-                            nama_kategori: true,
+        const { searchParams } = new URL(request.url);
+        const requestedPage = Number(searchParams.get("page") ?? "1");
+        const pageSize = 5;
+        const query = searchParams.get("q")?.trim() ?? "";
+        const categoryId = searchParams.get("kategori") ?? "all";
+
+        if (!Number.isSafeInteger(requestedPage) || requestedPage < 1) {
+            return NextResponse.json(
+                { error: "Parameter halaman tidak valid." },
+                { status: 400 }
+            );
+        }
+
+        const parsedCategoryId =
+            categoryId === "all" || categoryId === "none"
+                ? categoryId
+                : Number(categoryId);
+
+        if (
+            typeof parsedCategoryId === "number" &&
+            (!Number.isSafeInteger(parsedCategoryId) || parsedCategoryId < 1)
+        ) {
+            return NextResponse.json(
+                { error: "Filter kategori tidak valid." },
+                { status: 400 }
+            );
+        }
+
+        const where = {
+            ...(parsedCategoryId === "none"
+                ? { kategori_id: null }
+                : typeof parsedCategoryId === "number"
+                    ? { kategori_id: parsedCategoryId }
+                    : {}),
+            ...(query
+                ? {
+                    OR: [
+                        { nama_produk: { contains: query } },
+                        { kode_produk: { contains: query } },
+                    ],
+                }
+                : {}),
+        };
+
+        const totalProduk = await prisma.produk.count({ where });
+        const totalPages = Math.max(1, Math.ceil(totalProduk / pageSize));
+        const page = Math.min(requestedPage, totalPages);
+
+        const [produk, pesanan, pengaturan, kategori, produkTanpaKategori] =
+            await Promise.all([
+                prisma.produk.findMany({
+                    where,
+                    orderBy: {
+                        diperbarui_pada: "desc",
+                    },
+                    skip: (page - 1) * pageSize,
+                    take: pageSize,
+                    select: {
+                        id: true,
+                        kode_produk: true,
+                        nama_produk: true,
+                        slug: true,
+                        deskripsi: true,
+                        jenis_harga: true,
+                        harga: true,
+                        harga_min: true,
+                        harga_max: true,
+                        satuan: true,
+                        foto_url: true,
+                        tersedia: true,
+                        diperbarui_pada: true,
+                        kategori: {
+                            select: {
+                                nama_kategori: true,
+                            },
+                        },
+                        subkategori: {
+                            select: {
+                                nama_subkategori: true,
+                            },
                         },
                     },
-                    subkategori: {
-                        select: {
-                            nama_subkategori: true,
-                        },
-                    },
-                },
-            }),
+                }),
 
             // Mengambil 4 pesanan terbaru beserta detailnya
             prisma.riwayat_pesanan.findMany({
@@ -67,6 +118,12 @@ export async function GET() {
                     nomor_whatsapp: true,
                 },
             }),
+            prisma.kategori.findMany({
+                where: { produk: { some: {} } },
+                select: { id: true, nama_kategori: true },
+                orderBy: { nama_kategori: "asc" },
+            }),
+            prisma.produk.count({ where: { kategori_id: null } }),
         ]);
 
         return NextResponse.json({
@@ -107,6 +164,16 @@ export async function GET() {
                 ),
             })),
 
+            kategori: [
+                ...kategori.map((item) => ({
+                    id: String(item.id),
+                    nama: item.nama_kategori,
+                })),
+                ...(produkTanpaKategori > 0
+                    ? [{ id: "none", nama: "Belum Dikategorikan" }]
+                    : []),
+            ],
+            pagination: { total: totalProduk, page, totalPages },
             nomorWhatsapp: pengaturan?.nomor_whatsapp ?? null,
         });
     } catch (error) {

@@ -8,11 +8,13 @@ import Sidebar from "./Sidebar";
 
 interface AdminShellProps {
   children: React.ReactNode;
+  initialInstanceName: string;
 }
 
-export default function AdminShell({ children }: AdminShellProps) {
+export default function AdminShell({ children, initialInstanceName }: AdminShellProps) {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [instanceName, setInstanceName] = useState(initialInstanceName);
   const pathname = usePathname();
 
   const menuTitle =
@@ -45,6 +47,18 @@ export default function AdminShell({ children }: AdminShellProps) {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const updateName = (event: Event) => {
+      const { nama_instansi } = (event as CustomEvent<{ nama_instansi?: string }>).detail ?? {};
+      if (nama_instansi?.trim()) setInstanceName(nama_instansi.trim());
+    };
+
+    window.addEventListener("instance-settings-updated", updateName);
+    return () => {
+      window.removeEventListener("instance-settings-updated", updateName);
+    };
+  }, []);
+
   return (
     <div className="admin-area min-h-screen bg-[#F2F5FC]">
       {mobileOpen && (
@@ -63,6 +77,7 @@ export default function AdminShell({ children }: AdminShellProps) {
         aria-label="Navigasi admin"
       >
         <Sidebar
+          instanceName={instanceName}
           collapsed={desktopCollapsed}
           onNavigate={() => setMobileOpen(false)}
           onCloseMobile={() => setMobileOpen(false)}
@@ -104,7 +119,7 @@ export default function AdminShell({ children }: AdminShellProps) {
                 {menuTitle}
               </p>
               <p className="hidden text-[10px] text-[#64748B] sm:block">
-                DapurKita B2B
+                {instanceName} B2B
               </p>
             </div>
           </div>

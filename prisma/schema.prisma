@@ -82,6 +82,8 @@ model pengaturan_katalog {
   nama_instansi   String   @db.VarChar(191)
   nomor_whatsapp  String   @db.VarChar(30)
   alamat          String?  @db.Text
+  email           String?  @db.VarChar(191)
+  hak_cipta       String   @default("© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.") @db.VarChar(500)
   template_pesan  String   @db.Text
   diperbarui_pada DateTime @updatedAt
 }

@@ -113,7 +113,7 @@ const homePillars = [
   }
 ];
 
-function HomeHeroSlider() {
+function HomeHeroSlider({ instanceName }: { instanceName: string }) {
   const [slidePosition, setSlidePosition] = useState(1);
   const [transitionEnabled, setTransitionEnabled] = useState(true);
   const slides = [homeSlides[homeSlides.length - 1], ...homeSlides, homeSlides[0]];
@@ -154,7 +154,7 @@ function HomeHeroSlider() {
   return (
     <div
       role="region"
-      aria-label="Sorotan katalog DapurKita"
+      aria-label={`Sorotan katalog ${instanceName}`}
       aria-roledescription="carousel"
       className="relative mx-auto w-full max-w-[1600px] overflow-hidden bg-slate-900 aspect-video"
     >
@@ -255,13 +255,15 @@ export default function HomePage({
   loading,
   onAddOffer,
   onOpenCart,
-  whatsappHref
+  whatsappHref,
+  instanceName
 }: {
   offers: HomeOffer[];
   loading: boolean;
   onAddOffer: (offer: HomeOffer, source?: HTMLElement) => void;
   onOpenCart: () => void;
   whatsappHref: string;
+  instanceName: string;
 }) {
   const [homeCategory, setHomeCategory] = useState("Semua Kategori");
   const [selectedHomeOffer, setSelectedHomeOffer] = useState<HomeOffer | null>(null);
@@ -271,7 +273,7 @@ export default function HomePage({
 
   return <>
     <section id="home" className="bg-[#eef3ff]">
-      <HomeHeroSlider />
+      <HomeHeroSlider instanceName={instanceName} />
       <div className="mx-auto max-w-7xl px-5 pb-8 pt-7 lg:px-8 lg:pb-10 lg:pt-9">
         <div className="mb-6 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
@@ -326,7 +328,7 @@ export default function HomePage({
           <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
             <div className="relative flex aspect-[1.35/1] items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#dce9d5] via-[#f2e7ca] to-[#e9effb]">
               <img src="/horeca-standardisasi.png" alt="Standarisasi HORECA Pro" className="absolute inset-0 h-full w-full object-cover"/>
-              <span className="absolute left-3 top-2 text-[9px] text-slate-500">DapurKita - Horeca & Leading Pros</span>
+              <span className="absolute left-3 top-2 text-[9px] text-slate-500">{instanceName} - Horeca &amp; Leading Pros</span>
               <span className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-lg bg-white/95 px-3 py-2 shadow"><span><b className="block text-[13px] text-slate-800">Standarisasi HORECA Pro</b><small className="text-[11px] text-slate-500">Grade SUS 304 & Halal Supply Chain</small></span><span className="rounded bg-[#dfe8ff] px-2 py-1 text-[11px] font-bold text-slate-700">Aktif</span></span>
             </div>
           </div>
@@ -381,7 +383,7 @@ export default function HomePage({
           </div>
           <div className="mt-3 flex flex-wrap justify-end gap-2">
             <button onClick={(event) => { onAddOffer(selectedHomeOffer, event.currentTarget); setSelectedHomeOffer(null); onOpenCart(); }} className="flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 px-4 text-[12px] font-bold text-slate-700 hover:bg-slate-50"><ShoppingCart size={14}/>Tambah ke keranjang</button>
-            <a href={whatsappHref.startsWith("https://") ? `${whatsappHref}?text=${encodeURIComponent(`Halo DapurKita, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}` : "/#kontak"} target={whatsappHref.startsWith("https://") ? "_blank" : undefined} rel={whatsappHref.startsWith("https://") ? "noreferrer" : undefined} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000]"><MessageCircle size={14}/>Tanya via WhatsApp</a>
+            <a href={whatsappHref.startsWith("https://") ? `${whatsappHref}?text=${encodeURIComponent(`Halo ${instanceName}, saya ingin informasi mengenai ${selectedHomeOffer.title} (${selectedHomeOffer.sku}).`)}` : "/#kontak"} target={whatsappHref.startsWith("https://") ? "_blank" : undefined} rel={whatsappHref.startsWith("https://") ? "noreferrer" : undefined} className="flex h-9 items-center justify-center gap-2 rounded-md bg-[#ad3b00] px-4 text-[12px] font-bold text-white hover:bg-[#8f3000]"><MessageCircle size={14}/>Tanya via WhatsApp</a>
           </div>
         </div>
       </div>

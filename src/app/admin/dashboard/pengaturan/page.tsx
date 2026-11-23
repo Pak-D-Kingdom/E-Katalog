@@ -11,22 +11,30 @@ import {
   MapPin,
   FileText,
   Info,
+  Mail,
   Settings,
   RotateCcw,
 } from "lucide-react";
 import { api } from "@/lib/types";
+import Swal from "sweetalert2";
 
 type Settings = {
   nama_instansi: string;
   nomor_whatsapp: string;
   alamat: string | null;
+  email: string | null;
+  hak_cipta: string;
   template_pesan: string;
 };
+
+type SettingsSection = "instansi" | "template";
 
 const initial: Settings = {
   nama_instansi: "",
   nomor_whatsapp: "",
   alamat: "",
+  email: "procurement@dapurkita.co.id",
+  hak_cipta: "© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.",
   template_pesan: `Halo {nama_instansi}, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:
 
 Nomor telepon: {telepon_pemesan}
@@ -52,47 +60,105 @@ const variables = [
 
 export default function SettingsPage() {
   const [form, setForm] = useState<Settings>(initial);
+  const [savedForm, setSavedForm] = useState<Settings | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [savingSection, setSavingSection] = useState<SettingsSection | null>(null);
 
   useEffect(() => {
     api<{ pengaturan: Settings | null }>("/api/pengaturan")
       .then(({ pengaturan }) => {
-        if (pengaturan) setForm(pengaturan);
+        if (pengaturan) {
+          setForm(pengaturan);
+          setSavedForm(pengaturan);
+        }
+        setSettingsReady(true);
       })
       .catch((e: Error) => setError(e.message));
   }, []);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: FormEvent, section: SettingsSection) {
     e.preventDefault();
+
+    const confirmation = await Swal.fire({
+      title: section === "instansi"
+        ? "Simpan informasi instansi?"
+        : "Simpan template WhatsApp?",
+      text: section === "instansi"
+        ? "Informasi instansi, email, dan teks hak cipta footer akan diperbarui."
+        : "Template yang digunakan untuk pesan WhatsApp akan diperbarui.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: section === "instansi" ? "Ya, simpan informasi" : "Ya, simpan template",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
+
     setError("");
     setMessage("");
-    setLoading(true);
+    setSavingSection(section);
 
     try {
+      const payload: Settings = {
+        ...(savedForm ?? initial),
+        ...(section === "instansi"
+          ? {
+              nama_instansi: form.nama_instansi,
+              nomor_whatsapp: form.nomor_whatsapp,
+              alamat: form.alamat,
+              email: form.email,
+              hak_cipta: form.hak_cipta,
+            }
+          : { template_pesan: form.template_pesan }),
+      };
       const result = await api<{ pengaturan: Settings }>(
         "/api/pengaturan",
         {
           method: "PUT",
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         }
       );
 
-      setForm(result.pengaturan);
-      setMessage("Pengaturan berhasil disimpan.");
+      setSavedForm(result.pengaturan);
+      if (section === "instansi") {
+        window.dispatchEvent(new CustomEvent("instance-settings-updated", {
+          detail: { nama_instansi: result.pengaturan.nama_instansi },
+        }));
+      }
+      setForm((current) => section === "instansi"
+        ? {
+            ...current,
+            nama_instansi: result.pengaturan.nama_instansi,
+            nomor_whatsapp: result.pengaturan.nomor_whatsapp,
+            alamat: result.pengaturan.alamat,
+            email: result.pengaturan.email,
+            hak_cipta: result.pengaturan.hak_cipta,
+          }
+        : { ...current, template_pesan: result.pengaturan.template_pesan });
+      const successMessage = section === "instansi"
+        ? "Informasi instansi berhasil disimpan."
+        : "Template pesan WhatsApp berhasil disimpan.";
+      setMessage(successMessage);
+      await Swal.fire({
+        title: "Berhasil disimpan",
+        text: successMessage,
+        icon: "success",
+        confirmButtonColor: "#A83D00",
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setLoading(false);
+      setSavingSection(null);
     }
   }
 
   function resetTemplate() {
-    setForm({
-      ...form,
-      template_pesan: initial.template_pesan,
-    });
+    setForm((current) => ({ ...current, template_pesan: initial.template_pesan }));
     setMessage("");
     setError("");
   }
@@ -126,10 +192,10 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* FORM */}
-      <form onSubmit={submit} className="space-y-5">
+      <div className="space-y-5">
 
         {/* INFORMASI INSTANSI */}
+        <form onSubmit={(e) => submit(e, "instansi")}>
         <section className="rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
           <div className="mb-6 flex items-center gap-3 border-b border-[#EAF0F8] pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E8F0FF] text-[#172B4D]">
@@ -228,10 +294,67 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#172B4D]">
+                Email Footer
+                <span className="ml-1 font-normal text-[#94A3B8]">(Opsional)</span>
+              </label>
+
+              <div className="flex items-center rounded-lg border border-[#DCE4F0] bg-white px-3 transition focus-within:border-[#A83D00] focus-within:ring-2 focus-within:ring-[#A83D00]/10">
+                <Mail size={17} className="shrink-0 text-[#94A3B8]" />
+                <input
+                  type="email"
+                  maxLength={191}
+                  value={form.email || ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      email: e.target.value || null,
+                    })
+                  }
+                  placeholder="email@instansi.id"
+                  className="w-full bg-transparent px-3 py-3 text-sm text-[#172B4D] outline-none placeholder:text-[#A0AEC0]"
+                />
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-[#172B4D]">
+                Teks Hak Cipta Footer
+              </label>
+              <textarea
+                required
+                maxLength={500}
+                rows={2}
+                value={form.hak_cipta}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    hak_cipta: e.target.value,
+                  })
+                }
+                placeholder="© 2026 Nama Instansi. Hak Cipta Dilindungi Undang-Undang."
+                className="w-full resize-y rounded-lg border border-[#DCE4F0] bg-white px-3 py-3 text-sm text-[#172B4D] outline-none transition focus:border-[#A83D00] focus:ring-2 focus:ring-[#A83D00]/10 placeholder:text-[#A0AEC0]"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end border-t border-[#EAF0F8] pt-5">
+            <button
+              type="submit"
+              disabled={!settingsReady || savingSection !== null}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#A83D00] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save size={17} />
+              {savingSection === "instansi" ? "Menyimpan..." : "Simpan Informasi Instansi"}
+            </button>
           </div>
         </section>
+        </form>
 
         {/* TEMPLATE WHATSAPP */}
+        <form onSubmit={(e) => submit(e, "template")}>
         <section className="rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#EAF0F8] pb-4">
             <div className="flex items-center gap-3">
@@ -312,7 +435,25 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
+          {settingsReady && !savedForm && (
+            <p className="mt-4 text-xs text-[#64748B]">
+              Simpan informasi instansi terlebih dahulu sebelum menyimpan template.
+            </p>
+          )}
+
+          <div className="mt-6 flex justify-end border-t border-[#EAF0F8] pt-5">
+            <button
+              type="submit"
+              disabled={!settingsReady || !savedForm || savingSection !== null}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#A83D00] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save size={17} />
+              {savingSection === "template" ? "Menyimpan..." : "Simpan Template WhatsApp"}
+            </button>
+          </div>
         </section>
+        </form>
 
         {/* NOTIFIKASI */}
         {error && (
@@ -354,18 +495,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ACTION */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#A83D00] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Save size={17} />
-            {loading ? "Menyimpan..." : "Simpan Pengaturan"}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

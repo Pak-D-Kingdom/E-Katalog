@@ -41,12 +41,14 @@ const menuItems = [
 ];
 
 interface SidebarProps {
+    instanceName: string;
     collapsed?: boolean;
     onNavigate?: () => void;
     onCloseMobile?: () => void;
 }
 
 export default function Sidebar({
+    instanceName,
     collapsed = false,
     onNavigate,
     onCloseMobile,
@@ -55,6 +57,13 @@ export default function Sidebar({
     const router = useRouter();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [logoutError, setLogoutError] = useState("");
+    const brandInitials = instanceName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase() || "DK";
 
     async function handleLogout() {
         const confirmation = await Swal.fire({
@@ -101,12 +110,12 @@ export default function Sidebar({
                 </button>
                 {collapsed ? (
                     <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-[#A83D00] text-sm font-black text-white lg:flex">
-                        DK
+                        {brandInitials}
                     </div>
                 ) : (
                     <div className="text-center">
                         <h1 className="text-[19px] font-black tracking-tight text-[#172B4D]">
-                            DapurKita
+                            {instanceName}
                         </h1>
                         <p className="text-[9px] font-extrabold tracking-wider text-[#A83D00]">
                             B2B ADMIN

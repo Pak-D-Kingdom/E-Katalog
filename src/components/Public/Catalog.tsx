@@ -14,8 +14,15 @@ import type { CartItem } from "./types";
 type HomeCartItem = { offer: HomeOffer; quantity: number };
 type PublicCatalogProps = {
   page?: "home" | "catalog";
+  initialSettings: Settings | null;
 };
-type Settings = { nama_instansi: string; nomor_whatsapp: string; alamat: string | null };
+type Settings = {
+  nama_instansi: string;
+  nomor_whatsapp: string;
+  alamat: string | null;
+  email: string | null;
+  hak_cipta: string;
+};
 type FlyingItem = { key: number; left: number; top: number; x: number; y: number; image: string | null };
 const cartKey = "mbg-cart-v1";
 const homeCartKey = "dapurkita-rfq-v1";
@@ -33,13 +40,14 @@ function getCartLineSubtotal(product: Product, quantity: number) {
 
 export default function PublicCatalog({
   page = "home",
+  initialSettings,
 }: PublicCatalogProps) {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const settings = initialSettings;
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
   const [catalogSearch, setCatalogSearch] = useState(
@@ -98,11 +106,6 @@ export default function PublicCatalog({
     setCategoriesLoading(true);
     setCategoryError("");
     const requests: Promise<void>[] = [];
-    requests.push(
-      api<{ pengaturan: Settings | null }>("/api/pengaturan")
-        .then(({ pengaturan }) => setSettings(pengaturan))
-        .catch((e: Error) => setError(e.message))
-    );
     requests.push(
       api<{ kategori: Category[] }>("/api/kategori")
         .then(({ kategori }) => setCategories(kategori))
@@ -223,6 +226,13 @@ export default function PublicCatalog({
   const whatsappHref = whatsappNumber
     ? `https://wa.me/${whatsappNumber}`
     : page === "home" ? "https://wa.me/622155578900" : "/#kontak";
+  const instanceName = settings?.nama_instansi.trim() || "Nama Instansi";
+
+  useEffect(() => {
+    document.title = page === "home"
+      ? `${instanceName} | Kitchen Supply & B2B Solutions`
+      : `Katalog ${instanceName} | Pengadaan HORECA B2B`;
+  }, [instanceName, page]);
 
   const homeOffers = useMemo(() => getHomeOffers(products), [products]);
 
@@ -355,7 +365,7 @@ export default function PublicCatalog({
       return `- ${offer.title} [${offer.sku}] x${quantity} @ ${rupiah(offer.priceValue)} = ${rupiah(subtotal)}`;
     }).join("\n");
     const text = [
-      `Halo DapurKita, saya ${form.nama_pemesan} dari ${form.nama_sekolah || "-"} ingin meminta penawaran:`,
+      `Halo ${instanceName}, saya ${form.nama_pemesan} dari ${form.nama_sekolah || "-"} ingin meminta penawaran:`,
       `Nomor telepon: ${form.telepon_pemesan || "-"}`,
       "",
       "Rangkuman pilihan:",
@@ -373,9 +383,9 @@ export default function PublicCatalog({
     <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:gap-y-3 sm:px-5 sm:py-3 lg:px-8">
-          <Link href="/" aria-label="Beranda DapurKita" className="flex items-center gap-2.5">
+          <Link href="/" aria-label={`Beranda ${instanceName}`} className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ad3b00] text-white"><Leaf size={21} /></span>
-            <span><b className="block text-base leading-tight text-slate-900">DapurKita</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
+            <span><b className="block text-base leading-tight text-slate-900">{instanceName}</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
             {page === "catalog" && (mobileSearchOpen ? (
@@ -677,6 +687,7 @@ export default function PublicCatalog({
         onAddOffer={addHomeOffer}
         onOpenCart={openCart}
         whatsappHref={whatsappHref}
+        instanceName={instanceName}
       /> : <KatalogPage
         products={products}
         categories={categories}
@@ -692,15 +703,15 @@ export default function PublicCatalog({
       <footer id="kontak" className="mt-auto border-t border-[#dfe7fb] bg-[#eef3ff] px-5 pb-4 pt-8 text-slate-600">
         <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ad3b00] text-white"><Leaf size={17} /></span>DapurKita</Link>
-            <p className="mt-3 max-w-xs text-[12px] leading-4">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
-            <div className="mt-3 flex gap-2 text-[11px]"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
+            <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ad3b00] text-white"><Leaf size={17} /></span>{instanceName}</Link>
+            <p className="mt-3 max-w-xs text-sm leading-5">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
+            <div className="mt-3 flex gap-2 text-xs"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>
           </div>
-          <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">NAVIGASI CEPAT</h3><div className="mt-3 flex flex-col gap-2 text-[12px]"><Link href="/" className="hover:text-[#ad3b00]">Home Utama</Link><Link href="/katalog" className="hover:text-[#ad3b00]">Katalog Peralatan</Link><a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-[#ad3b00]">Hubungi Tim B2B</a><Link href="/admin/login" className="hover:text-[#ad3b00]">Portal Operasional Admin</Link></div></div>
-          <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-[12px]"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan</a></div></div>
-          <div><h3 className="text-[12px] font-extrabold uppercase tracking-wider text-slate-900">HEAD OFFICE</h3><div className="mt-3 space-y-2 text-[12px]"><p className="flex gap-2"><MapPin size={13} className="shrink-0 text-[#ad3b00]" />Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190</p><a href="tel:+622155578900" className="flex gap-2 hover:text-[#ad3b00]"><MessageCircle size={13} className="shrink-0 text-[#ad3b00]" />+62 21 5557 8900</a><a href="mailto:procurement@dapurkita.co.id" className="flex gap-2 hover:text-[#ad3b00]">✉ procurement@dapurkita.co.id</a></div></div>
+          <div><h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">NAVIGASI CEPAT</h3><div className="mt-3 flex flex-col gap-2 text-sm"><Link href="/" className="hover:text-[#ad3b00]">Home Utama</Link><Link href="/katalog" className="hover:text-[#ad3b00]">Katalog Peralatan</Link><a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-[#ad3b00]">Hubungi Tim B2B</a><Link href="/admin/login" className="hover:text-[#ad3b00]">Portal Operasional Admin</Link></div></div>
+          <div><h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">KATEGORI PASOKAN</h3><div className="mt-3 flex flex-col gap-2 text-sm"><a href={whatsappHref} className="hover:text-[#ad3b00]">Bahan Baku</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perizinan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Perawatan</a><a href={whatsappHref} className="hover:text-[#ad3b00]">Peralatan</a></div></div>
+          <div><h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">HEAD OFFICE</h3><div className="mt-3 space-y-2 text-sm"><p className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-[#ad3b00]" />{settings?.alamat?.trim() || "Alamat belum diatur"}</p>{whatsappNumber ? <a href={`tel:+${whatsappNumber}`} className="flex gap-2 hover:text-[#ad3b00]"><MessageCircle size={15} className="shrink-0 text-[#ad3b00]"/>+{whatsappNumber}</a> : <p className="flex gap-2"><MessageCircle size={15} className="shrink-0 text-[#ad3b00]"/>Nomor WhatsApp belum diatur</p>}{settings?.email?.trim() ? <a href={`mailto:${settings.email.trim()}`} className="flex gap-2 hover:text-[#ad3b00]">✉ {settings.email.trim()}</a> : <p className="flex gap-2">✉ Email belum diatur</p>}</div></div>
         </div>
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 border-t border-[#dfe7fb] pt-4 text-[11px] sm:flex-row"><span>© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.</span><span className="flex gap-4"><a href="#kontak">Kebijakan Privasi B2B</a><a href="#kontak">Syarat & Ketentuan</a></span></div>
+        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 border-t border-[#dfe7fb] pt-4 text-xs sm:flex-row"><span>{settings?.hak_cipta?.trim() || "Teks hak cipta belum diatur"}</span><span className="flex gap-4"><a href="#kontak">Kebijakan Privasi B2B</a><a href="#kontak">Syarat & Ketentuan</a></span></div>
       </footer>
 
       {flyingItem && <div
@@ -742,7 +753,7 @@ export default function PublicCatalog({
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff1e8] text-[#ad3b00]"><ShoppingCart size={18} /></span>
-              <div><h2 className="text-base font-black text-slate-900">Keranjang Permintaan Penawaran</h2><p className="mt-0.5 text-[11px] text-slate-500">{homeItemCount} item <span className="mx-1">•</span> DapurKita B2B</p></div>
+              <div><h2 className="text-base font-black text-slate-900">Keranjang Permintaan Penawaran</h2><p className="mt-0.5 text-[11px] text-slate-500">{homeItemCount} item <span className="mx-1">•</span> {instanceName} B2B</p></div>
             </div>
             <button onClick={() => setCartOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup keranjang"><X size={17} /></button>
           </div>

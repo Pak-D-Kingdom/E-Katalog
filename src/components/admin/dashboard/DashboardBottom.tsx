@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Search,
     SlidersHorizontal,
@@ -52,6 +52,8 @@ interface Order {
 interface DashboardActivityResponse {
     produk: Product[];
     pesanan: Order[];
+    kategori: { id: string; nama: string }[];
+    pagination: { total: number; page: number; totalPages: number };
     nomorWhatsapp: string | null;
     error?: string;
 }
@@ -96,10 +98,14 @@ function ProductThumbnail({
 export default function DashboardBottom() {
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [categories, setCategories] = useState<
+        DashboardActivityResponse["kategori"]
+    >([]);
+    const [totalProducts, setTotalProducts] = useState(0);
     const [nomorWhatsapp, setNomorWhatsapp] = useState<string | null>(null);
 
     const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("Semua");
+    const [category, setCategory] = useState("all");
     const [page, setPage] = useState(1);
 
     const [loading, setLoading] = useState(true);
@@ -107,20 +113,22 @@ export default function DashboardBottom() {
 
     const pageSize = 5;
 
-    // Mengambil katalog produk dan aktivitas pesanan dari API
-    useEffect(() => {
-        let isMounted = true;
+    const loadDashboardActivity = useCallback(
+        async (requestedPage: number, query: string, categoryId: string, signal: AbortSignal) => {
+            setLoading(true);
+            setError("");
 
-        async function fetchDashboardActivity() {
+            const params = new URLSearchParams({
+                page: String(requestedPage),
+                q: query.trim(),
+                kategori: categoryId,
+            });
+
             try {
-                setLoading(true);
-                setError("");
-
                 const response = await fetch(
-                    "/api/dashboard/activity",
-                    { cache: "no-store" }
+                    `/api/dashboard/activity?${params}`,
+                    { cache: "no-store", signal }
                 );
-
                 const result =
                     (await response.json()) as DashboardActivityResponse;
 
@@ -130,13 +138,17 @@ export default function DashboardBottom() {
                     );
                 }
 
-                if (isMounted) {
-                    setProducts(result.produk);
-                    setOrders(result.pesanan);
-                    setNomorWhatsapp(result.nomorWhatsapp);
+                setProducts(result.produk);
+                setOrders(result.pesanan);
+                setCategories(result.kategori);
+                setTotalProducts(result.pagination.total);
+                setNomorWhatsapp(result.nomorWhatsapp);
+
+                if (result.pagination.page !== requestedPage) {
+                    setPage(result.pagination.page);
                 }
             } catch (err) {
-                if (isMounted) {
+                if (!signal.aborted) {
                     setError(
                         err instanceof Error
                             ? err.message
@@ -144,47 +156,25 @@ export default function DashboardBottom() {
                     );
                 }
             } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+                if (!signal.aborted) setLoading(false);
             }
-        }
-
-        fetchDashboardActivity();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
-    // Pilihan kategori mengikuti data database
-    const categories = useMemo(() => {
-        return [
-            ...new Set(products.map((product) => product.kategori)),
-        ].sort((a, b) => a.localeCompare(b, "id"));
-    }, [products]);
-
-    // Pencarian dan filter produk
-    const filteredProducts = useMemo(() => {
-        return products.filter((product) => {
-            const keyword = search.toLowerCase();
-
-            const matchesSearch =
-                product.namaProduk.toLowerCase().includes(keyword) ||
-                product.kodeProduk.toLowerCase().includes(keyword);
-
-            const matchesCategory =
-                category === "Semua" || product.kategori === category;
-
-            return matchesSearch && matchesCategory;
-        });
-    }, [products, search, category]);
-
-    const totalPages = Math.max(
-        1,
-        Math.ceil(filteredProducts.length / pageSize)
+        },
+        []
     );
 
+    useEffect(() => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => {
+            void loadDashboardActivity(page, search, category, controller.signal);
+        }, search.trim() ? 250 : 0);
+
+        return () => {
+            window.clearTimeout(timeout);
+            controller.abort();
+        };
+    }, [page, search, category, loadDashboardActivity]);
+
+    const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
     const currentPage = Math.min(page, totalPages);
 
     const paginationItems = useMemo(() => {
@@ -227,10 +217,7 @@ export default function DashboardBottom() {
         return items;
     }, [totalPages, currentPage]);
 
-    const visibleProducts = filteredProducts.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize
-    );
+    const visibleProducts = products;
 
     function changeSearch(value: string) {
         setSearch(value);
@@ -299,11 +286,11 @@ export default function DashboardBottom() {
                                 aria-label="Filter kategori produk"
                                 className="w-full min-w-0 flex-1 cursor-pointer bg-transparent py-2 text-[10px] text-[#172B4D] outline-none"
                             >
-                                <option value="Semua">Semua</option>
+                                <option value="all">Semua</option>
 
                                 {categories.map((item) => (
-                                    <option key={item} value={item}>
-                                        {item}
+                                    <option key={item.id} value={item.id}>
+                                        {item.nama}
                                     </option>
                                 ))}
                             </select>
@@ -481,7 +468,7 @@ export default function DashboardBottom() {
                         </span>{" "}
                         dari{" "}
                         <span className="font-semibold text-[#172B4D]">
-                            {filteredProducts.length}
+                            {totalProducts}
                         </span>{" "}
                         produk terdaftar
                     </p>

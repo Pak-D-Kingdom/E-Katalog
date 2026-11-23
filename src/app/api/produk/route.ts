@@ -19,8 +19,152 @@ function getPrismaCode(error: unknown): string | undefined {
 }
 
 // GET: Mengambil produk beserta kategori dan subkategori
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    if (searchParams.get("admin") === "1") {
+      await requireAdmin();
+
+      if (searchParams.get("codesOnly") === "1") {
+        const produk = await prisma.produk.findMany({
+          select: { kode_produk: true },
+        });
+
+        return NextResponse.json({
+          kodeProduk: produk.map((item) => item.kode_produk),
+        });
+      }
+
+      const requestedPage = Number(searchParams.get("page") ?? "1");
+      const pageSize = Number(searchParams.get("pageSize") ?? "4");
+      const categoryId = searchParams.get("kategori");
+      const subcategoryId = searchParams.get("subkategori");
+      const query = searchParams.get("q")?.trim() ?? "";
+
+      if (
+        !Number.isSafeInteger(requestedPage) ||
+        requestedPage < 1 ||
+        !Number.isSafeInteger(pageSize) ||
+        pageSize < 1 ||
+        pageSize > 50
+      ) {
+        return NextResponse.json(
+          { error: "Parameter halaman tidak valid." },
+          { status: 400 }
+        );
+      }
+
+      const parsedCategoryId =
+        categoryId && categoryId !== "all" ? Number(categoryId) : null;
+      const parsedSubcategoryId =
+        subcategoryId && subcategoryId !== "all"
+          ? Number(subcategoryId)
+          : null;
+
+      if (
+        (parsedCategoryId !== null &&
+          (!Number.isSafeInteger(parsedCategoryId) || parsedCategoryId < 1)) ||
+        (parsedSubcategoryId !== null &&
+          (!Number.isSafeInteger(parsedSubcategoryId) ||
+            parsedSubcategoryId < 1))
+      ) {
+        return NextResponse.json(
+          { error: "Filter kategori tidak valid." },
+          { status: 400 }
+        );
+      }
+
+      const where = {
+        ...(parsedCategoryId !== null
+          ? { kategori_id: parsedCategoryId }
+          : {}),
+        ...(parsedSubcategoryId !== null
+          ? { subkategori_id: parsedSubcategoryId }
+          : {}),
+        ...(query
+          ? {
+              OR: [
+                { nama_produk: { contains: query } },
+                { kode_produk: { contains: query } },
+                {
+                  subkategori: {
+                    is: { nama_subkategori: { contains: query } },
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+
+      const total = await prisma.produk.count({ where });
+      const stats =
+        searchParams.get("stats") === "1"
+          ? await Promise.all([
+              prisma.produk.count(),
+              prisma.produk.count({ where: { tersedia: true } }),
+              prisma.produk.count({ where: { foto_url: { not: null } } }),
+            ])
+          : null;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const page = Math.min(requestedPage, totalPages);
+
+      const produk = await prisma.produk.findMany({
+        where,
+        select: {
+          id: true,
+          kategori_id: true,
+          subkategori_id: true,
+          kode_produk: true,
+          nama_produk: true,
+          slug: true,
+          deskripsi: true,
+          informasi_gizi: true,
+          jenis_harga: true,
+          harga: true,
+          harga_min: true,
+          harga_max: true,
+          stok: true,
+          satuan: true,
+          foto_url: true,
+          tersedia: true,
+          kategori: {
+            select: {
+              id: true,
+              nama_kategori: true,
+              slug: true,
+              ikon_url: true,
+            },
+          },
+          subkategori: {
+            select: {
+              id: true,
+              kategori_id: true,
+              nama_subkategori: true,
+              slug: true,
+            },
+          },
+        },
+        orderBy: { dibuat_pada: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+
+      return NextResponse.json({
+        produk,
+        pagination: { total, page, pageSize, totalPages },
+        ...(stats
+          ? {
+              stats: {
+                totalProduk: stats[0],
+                produkAktif: stats[1],
+                totalFoto: stats[2],
+              },
+            }
+          : {}),
+      });
+    }
+
     const session = await getSession();
 
     const [produk, rekapBarang] = await Promise.all([
@@ -61,6 +205,13 @@ export async function GET() {
 
     return NextResponse.json({ produk: produkDenganRekap });
   } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json(
+        { error: "Tidak berizin." },
+        { status: 401 }
+      );
+    }
+
     console.error("Get produk error:", error);
 
     return NextResponse.json(

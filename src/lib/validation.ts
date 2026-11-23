@@ -140,5 +140,9 @@ export const pengaturanSchema = z.object({
 
   alamat: z.string().trim().nullable().optional(),
 
+  email: z.string().trim().email("Format email tidak valid.").max(191).nullable().optional(),
+
+  hak_cipta: z.string().trim().min(1).max(500),
+
   template_pesan: z.string().trim().min(1),
 });

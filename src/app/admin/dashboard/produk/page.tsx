@@ -1,7 +1,15 @@
 
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ImagePlus,
   Pencil,
@@ -79,6 +87,11 @@ const PAGE_SIZE = 4;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [knownProductCodes, setKnownProductCodes] = useState<string[]>([]);
+  const [totalProductCount, setTotalProductCount] = useState(0);
+  const [filteredProductCount, setFilteredProductCount] = useState(0);
+  const [availableCount, setAvailableCount] = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [form, setForm] = useState<ProductForm>(empty);
@@ -94,23 +107,113 @@ export default function ProductsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const statsNeedRefresh = useRef(true);
 
-  async function load() {
-    const [p, c, s] = await Promise.all([
-      api<{ produk?: Product[] }>("/api/produk"),
-      api<{ kategori?: Category[] }>("/api/kategori"),
-      api<{ subkategori?: Subcategory[] }>("/api/subkategori"),
-    ]);
+  const loadProducts = useCallback(
+    async (
+      requestedPage: number,
+      search: string,
+      category: string,
+      subcategory: string,
+      signal?: AbortSignal,
+      refreshStats = false
+    ) => {
+      setLoading(true);
+      setError("");
 
-    setProducts(Array.isArray(p.produk) ? p.produk : []);
-    setCategories(Array.isArray(c.kategori) ? c.kategori : []);
-    setSubcategories(
-      Array.isArray(s.subkategori) ? s.subkategori : []
-    );
-  }
+      const params = new URLSearchParams({
+        admin: "1",
+        page: String(requestedPage),
+        pageSize: String(PAGE_SIZE),
+        q: search.trim(),
+        kategori: category,
+        subkategori: subcategory,
+      });
+      if (refreshStats) params.set("stats", "1");
+
+      try {
+        const result = await api<{
+          produk: Product[];
+          pagination: { total: number; page: number; totalPages: number };
+          stats?: {
+            totalProduk: number;
+            produkAktif: number;
+            totalFoto: number;
+          };
+        }>(`/api/produk?${params}`, { signal });
+
+        setProducts(result.produk);
+        setFilteredProductCount(result.pagination.total);
+        if (result.stats) {
+          setTotalProductCount(result.stats.totalProduk);
+          setAvailableCount(result.stats.produkAktif);
+          setPhotoCount(result.stats.totalFoto);
+          statsNeedRefresh.current = false;
+        }
+
+        if (result.pagination.page !== requestedPage) {
+          setPage(result.pagination.page);
+        }
+      } catch (e) {
+        if (signal?.aborted) return;
+        setError((e as Error).message);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    load().catch((e: Error) => setError(e.message));
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void loadProducts(
+        page,
+        query,
+        categoryFilter,
+        subcategoryFilter,
+        controller.signal,
+        statsNeedRefresh.current
+      );
+    }, query.trim() ? 250 : 0);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [page, query, categoryFilter, subcategoryFilter, loadProducts]);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([
+      api<{ kategori?: Category[] }>("/api/kategori"),
+      api<{ subkategori?: Subcategory[] }>("/api/subkategori"),
+      api<{ kodeProduk?: string[] }>("/api/produk?admin=1&codesOnly=1"),
+    ])
+      .then(([categoryResult, subcategoryResult, productCodeResult]) => {
+        if (!active) return;
+        setCategories(
+          Array.isArray(categoryResult.kategori) ? categoryResult.kategori : []
+        );
+        setSubcategories(
+          Array.isArray(subcategoryResult.subkategori)
+            ? subcategoryResult.subkategori
+            : []
+        );
+        setKnownProductCodes(
+          Array.isArray(productCodeResult.kodeProduk)
+            ? productCodeResult.kodeProduk
+            : []
+        );
+      })
+      .catch((e: Error) => {
+        if (active) setError(e.message);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -231,7 +334,7 @@ export default function ProductsPage() {
 
     let index = 1;
     let candidate = `${base}-${String(index).padStart(3, "0")}`;
-    const used = new Set(products.map((product) => product.kode_produk.toUpperCase()));
+    const used = new Set(knownProductCodes.map((code) => code.toUpperCase()));
     while (used.has(candidate)) {
       index += 1;
       candidate = `${base}-${String(index).padStart(3, "0")}`;
@@ -343,7 +446,7 @@ export default function ProductsPage() {
         }
       );
 
-      await load();
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setForm(empty);
       setEditing(null);
       setFormOpen(false);
@@ -370,7 +473,7 @@ export default function ProductsPage() {
 
     try {
       await api(`/api/produk/${id}`, { method: "DELETE" });
-      await load();
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setMessage("Produk berhasil dihapus.");
     } catch (e) {
       setError((e as Error).message);
@@ -393,43 +496,18 @@ export default function ProductsPage() {
         ),
     [subcategories, categoryFilter]
   );
-  const filtered = useMemo(() => {
-    return products.filter((product) => {
-      const keyword = query.toLowerCase();
-
-      const matchesSearch =
-        `${product.nama_produk} ${product.kode_produk} ${product.subkategori?.nama_subkategori || ""}`
-          .toLowerCase()
-          .includes(keyword);
-
-      const matchesCategory =
-        categoryFilter === "all" ||
-        String(product.kategori_id) === categoryFilter;
-
-      const matchesSubcategory =
-        subcategoryFilter === "all" ||
-        String(product.subkategori_id ?? "") === subcategoryFilter;
-
-      return matchesSearch && matchesCategory && matchesSubcategory;
-    });
-  }, [products, query, categoryFilter, subcategoryFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-
-  const visibleProducts = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProductCount / PAGE_SIZE)
   );
-
-  const availableCount = products.filter((p) => p.tersedia).length;
-  const photoCount = products.filter((p) => p.foto_url).length;
+  const currentPage = Math.min(page, totalPages);
+  const visibleProducts = products;
 
   const stats = [
     {
       title: "TOTAL KATALOG AKTIF",
       value: `${availableCount} Produk`,
-      description: `${products.length} produk terdaftar`,
+      description: `${totalProductCount} produk terdaftar`,
       icon: Package,
       color: "text-[#A83D00]",
       background: "bg-[#E8F0FF]",
@@ -815,7 +893,7 @@ export default function ProductsPage() {
             <p className="text-[10px] text-[#64748B]">
               Menampilkan{" "}
               <b className="text-[#172B4D]">{visibleProducts.length}</b> dari{" "}
-              <b className="text-[#172B4D]">{filtered.length}</b> produk terdaftar
+              <b className="text-[#172B4D]">{filteredProductCount}</b> produk terdaftar
             </p>
 
             <div className="flex items-center gap-1">

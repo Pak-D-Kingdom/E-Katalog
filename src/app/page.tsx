@@ -1,16 +1,26 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import PublicCatalog from "@/components/Public/Catalog";
+import { getCatalogSettings } from "@/lib/catalog-settings";
 
-export const metadata: Metadata = {
-  title: "DapurKita | Kitchen Supply & B2B Solutions",
-  description: "Penyedia solusi pengadaan dapur profesional, peralatan heavy duty, bahan baku, legalitas, perawatan, dan maintenance HORECA."
-};
+const description = "Penyedia solusi pengadaan dapur profesional, peralatan heavy duty, bahan baku, legalitas, perawatan, dan maintenance HORECA.";
 
-export default function HomePage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getCatalogSettings();
+  const name = settings?.nama_instansi.trim() || "Katalog";
+
+  return {
+    title: `${name} | Kitchen Supply & B2B Solutions`,
+    description,
+  };
+}
+
+export default async function HomePage() {
+  const settings = await getCatalogSettings();
+
   return (
     <Suspense fallback={null}>
-      <PublicCatalog page="home" />
+      <PublicCatalog page="home" initialSettings={settings} />
     </Suspense>
   );
 }

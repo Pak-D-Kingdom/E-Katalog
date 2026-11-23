@@ -77,6 +77,8 @@ async function main() {
       nama_instansi: "DapurKita",
       nomor_whatsapp: "622155578900",
       alamat: "Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190",
+      email: "procurement@dapurkita.co.id",
+      hak_cipta: "© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.",
       template_pesan: "Halo DapurKita, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:\n{daftar_pesanan}\nTotal estimasi: {total_harga}\nCatatan: {catatan}\nKode permintaan: {kode_pesanan}"
     },
     create: {
@@ -84,6 +86,8 @@ async function main() {
       nama_instansi: "DapurKita",
       nomor_whatsapp: "622155578900",
       alamat: "Kawasan SCBD Lot 8, Jl. Jendral Sudirman, Jakarta Selatan 12190",
+      email: "procurement@dapurkita.co.id",
+      hak_cipta: "© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.",
       template_pesan: "Halo DapurKita, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:\n{daftar_pesanan}\nTotal estimasi: {total_harga}\nCatatan: {catatan}\nKode permintaan: {kode_pesanan}"
     }
   });
