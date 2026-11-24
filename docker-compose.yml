@@ -7,17 +7,15 @@ services:
       dockerfile: Dockerfile
     image: e-katalog-mbg:latest
     restart: unless-stopped
-    expose:
-      - "6001"
     ports:
-      - "${APP_PORT:-6001}:6001"
+      - "${APP_PORT:-7005}:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=mysql://${MYSQL_USER:-mbg_user}:${MYSQL_PASSWORD:-mbg_secret_password}@mysql:3306/${MYSQL_DATABASE:-e_katalog_mbg}
       - AUTH_SECRET=${AUTH_SECRET:-ganti_dengan_secret_acak_minimal_32_karakter_12345}
       - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
       - AUTO_SEED=${AUTO_SEED:-false}
-      - PORT=6001
+      - PORT=3000
     depends_on:
       mysql:
         condition: service_healthy

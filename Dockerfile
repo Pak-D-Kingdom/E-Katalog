@@ -21,7 +21,7 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=6001
+ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV PATH="/app/node_modules/.bin:$PATH"
 
@@ -42,6 +42,6 @@ COPY docker-entrypoint.sh ./
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 USER nextjs
-EXPOSE 6001
+EXPOSE 3000
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]
