@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export default async function DashboardLayout({
   children,
@@ -13,5 +14,14 @@ export default async function DashboardLayout({
     redirect("/admin/auth/login");
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  const settings = await prisma.pengaturan_katalog.findFirst({
+    select: { nama_instansi: true },
+    orderBy: { id: "asc" },
+  });
+
+  return (
+    <AdminShell initialInstanceName={settings?.nama_instansi.trim() || "Nama Instansi"}>
+      {children}
+    </AdminShell>
+  );
 }

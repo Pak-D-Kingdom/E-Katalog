@@ -20,6 +20,13 @@ export type Subcategory = {
 
 export type JenisHarga = "tetap" | "rentang";
 
+export type Gizi = {
+  kalori: number;
+  protein: number;
+  karbohidrat: number;
+  lemak: number;
+};
+
 export type Product = {
   id: number;
   kategori_id: number | null;
@@ -28,16 +35,16 @@ export type Product = {
   nama_produk: string;
   slug: string;
   deskripsi: string;
-
-  // Informasi harga
+  informasi_gizi: Gizi;
   jenis_harga: JenisHarga;
   harga: string | number | null;
   harga_min: string | number | null;
   harga_max: string | number | null;
-
+  stok: number | null;
   satuan: string;
   foto_url: string | null;
   tersedia: boolean;
+  jumlah_barang_subkategori?: number | null;
   kategori?: Category | null;
   subkategori?: Subcategory | null;
 };
@@ -74,26 +81,32 @@ export function hargaSatuan(product: Product): number | null {
   return Number.isFinite(price) && price > 0 ? price : null;
 }
 
+export function hargaRentang(
+  product: Product
+): { min: number; max: number } | null {
+  if (
+    product.jenis_harga !== "rentang" ||
+    product.harga_min == null ||
+    product.harga_max == null
+  ) {
+    return null;
+  }
+
+  const min = Number(product.harga_min);
+  const max = Number(product.harga_max);
+
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max < min) {
+    return null;
+  }
+
+  return { min, max };
+}
+
 // Menampilkan harga produk sesuai jenis harganya
 export function formatProductPrice(product: Product): string {
   if (product.jenis_harga === "rentang") {
-    if (product.harga_min == null || product.harga_max == null) {
-      return "Hubungi Admin";
-    }
-
-    const min = Number(product.harga_min);
-    const max = Number(product.harga_max);
-
-    if (
-      !Number.isFinite(min) ||
-      !Number.isFinite(max) ||
-      min <= 0 ||
-      max < min
-    ) {
-      return "Hubungi Admin";
-    }
-
-    return `${rupiah(min)} – ${rupiah(max)}`;
+    const range = hargaRentang(product);
+    return range ? `${rupiah(range.min)} – ${rupiah(range.max)}` : "Hubungi Admin";
   }
 
   const price = hargaSatuan(product);

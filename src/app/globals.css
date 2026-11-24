@@ -12,13 +12,27 @@ button { cursor: pointer; }
 .field-with-icon { padding-left: 2.5rem; }
 .field:focus { border-color: #21804a; box-shadow: 0 0 0 3px rgba(33,128,74,.12); }
 .label { display: block; margin-bottom: .4rem; color: #4b5b51; font-size: .82rem; font-weight: 700; }
-.btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: .75rem; background: #21804a; color: #fff; padding: .75rem 1rem; font-weight: 700; transition: background .2s, transform .2s; }
-.btn-primary:hover { background: #17633a; transform: translateY(-1px); }
-.btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border: 1px solid #dfe7df; border-radius: .75rem; background: #fff; color: #34443a; padding: .7rem .95rem; font-weight: 700; }
+.btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: .75rem; background: #A83D00; color: #fff; padding: .75rem 1rem; font-weight: 700; transition: background .2s, transform .2s; }
+.btn-primary:hover { background: #873100; transform: translateY(-1px); }
+.btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border: 1px solid #DCE4F0; border-radius: .75rem; background: #fff; color: #172B4D; padding: .7rem .95rem; font-weight: 700; }
 .btn-danger { border-radius: .65rem; background: #fff1ef; color: #b83d32; padding: .55rem .75rem; font-weight: 700; }
 .card { border: 1px solid #edf0e9; border-radius: 1.15rem; background: white; box-shadow: 0 12px 38px rgba(34,57,43,.045); }
 .scrollbar-hide { scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
+.admin-area [class*="text-[9px]"] { font-size: 10px; }
+.admin-area [class*="text-[10px]"] { font-size: 11px; }
+.admin-area [class*="text-[11px]"] { font-size: 12px; }
+.admin-area [class*="text-[12px]"] { font-size: 13px; }
+.admin-area .text-xs { font-size: 13px; line-height: 1.25rem; }
+.admin-area .text-sm { font-size: 14px; line-height: 1.35rem; }
+@media (min-width: 1024px) {
+  .admin-area [class*="text-[9px]"] { font-size: 11px; }
+  .admin-area [class*="text-[10px]"] { font-size: 12px; }
+  .admin-area [class*="text-[11px]"] { font-size: 13px; }
+  .admin-area [class*="text-[12px]"] { font-size: 14px; }
+  .admin-area .text-xs { font-size: 14px; line-height: 1.35rem; }
+  .admin-area .text-sm { font-size: 15px; line-height: 1.45rem; }
+}
 @keyframes page-transition-in {
   from { opacity: 0; }
   to { opacity: 1; }

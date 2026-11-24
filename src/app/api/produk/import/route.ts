@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
@@ -147,6 +147,12 @@ function parsePrice(value: unknown): number | null {
   return Number.isFinite(result) ? result : NaN;
 }
 
+function parseNonnegativeNumber(value: unknown): number {
+  const parsed = parsePrice(value);
+  if (parsed === null) return 0;
+  return parsed;
+}
+
 // Membuat slug otomatis dan memastikan tidak duplikat.
 function toSlug(value: string): string {
   return (
@@ -248,6 +254,97 @@ export async function POST(request: Request) {
 
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
+
+    const firstSheetName = workbook.SheetNames[0];
+    const firstSheet = firstSheetName
+      ? workbook.Sheets[firstSheetName]
+      : undefined;
+    const firstSheetRows = firstSheet
+      ? XLSX.utils.sheet_to_json<ExcelRow>(firstSheet, {
+          defval: "",
+          blankrows: false,
+        })
+      : [];
+    const summaryHeaders = Object.keys(firstSheetRows[0] ?? {}).map(
+      normalizeHeader
+    );
+    const isSummaryImport = [
+      "kategori",
+      "subkategori",
+      "jumlahbarang",
+    ].every((header) => summaryHeaders.includes(header));
+
+    if (isSummaryImport) {
+      let berhasil = 0;
+      let dilewati = 0;
+      const gagal: { baris: number; pesan: string }[] = [];
+
+      for (let index = 0; index < firstSheetRows.length; index++) {
+        const row = firstSheetRows[index];
+        const kategori = getText(row, "Kategori");
+        const subkategori = getText(row, "Subkategori");
+        const jumlahBarang = Number(getCell(row, "Jumlah Barang"));
+
+        if (
+          !subkategori &&
+          ["total barang", "total"].includes(kategori.toLowerCase())
+        ) {
+          dilewati++;
+          continue;
+        }
+
+        if (
+          !kategori ||
+          kategori.length > 120 ||
+          !subkategori ||
+          subkategori.length > 120 ||
+          !Number.isInteger(jumlahBarang) ||
+          jumlahBarang < 0 ||
+          jumlahBarang > 2147483647
+        ) {
+          gagal.push({
+            baris: index + 2,
+            pesan: "Kategori, subkategori, atau jumlah barang tidak valid.",
+          });
+          continue;
+        }
+
+        try {
+          await prisma.rekap_barang.upsert({
+            where: {
+              kategori_subkategori: { kategori, subkategori },
+            },
+            create: { kategori, subkategori, jumlah_barang: jumlahBarang },
+            update: { jumlah_barang: jumlahBarang },
+          });
+          await prisma.produk.updateMany({
+            where: {
+              kategori: { is: { nama_kategori: kategori } },
+              subkategori: { is: { nama_subkategori: subkategori } },
+              stok: null,
+            },
+            data: { stok: jumlahBarang },
+          });
+          berhasil++;
+        } catch (error) {
+          console.error("Import rekap barang error:", error);
+          gagal.push({
+            baris: index + 2,
+            pesan: "Gagal menyimpan rekap barang ke database.",
+          });
+        }
+      }
+
+      return NextResponse.json({
+        message: "Import rekap selesai.",
+        jenis: "rekap_subkategori",
+        total: firstSheetRows.length,
+        berhasil,
+        dilewati,
+        gagal: gagal.length,
+        detailGagal: gagal,
+      });
+    }
 
     // Membaca sheet kategori yang dikenal sistem.
     // Sheet Panduan Import otomatis diabaikan.
@@ -495,11 +592,8 @@ export async function POST(request: Request) {
           getCell(row, "Harga Maksimal (IDR)")
         );
 
-        const satuan = getText(
-          row,
-          "Satuan Produk",
-          "Satuan"
-        );
+        const satuan =
+          getText(row, "Satuan Produk", "Satuan") || "unit";
 
         const deskripsi =
           getText(
@@ -514,6 +608,21 @@ export async function POST(request: Request) {
           "Foto URL",
           "URL Foto"
         ) || null;
+        const informasiGizi = {
+          kalori: parseNonnegativeNumber(getCell(row, "Kalori")),
+          protein: parseNonnegativeNumber(getCell(row, "Protein")),
+          karbohidrat: parseNonnegativeNumber(
+            getCell(row, "Karbohidrat")
+          ),
+          lemak: parseNonnegativeNumber(getCell(row, "Lemak")),
+        };
+        const stokCell = getCell(row, "Stok", "Jumlah Barang");
+        const stok =
+          stokCell === null ||
+          stokCell === undefined ||
+          String(stokCell).trim() === ""
+            ? null
+            : parsePrice(stokCell);
 
         // Validasi nama produk.
         if (!namaProduk) {
@@ -582,6 +691,45 @@ export async function POST(request: Request) {
             baris: barisExcel,
             nama: namaProduk,
             pesan: "Foto URL maksimal 500 karakter.",
+          });
+          continue;
+        }
+
+        if (satuan.length > 40) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Satuan Produk maksimal 40 karakter.",
+          });
+          continue;
+        }
+
+        if (
+          Object.values(informasiGizi).some(
+            (value) => !Number.isFinite(value) || value < 0
+          )
+        ) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Informasi gizi harus berupa angka nol atau lebih.",
+          });
+          continue;
+        }
+
+        if (
+          stok !== null &&
+          (!Number.isInteger(stok) ||
+            stok < 0 ||
+            stok > 4294967295)
+        ) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Stok harus berupa bilangan bulat antara 0 dan 4294967295.",
           });
           continue;
         }
@@ -732,6 +880,8 @@ export async function POST(request: Request) {
               nama_produk: namaProduk,
               slug,
               deskripsi,
+              informasi_gizi: informasiGizi,
+              stok,
 
               jenis_harga: jenisHarga,
               harga,

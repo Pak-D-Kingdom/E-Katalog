@@ -33,10 +33,6 @@ function WelcomePanel() {
             <h1 className="text-xl font-bold tracking-tight text-[#172B4D]">
               Pusat Kendali Pengadaan
             </h1>
-
-            <span className="rounded-full bg-[#E5EDFF] px-2 py-1 text-[9px] font-bold text-[#42577E]">
-              LIVE SYSTEM
-            </span>
           </div>
 
           <p className="mt-1 max-w-xl text-xs leading-5 text-[#64748B]">
@@ -46,17 +42,6 @@ function WelcomePanel() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 rounded-lg bg-[#E8F0FF] px-4 py-3">
-        <Activity size={16} className="text-[#A83D00]" />
-        <div>
-          <p className="text-[10px] font-bold text-[#172B4D]">
-            Sinkronisasi Marunda Hub: 2
-          </p>
-          <p className="text-[10px] font-semibold text-[#172B4D]">
-            menit lalu
-          </p>
-        </div>
-      </div>
     </section>
   );
 }
@@ -67,6 +52,10 @@ function Statistics() {
     totalKategori: 0,
     totalSubkategori: 0,
     totalInquiry: 0,
+    produkPalingBanyakDibeli: null as {
+      namaProduk: string;
+      jumlah: number;
+    } | null,
   });
 
   useEffect(() => {
@@ -117,10 +106,12 @@ function Statistics() {
       footer: "bg-[#FAEEE8]",
     },
     {
-      title: "PRODUK UNGGULAN",
-      value: "8 / 12",
-      suffix: "Slot",
-      description: "Aktif di beranda storefront utama",
+      title: "PRODUK PALING BANYAK DIBELI",
+      value: data.produkPalingBanyakDibeli?.jumlah ?? 0,
+      suffix: "Dibeli",
+      description:
+        data.produkPalingBanyakDibeli?.namaProduk ??
+        "Belum ada data pembelian",
       icon: Star,
       color: "text-[#A83D00]",
       background: "bg-[#E8F0FF]",
@@ -182,8 +173,10 @@ function ImportExcel() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     berhasil: number;
+    dilewati?: number;
     gagal: number;
-    detailGagal: { baris: number; pesan: string }[];
+    jenis?: "rekap_subkategori" | "produk";
+    detailGagal: { sheet?: string; baris: number; pesan: string }[];
   } | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -242,10 +235,10 @@ function ImportExcel() {
 
         <div>
           <h2 className="text-base font-bold text-[#172B4D]">
-            Import Data Produk
+            Import Data Produk / Rekap
           </h2>
           <p className="mt-1 text-xs text-[#64748B]">
-            Tambahkan banyak produk sekaligus melalui file Excel.
+            Impor produk atau rekap kategori, subkategori, dan jumlah barang.
           </p>
         </div>
       </div>
@@ -319,17 +312,23 @@ function ImportExcel() {
               Import selesai!
             </p>
             <p className="mt-1 text-[#172B4D]">
-              Berhasil: {result.berhasil} produk
+              Berhasil: {result.berhasil} {result.jenis === "rekap_subkategori" ? "rekap" : "produk"}
             </p>
+            {result.dilewati ? (
+              <p className="text-[#64748B]">Diabaikan: {result.dilewati} baris total</p>
+            ) : null}
             <p className="text-red-600">
-              Gagal: {result.gagal} produk
+              Gagal: {result.gagal} {result.jenis === "rekap_subkategori" ? "rekap" : "produk"}
             </p>
 
             {result.detailGagal.length > 0 && (
               <div className="mt-2 max-h-32 space-y-1 overflow-y-auto border-t border-[#E8ECF4] pt-2">
                 {result.detailGagal.map((item, index) => (
                   <p key={index} className="text-red-600">
-                    Baris {item.baris}: {item.pesan}
+                    {item.sheet
+                      ? `Sheet ${item.sheet}, baris ${item.baris}`
+                      : `Baris ${item.baris}`}
+                    : {item.pesan}
                   </p>
                 ))}
               </div>

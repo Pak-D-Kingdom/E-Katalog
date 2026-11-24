@@ -9,6 +9,7 @@ import {
   Download,
   PhoneCall,
   Zap,
+  X,
 } from "lucide-react";
 
 interface Category {
@@ -59,6 +60,23 @@ export default function QuickActions({
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    if (!showExport) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setShowExport(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExport]);
+
   return (
     <section className="rounded-xl border border-[#E5EAF3] bg-white px-6 py-5 shadow-sm">
       <h2 className="mb-4 flex items-center gap-2 text-[20px] font-bold text-[#172B4D]">
@@ -68,7 +86,7 @@ export default function QuickActions({
 
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/admin/dashboard/produk"
+          href="/admin/dashboard/produk?action=tambah"
           className={`${buttonBase} bg-[#A83D00] text-white hover:bg-[#8F3400]`}
         >
           <PlusCircle size={19} />
@@ -76,8 +94,8 @@ export default function QuickActions({
         </Link>
 
         <Link
-          href="/admin/dashboard/kategori"
-          className={`${buttonBase} bg-[#E5EEFF] text-[#172B4D] hover:bg-[#D6E4FF]`}
+          href="/admin/dashboard/kategori?action=tambah"
+          className={`${buttonBase} bg-[#A83D00] text-white hover:bg-[#8F3400]`}
         >
           <FolderPlus size={19} />
           Tambah Kategori
@@ -85,8 +103,8 @@ export default function QuickActions({
 
         <button
           type="button"
-          onClick={() => setShowExport((current) => !current)}
-          className={`${buttonBase} bg-[#E5EEFF] text-[#172B4D] hover:bg-[#D6E4FF]`}
+          onClick={() => setShowExport(true)}
+          className={`${buttonBase} bg-[#A83D00] text-white hover:bg-[#8F3400]`}
         >
           <Download size={19} />
           Export Data Katalog
@@ -94,63 +112,92 @@ export default function QuickActions({
 
         <Link
           href="/admin/dashboard/pengaturan"
-          className={`${buttonBase} bg-[#E5EEFF] text-[#172B4D] hover:bg-[#D6E4FF]`}
+          className={`${buttonBase} bg-[#A83D00] text-white hover:bg-[#8F3400]`}
         >
-          <PhoneCall size={18} className="text-[#A83D00]" />
+          <PhoneCall size={18} />
           Ubah Konfigurasi WhatsApp
         </Link>
       </div>
 
       {showExport && (
-        <div className="mt-5 rounded-lg border border-[#E5EAF3] bg-[#F8FAFD] p-4">
-          <h3 className="text-sm font-bold text-[#172B4D]">
-            Pengaturan Export Katalog
-          </h3>
-
-          <p className="mt-1 text-xs text-[#64748B]">
-            Tentukan kategori dan format data yang ingin diunduh.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <label className="mb-2 block text-xs font-semibold text-[#172B4D]">
-                Kategori Produk
-              </label>
-
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full rounded-md border border-[#DCE4F0] bg-white px-3 py-2.5 text-xs text-[#172B4D] outline-none"
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-[1px] sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Export data katalog"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowExport(false);
+          }}
+        >
+          <div className="w-full max-w-lg rounded-xl border border-[#E5EAF3] bg-white p-5 shadow-2xl sm:p-6">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-[#172B4D]">
+                  Pengaturan Export Katalog
+                </h3>
+                <p className="mt-1 text-xs text-[#64748B]">
+                  Pilih kategori dan format data yang ingin diunduh.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExport(false)}
+                className="rounded-md p-2 text-[#64748B] hover:bg-[#EEF3FF]"
+                aria-label="Tutup popup export"
               >
-                <option value="all">Semua Kategori</option>
-
-                {categories.map((item) => (
-                  <option key={item.id} value={String(item.id)}>
-                    {item.nama_kategori}
-                  </option>
-                ))}
-              </select>
+                <X size={18} />
+              </button>
             </div>
 
-            <div>
-              <label className="mb-2 block text-xs font-semibold text-[#172B4D]">
-                Format File
-              </label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                  Kategori Produk
+                </label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                >
+                  <option value="all">Semua Kategori</option>
+                  {categories.map((item) => (
+                    <option key={item.id} value={String(item.id)}>
+                      {item.nama_kategori}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <select
-                value={format}
-                onChange={(e) =>
-                  setFormat(e.target.value as "csv" | "xlsx" | "pdf")
-                }
-                className="w-full rounded-md border border-[#DCE4F0] bg-white px-3 py-2.5 text-xs text-[#172B4D] outline-none"
-              >
-                <option value="csv">CSV (.csv)</option>
-                <option value="xlsx">Excel (.xlsx)</option>
-                <option value="pdf">PDF (.pdf)</option>
-              </select>
+              <div>
+                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                  Format File
+                </label>
+                <select
+                  value={format}
+                  onChange={(e) =>
+                    setFormat(e.target.value as "csv" | "xlsx" | "pdf")
+                  }
+                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                >
+                  <option value="csv">CSV (.csv)</option>
+                  <option value="xlsx">Excel (.xlsx)</option>
+                  <option value="pdf">PDF (.pdf)</option>
+                </select>
+              </div>
             </div>
 
-            <div className="flex items-end gap-2">
+            {categoryError && (
+              <p className="mt-3 text-xs text-red-600">{categoryError}</p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2 border-t border-[#EAF0F8] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowExport(false)}
+                className="rounded-md bg-[#E5EDFF] px-4 py-3 text-xs font-bold text-[#172B4D] hover:bg-[#D5E2FA]"
+              >
+                Batal
+              </button>
               <button
                 type="button"
                 disabled={!!categoryError}
@@ -159,28 +206,15 @@ export default function QuickActions({
                     categoryId === "all" ? null : Number(categoryId),
                     format
                   );
+                  setShowExport(false);
                 }}
-                className="flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-md bg-[#A83D00] px-4 py-2 text-xs font-bold text-white hover:bg-[#8F3400] disabled:opacity-50"
+                className="flex items-center gap-2 rounded-md bg-[#A83D00] px-5 py-3 text-xs font-bold text-white hover:bg-[#873100] disabled:opacity-50"
               >
-                <Download size={16} />
+                <Download size={15} />
                 Unduh Data
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowExport(false)}
-                className="min-h-[40px] rounded-md border border-[#DCE4F0] bg-white px-3 text-xs font-semibold text-[#64748B]"
-              >
-                Batal
               </button>
             </div>
           </div>
-
-          {categoryError && (
-            <p className="mt-2 text-xs text-red-600">
-              {categoryError}
-            </p>
-          )}
         </div>
       )}
     </section>

@@ -1,7 +1,15 @@
 
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ImagePlus,
   Pencil,
@@ -14,14 +22,11 @@ import {
   Star,
   Wallet,
   RefreshCw,
-  MessageSquare,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
   Save,
-  RotateCcw,
-  Building2,
 } from "lucide-react";
 import {
   api,
@@ -42,9 +47,14 @@ type ProductForm = {
 
   jenis_harga: "tetap" | "rentang";
   harga: string;
+  stok: string;
   harga_min: string;
   harga_max: string;
 
+  kalori: string;
+  protein: string;
+  karbohidrat: string;
+  lemak: string;
   satuan: string;
   foto_url: string;
   tersedia: boolean;
@@ -60,10 +70,15 @@ const empty: ProductForm = {
 
   jenis_harga: "tetap",
   harga: "",
+  stok: "",
   harga_min: "",
   harga_max: "",
 
-  satuan: "",
+  kalori: "0",
+  protein: "0",
+  karbohidrat: "0",
+  lemak: "0",
+  satuan: "porsi",
   foto_url: "",
   tersedia: true,
 };
@@ -72,11 +87,17 @@ const PAGE_SIZE = 4;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [knownProductCodes, setKnownProductCodes] = useState<string[]>([]);
+  const [totalProductCount, setTotalProductCount] = useState(0);
+  const [filteredProductCount, setFilteredProductCount] = useState(0);
+  const [availableCount, setAvailableCount] = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [form, setForm] = useState<ProductForm>(empty);
 
   const [editing, setEditing] = useState<number | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
@@ -86,26 +107,156 @@ export default function ProductsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const statsNeedRefresh = useRef(true);
 
-  async function load() {
-    const [p, c, s] = await Promise.all([
-      api<{ produk?: Product[] }>("/api/produk"),
-      api<{ kategori?: Category[] }>("/api/kategori"),
-      api<{ subkategori?: Subcategory[] }>("/api/subkategori"),
-    ]);
+  const loadProducts = useCallback(
+    async (
+      requestedPage: number,
+      search: string,
+      category: string,
+      subcategory: string,
+      signal?: AbortSignal,
+      refreshStats = false
+    ) => {
+      setLoading(true);
+      setError("");
 
-    setProducts(Array.isArray(p.produk) ? p.produk : []);
-    setCategories(Array.isArray(c.kategori) ? c.kategori : []);
-    setSubcategories(
-      Array.isArray(s.subkategori) ? s.subkategori : []
-    );
-  }
+      const params = new URLSearchParams({
+        admin: "1",
+        page: String(requestedPage),
+        pageSize: String(PAGE_SIZE),
+        q: search.trim(),
+        kategori: category,
+        subkategori: subcategory,
+      });
+      if (refreshStats) params.set("stats", "1");
+
+      try {
+        const result = await api<{
+          produk: Product[];
+          pagination: { total: number; page: number; totalPages: number };
+          stats?: {
+            totalProduk: number;
+            produkAktif: number;
+            totalFoto: number;
+          };
+        }>(`/api/produk?${params}`, { signal });
+
+        setProducts(result.produk);
+        setFilteredProductCount(result.pagination.total);
+        if (result.stats) {
+          setTotalProductCount(result.stats.totalProduk);
+          setAvailableCount(result.stats.produkAktif);
+          setPhotoCount(result.stats.totalFoto);
+          statsNeedRefresh.current = false;
+        }
+
+        if (result.pagination.page !== requestedPage) {
+          setPage(result.pagination.page);
+        }
+      } catch (e) {
+        if (signal?.aborted) return;
+        setError((e as Error).message);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    load().catch((e: Error) => setError(e.message));
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void loadProducts(
+        page,
+        query,
+        categoryFilter,
+        subcategoryFilter,
+        controller.signal,
+        statsNeedRefresh.current
+      );
+    }, query.trim() ? 250 : 0);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [page, query, categoryFilter, subcategoryFilter, loadProducts]);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([
+      api<{ kategori?: Category[] }>("/api/kategori"),
+      api<{ subkategori?: Subcategory[] }>("/api/subkategori"),
+      api<{ kodeProduk?: string[] }>("/api/produk?admin=1&codesOnly=1"),
+    ])
+      .then(([categoryResult, subcategoryResult, productCodeResult]) => {
+        if (!active) return;
+        setCategories(
+          Array.isArray(categoryResult.kategori) ? categoryResult.kategori : []
+        );
+        setSubcategories(
+          Array.isArray(subcategoryResult.subkategori)
+            ? subcategoryResult.subkategori
+            : []
+        );
+        setKnownProductCodes(
+          Array.isArray(productCodeResult.kodeProduk)
+            ? productCodeResult.kodeProduk
+            : []
+        );
+      })
+      .catch((e: Error) => {
+        if (active) setError(e.message);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
+  useEffect(() => {
+    const action = new URLSearchParams(window.location.search).get("action");
+    if (action === "tambah") {
+      setEditing(null);
+      setForm(empty);
+      setError("");
+      setMessage("");
+      setFormOpen(true);
+    }
+    if (action === "tambah") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("action");
+      window.history.replaceState({}, "", url);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!formOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !loading && !uploading) {
+        setFormOpen(false);
+        setEditing(null);
+        setForm(empty);
+        setError("");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [formOpen, loading, uploading]);
+
   function startEdit(product?: Product) {
+    setFormOpen(true);
+
     if (product) {
       setEditing(product.id);
 
@@ -120,9 +271,13 @@ export default function ProductsPage() {
         nama_produk: product.nama_produk,
         slug: product.slug,
         deskripsi: product.deskripsi,
-
+        kalori: String(product.informasi_gizi.kalori),
+        protein: String(product.informasi_gizi.protein),
+        karbohidrat: String(product.informasi_gizi.karbohidrat),
+        lemak: String(product.informasi_gizi.lemak),
         jenis_harga: product.jenis_harga ?? "tetap",
         harga: product.harga != null ? String(product.harga) : "",
+        stok: product.stok == null ? "" : String(product.stok),
         harga_min: product.harga_min != null ? String(product.harga_min) : "",
         harga_max: product.harga_max != null ? String(product.harga_max) : "",
         satuan: product.satuan,
@@ -136,6 +291,14 @@ export default function ProductsPage() {
 
     setError("");
     setMessage("");
+  }
+
+  function closeForm() {
+    if (loading || uploading) return;
+    setFormOpen(false);
+    setEditing(null);
+    setForm(empty);
+    setError("");
   }
 
   function changeName(value: string) {
@@ -171,7 +334,7 @@ export default function ProductsPage() {
 
     let index = 1;
     let candidate = `${base}-${String(index).padStart(3, "0")}`;
-    const used = new Set(products.map((product) => product.kode_produk.toUpperCase()));
+    const used = new Set(knownProductCodes.map((code) => code.toUpperCase()));
     while (used.has(candidate)) {
       index += 1;
       candidate = `${base}-${String(index).padStart(3, "0")}`;
@@ -248,7 +411,13 @@ export default function ProductsPage() {
       nama_produk: form.nama_produk,
       slug: generatedSlug,
       deskripsi: form.deskripsi,
-
+      informasi_gizi: {
+        kalori: Number(form.kalori),
+        protein: Number(form.protein),
+        karbohidrat: Number(form.karbohidrat),
+        lemak: Number(form.lemak),
+      },
+      stok: form.stok.trim() === "" ? null : Number(form.stok),
       jenis_harga: form.jenis_harga,
       harga:
         form.jenis_harga === "tetap" && form.harga.trim() !== ""
@@ -277,9 +446,10 @@ export default function ProductsPage() {
         }
       );
 
-      await load();
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setForm(empty);
       setEditing(null);
+      setFormOpen(false);
       setMessage(
         editing
           ? "Produk berhasil diperbarui."
@@ -303,7 +473,7 @@ export default function ProductsPage() {
 
     try {
       await api(`/api/produk/${id}`, { method: "DELETE" });
-      await load();
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setMessage("Produk berhasil dihapus.");
     } catch (e) {
       setError((e as Error).message);
@@ -326,43 +496,18 @@ export default function ProductsPage() {
         ),
     [subcategories, categoryFilter]
   );
-  const filtered = useMemo(() => {
-    return products.filter((product) => {
-      const keyword = query.toLowerCase();
-
-      const matchesSearch =
-        `${product.nama_produk} ${product.kode_produk} ${product.subkategori?.nama_subkategori || ""}`
-          .toLowerCase()
-          .includes(keyword);
-
-      const matchesCategory =
-        categoryFilter === "all" ||
-        String(product.kategori_id) === categoryFilter;
-
-      const matchesSubcategory =
-        subcategoryFilter === "all" ||
-        String(product.subkategori_id ?? "") === subcategoryFilter;
-
-      return matchesSearch && matchesCategory && matchesSubcategory;
-    });
-  }, [products, query, categoryFilter, subcategoryFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-
-  const visibleProducts = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProductCount / PAGE_SIZE)
   );
-
-  const availableCount = products.filter((p) => p.tersedia).length;
-  const photoCount = products.filter((p) => p.foto_url).length;
+  const currentPage = Math.min(page, totalPages);
+  const visibleProducts = products;
 
   const stats = [
     {
       title: "TOTAL KATALOG AKTIF",
       value: `${availableCount} Produk`,
-      description: `${products.length} produk terdaftar`,
+      description: `${totalProductCount} produk terdaftar`,
       icon: Package,
       color: "text-[#A83D00]",
       background: "bg-[#E8F0FF]",
@@ -398,30 +543,6 @@ export default function ProductsPage() {
 
       {/* HEADER */}
       <section className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 rounded-md bg-[#EAF0FC] px-3 py-2 text-[11px] font-semibold text-[#42577E]">
-            <Building2 size={14} />
-            Warehouse Utama: Marunda Logistik Hub
-          </div>
-
-          <div className="flex items-center gap-3 text-[#596780]">
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="rounded-lg p-2 hover:bg-white"
-            >
-              <MessageSquare size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label="Muat ulang data"
-              onClick={() => load().catch((e: Error) => setError(e.message))}
-              className="rounded-lg p-2 hover:bg-white"
-            >
-              <RefreshCw size={18} />
-            </button>
-          </div>
-        </div>
 
         <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
           <div className="max-w-2xl">
@@ -440,7 +561,7 @@ export default function ProductsPage() {
             </p>
           </div>
 
-          {/* TAB NAVIGATION */}
+          {/* TAB NAVIGATION
           <div className="flex w-full rounded-xl bg-[#EAF0FC] p-1.5 xl:w-[340px]">
             <div className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-[#172B4D] shadow-sm">
               <Package size={17} className="shrink-0 text-[#A83D00]" />
@@ -462,6 +583,7 @@ export default function ProductsPage() {
               </span>
             </a>
           </div>
+          */}
         </div>
       </section>
 
@@ -520,7 +642,7 @@ export default function ProductsPage() {
       )}
 
       {/* MAIN TWO-COLUMN LAYOUT */}
-      <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.55fr_0.85fr]">
+      <section className="grid grid-cols-1 items-start gap-5">
 
         {/* PRODUCT LIST */}
         <div className="min-w-0 rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
@@ -771,7 +893,7 @@ export default function ProductsPage() {
             <p className="text-[10px] text-[#64748B]">
               Menampilkan{" "}
               <b className="text-[#172B4D]">{visibleProducts.length}</b> dari{" "}
-              <b className="text-[#172B4D]">{filtered.length}</b> produk terdaftar
+              <b className="text-[#172B4D]">{filteredProductCount}</b> produk terdaftar
             </p>
 
             <div className="flex items-center gap-1">
@@ -818,7 +940,20 @@ export default function ProductsPage() {
         </div>
 
         {/* PRODUCT FORM */}
-        <div className="min-w-0 rounded-xl border border-[#E5EAF3] bg-white p-5 sm:p-6">
+        {formOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-[1px] sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={editing ? "Edit produk" : "Tambah produk"}
+        >
+          <button
+            type="button"
+            aria-label="Tutup form produk"
+            className="absolute inset-0 cursor-default"
+            onClick={closeForm}
+          />
+          <div className="relative my-auto max-h-[calc(100vh-1.5rem)] w-full max-w-[680px] overflow-y-auto rounded-xl border border-[#E5EAF3] bg-white p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6">
 
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
@@ -843,11 +978,11 @@ export default function ProductsPage() {
 
             <button
               type="button"
-              onClick={() => startEdit()}
-              title="Reset form"
+              onClick={closeForm}
+              title="Tutup form"
               className="rounded-md p-2 text-[#64748B] hover:bg-[#EEF3FF] hover:text-[#A83D00]"
             >
-              <RotateCcw size={17} />
+              <X size={18} />
             </button>
           </div>
 
@@ -1116,6 +1251,54 @@ export default function ProductsPage() {
               />
             </div>
 
+            {/* STOCK */}
+            <div>
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Stok (opsional)
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                step="1"
+                value={form.stok}
+                onChange={(e) =>
+                  setForm({ ...form, stok: e.target.value })
+                }
+                placeholder="Belum dicatat"
+                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                Informasi Gizi
+              </label>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(["kalori", "protein", "karbohidrat", "lemak"] as const).map(
+                  (key) => (
+                    <label key={key} className="text-[11px] capitalize text-[#64748B]">
+                      {key}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={form[key]}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                      />
+                    </label>
+                  )
+                )}
+              </div>
+            </div>
+
             {/* DESCRIPTION */}
             <div>
               <label className="mb-2 block text-xs font-bold text-[#172B4D]">
@@ -1185,7 +1368,7 @@ export default function ProductsPage() {
             <div className="flex flex-wrap justify-end gap-2 border-t border-[#EAF0F8] pt-4">
               <button
                 type="button"
-                onClick={() => startEdit()}
+                onClick={closeForm}
                 disabled={loading || uploading}
                 className="rounded-md bg-[#E5EDFF] px-4 py-3 text-xs font-bold text-[#172B4D] transition hover:bg-[#D5E2FA] disabled:opacity-50"
               >
@@ -1206,7 +1389,9 @@ export default function ProductsPage() {
               </button>
             </div>
           </form>
+          </div>
         </div>
+        )}
       </section>
     </div>
   );

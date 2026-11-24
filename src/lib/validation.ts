@@ -38,8 +38,19 @@ export const produkSchema = z
 
     deskripsi: z.string().trim().min(1),
 
+    informasi_gizi: z
+      .object({
+        kalori: z.number().nonnegative(),
+        protein: z.number().nonnegative(),
+        karbohidrat: z.number().nonnegative(),
+        lemak: z.number().nonnegative(),
+      })
+      .default({ kalori: 0, protein: 0, karbohidrat: 0, lemak: 0 }),
+
     // Jenis harga
     jenis_harga: z.enum(["tetap", "rentang"]).default("tetap"),
+
+    stok: z.number().int().nonnegative().max(4294967295).nullable().optional(),
 
     // Harga tetap
     harga: z.number().positive().nullable().optional(),
@@ -128,6 +139,10 @@ export const pengaturanSchema = z.object({
     ),
 
   alamat: z.string().trim().nullable().optional(),
+
+  email: z.string().trim().email("Format email tidak valid.").max(191).nullable().optional(),
+
+  hak_cipta: z.string().trim().min(1).max(500),
 
   template_pesan: z.string().trim().min(1),
 });

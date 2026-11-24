@@ -33,7 +33,9 @@ type Detail = {
   nama_produk: string;
   jumlah: number;
   harga_satuan: string | number;
+  harga_satuan_max: string | number | null;
   subtotal: string | number;
+  subtotal_max: string | number | null;
 };
 
 type Order = {
@@ -44,6 +46,7 @@ type Order = {
   telepon_pemesan: string | null;
   catatan: string | null;
   total_harga: string | number;
+  total_harga_max: string | number | null;
   dibuat_pada: string;
   status_pesanan: StatusPesanan;
   status_pembayaran: StatusPembayaran;
@@ -90,6 +93,13 @@ const orderColors: Record<StatusPesanan, string> = {
 
 const selectClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-orange-700";
+
+function formatPriceRange(min: string | number, max: string | number | null) {
+  const minimum = rupiah(min);
+  return max == null
+    ? minimum
+    : `${minimum} – ${rupiah(max)} (estimasi)`;
+}
 
 function whatsappLink(phone: string | null, code: string) {
   if (!phone) return "";
@@ -335,7 +345,7 @@ export default function OrdersPage() {
                     </td>
 
                     <td className="px-5 py-4 font-bold">
-                      {rupiah(order.total_harga)}
+                      {formatPriceRange(order.total_harga, order.total_harga_max)}
                     </td>
 
                     <td className="px-5 py-4">
@@ -382,12 +392,13 @@ export default function OrdersPage() {
                   </tr>
 
 
+
                   {expanded === order.id && (
                     <tr>
                       <td colSpan={7} className="bg-slate-50 p-4 sm:p-5">
                         <div className="space-y-4">
 
-                          {/* DETAIL PRODUK DAN INFORMASI PEMESAN */}
+                          {/* RINCIAN PRODUK DAN INFORMASI PEMESAN */}
                           <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
 
                             {/* RINCIAN PRODUK */}
@@ -407,33 +418,43 @@ export default function OrdersPage() {
                                 </span>
                               </div>
 
-                              <div className="mt-3 space-y-3">
+                              <div className="mt-4 space-y-3">
                                 {order.detail_pesanan.map((item) => (
                                   <div
                                     key={item.id}
-                                    className="rounded-lg border border-slate-100 bg-white p-3"
+                                    className="rounded-lg border border-slate-100 bg-white p-3 sm:p-4"
                                   >
-                                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                                       <div className="min-w-0">
                                         <p className="break-words text-sm font-bold text-slate-800">
                                           {item.nama_produk}
                                         </p>
 
-                                        <p className="mt-2 text-xs text-slate-500">
-                                          Jumlah: {item.jumlah} unit
-                                        </p>
+                                        <div className="mt-2 space-y-1">
+                                          <p className="text-xs text-slate-500">
+                                            Jumlah: {item.jumlah} unit
+                                          </p>
 
-                                        <p className="mt-1 text-xs text-slate-500">
-                                          Harga satuan: {rupiah(item.harga_satuan)}
-                                        </p>
+                                          <p className="text-xs text-slate-500">
+                                            Harga satuan:{" "}
+                                            {formatPriceRange(
+                                              item.harga_satuan,
+                                              item.harga_satuan_max
+                                            )}
+                                          </p>
+                                        </div>
                                       </div>
 
                                       <div className="shrink-0 sm:text-right">
                                         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                           Subtotal
                                         </p>
+
                                         <p className="mt-1 text-sm font-bold text-slate-800">
-                                          {rupiah(item.subtotal)}
+                                          {formatPriceRange(
+                                            item.subtotal,
+                                            item.subtotal_max
+                                          )}
                                         </p>
                                       </div>
                                     </div>
@@ -441,18 +462,22 @@ export default function OrdersPage() {
                                 ))}
                               </div>
 
+                              {/* TOTAL PESANAN */}
                               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-orange-50 p-4">
                                 <div>
-                                  <p className="text-xs font-semibold text-slate-600">
-                                    Total Pembayaran Pesanan
+                                  <p className="text-xs font-bold text-slate-700">
+                                    Total Pesanan
                                   </p>
                                   <p className="mt-1 text-[11px] text-slate-500">
-                                    Berdasarkan seluruh produk yang dipesan
+                                    Akumulasi seluruh produk yang dipesan
                                   </p>
                                 </div>
 
                                 <p className="text-lg font-black text-[#A83D00]">
-                                  {rupiah(order.total_harga)}
+                                  {formatPriceRange(
+                                    order.total_harga,
+                                    order.total_harga_max
+                                  )}
                                 </p>
                               </div>
                             </section>
@@ -468,6 +493,7 @@ export default function OrdersPage() {
                                 </p>
                               </div>
 
+                              {/* NAMA PEMESAN */}
                               <div className="mt-4 rounded-lg bg-slate-50 p-3">
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                   Nama Pemesan
@@ -477,6 +503,7 @@ export default function OrdersPage() {
                                 </p>
                               </div>
 
+                              {/* INSTANSI DAN TELEPON */}
                               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-lg border border-slate-100 p-3">
                                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -497,6 +524,7 @@ export default function OrdersPage() {
                                 </div>
                               </div>
 
+                              {/* CATATAN */}
                               <div className="mt-3 rounded-lg border border-slate-100 p-3">
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                   Catatan Pesanan
@@ -506,6 +534,7 @@ export default function OrdersPage() {
                                 </p>
                               </div>
 
+                              {/* WHATSAPP */}
                               {order.telepon_pemesan && (
                                 <a
                                   href={whatsappLink(
@@ -598,6 +627,7 @@ export default function OrdersPage() {
                       </td>
                     </tr>
                   )}
+
 
                 </Fragment>
               ))}

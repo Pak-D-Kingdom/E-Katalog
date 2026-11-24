@@ -47,28 +47,36 @@ export async function POST(request: Request) {
   const requested = Array.from(consolidated, ([produk_id, jumlah]) => ({ produk_id, jumlah }));
   const products = await prisma.produk.findMany({ where: { id: { in: requested.map((item) => item.produk_id) }, tersedia: true } });
   if (products.length !== requested.length) return NextResponse.json({ error: "Ada produk yang sudah tidak tersedia. Muat ulang katalog." }, { status: 409 });
-  // Produk dengan harga rentang harus melalui proses penawaran Admin
-  const rangeProducts = products.filter(
-    (product) => product.jenis_harga === "rentang"
-  );
+  const invalidRangeProducts = products.filter((product) => {
+    if (product.jenis_harga !== "rentang") return false;
+    const min = Number(product.harga_min);
+    const max = Number(product.harga_max);
+    return (
+      product.harga_min == null ||
+      product.harga_max == null ||
+      !Number.isFinite(min) ||
+      !Number.isFinite(max) ||
+      min <= 0 ||
+      max < min
+    );
+  });
 
-  if (rangeProducts.length > 0) {
+  if (invalidRangeProducts.length > 0) {
     return NextResponse.json(
       {
-        error:
-          "Produk dengan harga rentang belum dapat dipesan melalui checkout otomatis. Silakan hubungi Admin untuk meminta penawaran harga.",
-        products: rangeProducts.map((product) => product.nama_produk),
+        error: "Ada produk dengan rentang harga yang belum valid.",
+        products: invalidRangeProducts.map((product) => product.nama_produk),
       },
       { status: 400 }
     );
   }
 
-  // Memastikan produk harga tetap memiliki nilai harga yang valid
   const invalidPriceProducts = products.filter(
     (product) =>
-      product.harga == null ||
-      Number(product.harga) <= 0 ||
-      !Number.isFinite(Number(product.harga))
+      product.jenis_harga !== "rentang" &&
+      (product.harga == null ||
+        Number(product.harga) <= 0 ||
+        !Number.isFinite(Number(product.harga)))
   );
 
   if (invalidPriceProducts.length > 0) {
@@ -83,12 +91,48 @@ export async function POST(request: Request) {
   const byId = new Map(products.map((product) => [product.id, product]));
   const items = requested.map((item) => {
     const product = byId.get(item.produk_id)!;
-    const price = Number(product.harga);
-    return { ...item, nama_produk: product.nama_produk, harga_satuan: price, subtotal: price * item.jumlah };
+    const isRange = product.jenis_harga === "rentang";
+    const minPrice = isRange
+      ? Number(product.harga_min)
+      : Number(product.harga);
+    const maxPrice = isRange
+      ? Number(product.harga_max)
+      : minPrice;
+    return {
+      ...item,
+      nama_produk: product.nama_produk,
+      harga_satuan: minPrice,
+      harga_satuan_max: isRange ? maxPrice : null,
+      subtotal: minPrice * item.jumlah,
+      subtotal_max: isRange ? maxPrice * item.jumlah : null,
+    };
   });
-  const totalCents = items.reduce((sum, item) => sum + Math.round(item.subtotal * 100), 0);
-  const total = totalCents / 100;
-  if (!Number.isFinite(total) || total <= 0) return NextResponse.json({ error: "Total pesanan tidak valid." }, { status: 400 });
+  const hasRange = items.some((item) => item.harga_satuan_max !== null);
+  const totalMinCents = items.reduce(
+    (sum, item) => sum + Math.round(item.subtotal * 100),
+    0
+  );
+  const totalMaxCents = items.reduce(
+    (sum, item) =>
+      sum + Math.round((item.subtotal_max ?? item.subtotal) * 100),
+    0
+  );
+  const totalMin = totalMinCents / 100;
+  const totalMax = totalMaxCents / 100;
+  if (
+    !Number.isFinite(totalMin) ||
+    totalMin <= 0 ||
+    !Number.isFinite(totalMax) ||
+    totalMax < totalMin
+  ) {
+    return NextResponse.json(
+      { error: "Total pesanan tidak valid." },
+      { status: 400 }
+    );
+  }
+  const totalLabel = hasRange
+    ? `${rupiah(totalMin)} – ${rupiah(totalMax)} (estimasi)`
+    : rupiah(totalMin);
   const settings = await prisma.pengaturan_katalog.findFirst({ orderBy: { id: "asc" } });
   if (!settings) return NextResponse.json({ error: "Pengaturan katalog belum tersedia." }, { status: 503 });
 
@@ -106,14 +150,17 @@ export async function POST(request: Request) {
           nama_sekolah: parsed.data.nama_sekolah || null,
           telepon_pemesan: parsed.data.telepon_pemesan || null,
           catatan: parsed.data.catatan || null,
-          total_harga: total,
+          total_harga: totalMin,
+          total_harga_max: hasRange ? totalMax : null,
           detail_pesanan: {
             create: items.map((item) => ({
               produk_id: item.produk_id,
               nama_produk: item.nama_produk,
               harga_satuan: item.harga_satuan,
+              harga_satuan_max: item.harga_satuan_max,
               jumlah: item.jumlah,
-              subtotal: item.subtotal
+              subtotal: item.subtotal,
+              subtotal_max: item.subtotal_max,
             }))
           }
         }
@@ -125,14 +172,22 @@ export async function POST(request: Request) {
   }
   if (!order) return NextResponse.json({ error: "Tidak dapat membuat kode pesanan. Silakan coba kembali." }, { status: 503 });
 
-  const daftar_pesanan = items.map((item) => `- ${item.nama_produk} x${item.jumlah} (${rupiah(item.subtotal)})`).join("\n");
+  const daftar_pesanan = items.map((item) => {
+    const unitPrice = item.harga_satuan_max == null
+      ? rupiah(item.harga_satuan)
+      : `${rupiah(item.harga_satuan)} – ${rupiah(item.harga_satuan_max)}`;
+    const subtotal = item.subtotal_max == null
+      ? rupiah(item.subtotal)
+      : `${rupiah(item.subtotal)} – ${rupiah(item.subtotal_max)}`;
+    return `- ${item.nama_produk} x${item.jumlah} (${unitPrice}/unit; estimasi ${subtotal})`;
+  }).join("\n");
   const values: Record<string, string> = {
     nama_instansi: settings.nama_instansi,
     nama_pemesan: order.nama_pemesan,
     nama_sekolah: order.nama_sekolah ?? "-",
     telepon_pemesan: order.telepon_pemesan ?? "-",
     daftar_pesanan,
-    total_harga: rupiah(total),
+    total_harga: totalLabel,
     catatan: order.catatan || "-",
     kode_pesanan: order.kode_pesanan
   };
