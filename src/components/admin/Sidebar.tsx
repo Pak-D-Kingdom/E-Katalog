@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -10,6 +9,8 @@ import {
     Settings,
     Store,
     LogOut,
+    Tags,
+    ShoppingBag,
 } from "lucide-react";
 import { api } from "@/lib/types";
 import Swal from "sweetalert2";
@@ -24,6 +25,16 @@ const menuItems = [
         title: "Kelola Produk (CRUD)",
         href: "/admin/dashboard/produk",
         icon: Package,
+    },
+    {
+        title: "Kelola Kategori",
+        href: "/admin/dashboard/kategori",
+        icon: Tags,
+    },
+    {
+        title: "Kelola Pesanan",
+        href: "/admin/dashboard/pesanan",
+        icon: ShoppingBag,
     },
     {
         title: "Konfigurasi & Pajak",
@@ -103,8 +114,8 @@ export default function Sidebar() {
                                 key={item.href}
                                 href={item.href}
                                 className={`flex h-9 items-center gap-3 rounded-md px-3 text-[12px] font-semibold transition-colors ${active
-                                        ? "bg-[#A83D00] text-white"
-                                        : "text-[#51443E] hover:bg-white/80"
+                                    ? "bg-[#A83D00] text-white"
+                                    : "text-[#51443E] hover:bg-white/80"
                                     }`}
                             >
                                 <Icon size={17} />

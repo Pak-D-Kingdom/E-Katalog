@@ -182,7 +182,7 @@ export default function OrdersPage() {
   ).length;
 
   return (
-    <div className="space-y-5">
+    <div className="min-h-screen space-y-5 bg-[#F2F5FC] p-4 sm:p-6 lg:p-7">
       {/* HEADER */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -297,16 +297,25 @@ export default function OrdersPage() {
         </form>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] text-left text-sm">
+          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[17%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[15%]" />
+              <col className="w-[12%]" />
+            </colgroup>
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3">Kode Pesanan</th>
-                <th className="px-5 py-3">Pemesan</th>
-                <th className="px-5 py-3">Total</th>
-                <th className="px-5 py-3">Pembayaran</th>
-                <th className="px-5 py-3">Status Pesanan</th>
-                <th className="px-5 py-3">Tanggal</th>
-                <th className="px-5 py-3">Detail</th>
+                <th className="px-3 py-3">Kode Pesanan</th>
+                <th className="px-3 py-3">Pemesan</th>
+                <th className="px-3 py-3">Total</th>
+                <th className="px-3 py-3">Pembayaran</th>
+                <th className="px-3 py-3">Status Pesanan</th>
+                <th className="px-3 py-3">Tanggal</th>
+                <th className="px-3 py-3 text-right">Detail</th>
               </tr>
             </thead>
 
@@ -372,69 +381,130 @@ export default function OrdersPage() {
                     </td>
                   </tr>
 
+
                   {expanded === order.id && (
                     <tr>
-                      <td colSpan={7} className="bg-slate-50 px-5 py-5">
-                        <div className="grid gap-5 lg:grid-cols-2">
-                          {/* ITEM */}
-                          <div>
-                            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                              <Package size={15} />
-                              Rincian Produk
-                            </h3>
+                      <td colSpan={7} className="bg-slate-50 p-4 sm:p-5">
+                        <div className="space-y-4">
 
-                            <div className="mt-3 space-y-3">
-                              {order.detail_pesanan.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="flex justify-between gap-4 border-b border-slate-200 pb-3"
-                                >
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-800">
-                                      {item.nama_produk}
-                                    </p>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                      {item.jumlah} × {rupiah(item.harga_satuan)}
-                                    </p>
-                                  </div>
+                          {/* DETAIL PRODUK DAN INFORMASI PEMESAN */}
+                          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
 
-                                  <b className="text-sm text-slate-800">
-                                    {rupiah(item.subtotal)}
-                                  </b>
+                            {/* RINCIAN PRODUK */}
+                            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                                <div>
+                                  <h3 className="text-sm font-bold text-slate-800">
+                                    Rincian Produk
+                                  </h3>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    Daftar produk dalam pesanan ini
+                                  </p>
                                 </div>
-                              ))}
-                            </div>
 
-                            <div className="mt-3 flex justify-between border-t border-slate-200 pt-3">
-                              <b>Total Pesanan</b>
-                              <b className="text-[#A83D00]">
-                                {rupiah(order.total_harga)}
-                              </b>
-                            </div>
-                          </div>
+                                <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[#A83D00]">
+                                  {order.detail_pesanan.length} jenis produk
+                                </span>
+                              </div>
 
-                          {/* CUSTOMER AND STATUS */}
-                          <div className="space-y-5">
-                            <div>
-                              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                Informasi Pemesan
-                              </h3>
+                              <div className="mt-3 space-y-3">
+                                {order.detail_pesanan.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="rounded-lg border border-slate-100 bg-white p-3"
+                                  >
+                                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                                      <div className="min-w-0">
+                                        <p className="break-words text-sm font-bold text-slate-800">
+                                          {item.nama_produk}
+                                        </p>
 
-                              <p className="mt-2 text-sm font-semibold text-slate-800">
-                                {order.nama_pemesan}
-                              </p>
+                                        <p className="mt-2 text-xs text-slate-500">
+                                          Jumlah: {item.jumlah} unit
+                                        </p>
 
-                              <p className="mt-1 text-xs text-slate-500">
-                                Instansi: {order.nama_sekolah || "—"}
-                              </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                          Harga satuan: {rupiah(item.harga_satuan)}
+                                        </p>
+                                      </div>
 
-                              <p className="mt-1 text-xs text-slate-500">
-                                Telepon: {order.telepon_pemesan || "—"}
-                              </p>
+                                      <div className="shrink-0 sm:text-right">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                          Subtotal
+                                        </p>
+                                        <p className="mt-1 text-sm font-bold text-slate-800">
+                                          {rupiah(item.subtotal)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
 
-                              <p className="mt-1 text-xs text-slate-500">
-                                Catatan: {order.catatan || "—"}
-                              </p>
+                              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-orange-50 p-4">
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-600">
+                                    Total Pembayaran Pesanan
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-slate-500">
+                                    Berdasarkan seluruh produk yang dipesan
+                                  </p>
+                                </div>
+
+                                <p className="text-lg font-black text-[#A83D00]">
+                                  {rupiah(order.total_harga)}
+                                </p>
+                              </div>
+                            </section>
+
+                            {/* INFORMASI PEMESAN */}
+                            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                              <div className="border-b border-slate-100 pb-3">
+                                <h3 className="text-sm font-bold text-slate-800">
+                                  Informasi Pemesan
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Identitas dan kontak pelanggan
+                                </p>
+                              </div>
+
+                              <div className="mt-4 rounded-lg bg-slate-50 p-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                  Nama Pemesan
+                                </p>
+                                <p className="mt-1 break-words text-sm font-bold text-slate-800">
+                                  {order.nama_pemesan}
+                                </p>
+                              </div>
+
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-lg border border-slate-100 p-3">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Instansi / Sekolah
+                                  </p>
+                                  <p className="mt-1 break-words text-sm font-medium text-slate-700">
+                                    {order.nama_sekolah || "Belum diisi"}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-lg border border-slate-100 p-3">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Nomor Telepon
+                                  </p>
+                                  <p className="mt-1 break-words text-sm font-medium text-slate-700">
+                                    {order.telepon_pemesan || "Belum diisi"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 rounded-lg border border-slate-100 p-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                  Catatan Pesanan
+                                </p>
+                                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">
+                                  {order.catatan || "Tidak ada catatan dari pemesan."}
+                                </p>
+                              </div>
 
                               {order.telepon_pemesan && (
                                 <a
@@ -444,15 +514,37 @@ export default function OrdersPage() {
                                   )}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white hover:bg-green-700"
+                                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700"
                                 >
-                                  <MessageCircle size={15} />
-                                  Hubungi melalui WhatsApp
+                                  <MessageCircle size={17} />
+                                  Hubungi Pemesan melalui WhatsApp
                                 </a>
+                              )}
+                            </section>
+                          </div>
+
+                          {/* PENGATURAN STATUS */}
+                          <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-800">
+                                  Pengaturan Status Pesanan
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Perubahan status akan langsung disimpan setelah dipilih.
+                                </p>
+                              </div>
+
+                              {updatingOrder === order.id && (
+                                <span className="text-xs font-medium text-blue-600">
+                                  Menyimpan perubahan...
+                                </span>
                               )}
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+
+                              {/* STATUS PEMBAYARAN */}
                               <div>
                                 <label className="mb-2 block text-xs font-bold text-slate-700">
                                   Status Pembayaran
@@ -468,19 +560,18 @@ export default function OrdersPage() {
                                     })
                                   }
                                 >
-                                  {Object.entries(paymentLabels).map(
-                                    ([value, label]) => (
-                                      <option key={value} value={value}>
-                                        {label}
-                                      </option>
-                                    )
-                                  )}
+                                  {Object.entries(paymentLabels).map(([value, label]) => (
+                                    <option key={value} value={value}>
+                                      {label}
+                                    </option>
+                                  ))}
                                 </select>
                               </div>
 
+                              {/* STATUS PESANAN */}
                               <div>
                                 <label className="mb-2 block text-xs font-bold text-slate-700">
-                                  Status Pesanan
+                                  Status Proses Pesanan
                                 </label>
 
                                 <select
@@ -493,27 +584,21 @@ export default function OrdersPage() {
                                     })
                                   }
                                 >
-                                  {Object.entries(orderLabels).map(
-                                    ([value, label]) => (
-                                      <option key={value} value={value}>
-                                        {label}
-                                      </option>
-                                    )
-                                  )}
+                                  {Object.entries(orderLabels).map(([value, label]) => (
+                                    <option key={value} value={value}>
+                                      {label}
+                                    </option>
+                                  ))}
                                 </select>
                               </div>
                             </div>
+                          </section>
 
-                            {updatingOrder === order.id && (
-                              <p className="text-xs text-blue-600">
-                                Menyimpan perubahan status...
-                              </p>
-                            )}
-                          </div>
                         </div>
                       </td>
                     </tr>
                   )}
+
                 </Fragment>
               ))}
 
@@ -531,6 +616,11 @@ export default function OrdersPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="border-t border-slate-200 px-4 py-4">
+          <p className="text-xs text-slate-500">
+            Menampilkan <b className="text-slate-800">{orders.length}</b> pesanan
+          </p>
         </div>
       </section>
     </div>
