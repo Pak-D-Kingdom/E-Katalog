@@ -39,7 +39,7 @@ const menuItems = [
         icon: ShoppingBag,
     },
     {
-        title: "Konfigurasi & Pajak",
+        title: "Pengaturan",
         href: "/admin/dashboard/pengaturan",
         icon: Settings,
     },

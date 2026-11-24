@@ -28,6 +28,7 @@ import {
   SlidersHorizontal,
   Save,
 } from "lucide-react";
+import Swal from "sweetalert2";
 import {
   api,
   Category,
@@ -463,18 +464,31 @@ export default function ProductsPage() {
   }
 
   async function remove(id: number) {
-    if (
-      !window.confirm(
-        "Hapus produk ini? Riwayat pesanan tetap menyimpan snapshot item."
-      )
-    ) {
-      return;
-    }
+    const confirmation = await Swal.fire({
+      title: "Hapus produk?",
+      text: "Riwayat pesanan tetap menyimpan snapshot item.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, hapus",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
+    setError("");
 
     try {
       await api(`/api/produk/${id}`, { method: "DELETE" });
       await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setMessage("Produk berhasil dihapus.");
+      await Swal.fire({
+        title: "Produk berhasil dihapus",
+        text: "Produk telah dihapus dari katalog.",
+        icon: "success",
+        confirmButtonColor: "#A83D00",
+      });
     } catch (e) {
       setError((e as Error).message);
     }

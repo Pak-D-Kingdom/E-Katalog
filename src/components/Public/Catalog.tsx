@@ -358,28 +358,31 @@ export default function PublicCatalog({
     }
   }
 
-  function checkoutHome(event: React.FormEvent) {
+  async function checkoutHome(event: React.FormEvent) {
     event.preventDefault();
     setError("");
     if (!homeCart.length) return;
+
     setSubmitting(true);
-    const itemLines = homeCart.map(({ offer, quantity }) => {
-      const subtotal = offer.priceValue * quantity;
-      return `- ${offer.title} [${offer.sku}] x${quantity} @ ${rupiah(offer.priceValue)} = ${rupiah(subtotal)}`;
-    }).join("\n");
-    const text = [
-      `Halo ${instanceName}, saya ${form.nama_pemesan} dari ${form.nama_sekolah || "-"} ingin meminta penawaran:`,
-      `Nomor telepon: ${form.telepon_pemesan || "-"}`,
-      "",
-      "Rangkuman pilihan:",
-      itemLines,
-      `Total estimasi: ${rupiah(homeTotal)}`,
-      `Catatan: ${form.catatan || "-"}`,
-      "Kode permintaan: Permintaan dari katalog"
-    ].join("\n");
-    localStorage.removeItem(homeCartKey);
-    setHomeCart([]);
-    window.location.assign(`${whatsappHref}?text=${encodeURIComponent(text)}`);
+    try {
+      const result = await api<{ whatsapp_url: string }>("/api/pesanan", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          items: homeCart.map(({ offer, quantity }) => ({
+            produk_id: offer.productId,
+            jumlah: quantity,
+          })),
+        }),
+      });
+
+      localStorage.removeItem(homeCartKey);
+      setHomeCart([]);
+      window.location.assign(result.whatsapp_url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal menyimpan pesanan.");
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -810,7 +813,7 @@ export default function PublicCatalog({
             </div>
             <div className="grid grid-cols-[120px_1fr] gap-2 border-t border-slate-100 px-5 py-3">
               <button type="button" onClick={() => setCartOpen(false)} className="flex h-10 items-center justify-center gap-1.5 rounded-md border border-slate-200 text-[12px] font-bold text-slate-700 hover:bg-slate-50"><ArrowRight size={14} className="rotate-180" />Lanjut belanja</button>
-              <button type="submit" disabled={submitting} className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ad3b00] text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:opacity-60"><MessageCircle size={14} />{submitting ? "Membuka WhatsApp..." : "Kirim Permintaan via WhatsApp"}</button>
+              <button type="submit" disabled={submitting} className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ad3b00] text-[12px] font-bold text-white hover:bg-[#8f3000] disabled:opacity-60"><MessageCircle size={14} />{submitting ? "Menyimpan pesanan..." : "Kirim Permintaan via WhatsApp"}</button>
             </div>
           </form>}
         </aside>

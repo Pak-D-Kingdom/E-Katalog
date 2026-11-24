@@ -18,7 +18,14 @@ export async function GET(request: Request) {
     await requireAdmin();
     const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
     const pesanan = await prisma.riwayat_pesanan.findMany({
-      where: query ? { kode_pesanan: { contains: query } } : {},
+      where: query
+        ? {
+            OR: [
+              { kode_pesanan: { contains: query } },
+              { nama_pemesan: { contains: query } },
+            ],
+          }
+        : {},
       include: { detail_pesanan: true },
       orderBy: { dibuat_pada: "desc" },
       take: 200

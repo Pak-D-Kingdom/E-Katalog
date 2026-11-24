@@ -8,6 +8,7 @@ import type { Product } from "@/lib/types";
 import type { HomeSlide } from "@/lib/home-slides";
 
 export type HomeOffer = {
+  productId: number;
   category: string;
   badge: string;
   sku: string;
@@ -51,6 +52,7 @@ export function getHomeOffers(products: Product[]): HomeOffer[] {
       const description = product.deskripsi.trim();
       const unit = product.satuan.trim();
       return {
+        productId: product.id,
         category: product.kategori?.nama_kategori || "Lainnya",
         badge: product.tersedia ? "Tersedia" : "Tidak tersedia",
         sku: product.kode_produk,
