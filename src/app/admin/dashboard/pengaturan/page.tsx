@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/types";
 import Swal from "sweetalert2";
+import HomeSliderSettings from "@/components/admin/dashboard/HomeSliderSettings";
 
 type Settings = {
   nama_instansi: string;
@@ -185,14 +186,15 @@ export default function SettingsPage() {
             </div>
 
             <p className="mt-1 text-sm text-[#64748B]">
-              Kelola informasi instansi dan format pesan WhatsApp untuk
-              kebutuhan pemesanan katalog B2B.
+              Kelola slider beranda, informasi instansi, dan format pesan
+              WhatsApp untuk kebutuhan pemesanan katalog B2B.
             </p>
           </div>
         </div>
       </section>
 
       <div className="space-y-5">
+        <HomeSliderSettings />
 
         {/* INFORMASI INSTANSI */}
         <form onSubmit={(e) => submit(e, "instansi")}>

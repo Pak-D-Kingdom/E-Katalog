@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import PublicCatalog from "@/components/Public/Catalog";
-import { getCatalogSettings } from "@/lib/catalog-settings";
+import { getCatalogSettings, getHomeSlides } from "@/lib/catalog-settings";
 
 const description = "Penyedia solusi pengadaan dapur profesional, peralatan heavy duty, bahan baku, legalitas, perawatan, dan maintenance HORECA.";
 
@@ -16,11 +16,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const settings = await getCatalogSettings();
+  const [settings, homeSlides] = await Promise.all([
+    getCatalogSettings(),
+    getHomeSlides(),
+  ]);
 
   return (
     <Suspense fallback={null}>
-      <PublicCatalog page="home" initialSettings={settings} />
+      <PublicCatalog page="home" initialSettings={settings} homeSlides={homeSlides} />
     </Suspense>
   );
 }

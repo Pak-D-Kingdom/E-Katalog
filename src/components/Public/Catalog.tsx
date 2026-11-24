@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import HomePage, { getHomeOffers } from "./Home/HomePage";
 import type { HomeOffer } from "./Home/HomePage";
+import type { HomeSlide } from "@/lib/home-slides";
 import KatalogPage from "./Katalog/KatalogPage";
 import type { CartItem } from "./types";
 
@@ -15,6 +16,7 @@ type HomeCartItem = { offer: HomeOffer; quantity: number };
 type PublicCatalogProps = {
   page?: "home" | "catalog";
   initialSettings: Settings | null;
+  homeSlides?: HomeSlide[];
 };
 type Settings = {
   nama_instansi: string;
@@ -41,6 +43,7 @@ function getCartLineSubtotal(product: Product, quantity: number) {
 export default function PublicCatalog({
   page = "home",
   initialSettings,
+  homeSlides = [],
 }: PublicCatalogProps) {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -684,6 +687,7 @@ export default function PublicCatalog({
       {page === "home" ? <HomePage
         offers={homeOffers}
         loading={productsLoading}
+        slides={homeSlides}
         onAddOffer={addHomeOffer}
         onOpenCart={openCart}
         whatsappHref={whatsappHref}

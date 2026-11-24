@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { defaultHomeSlides } from "@/lib/home-slides";
 
 export const getCatalogSettings = cache(() =>
   prisma.pengaturan_katalog.findFirst({
@@ -13,3 +14,12 @@ export const getCatalogSettings = cache(() =>
     orderBy: { id: "asc" },
   })
 );
+
+export const getHomeSlides = cache(async () => {
+  const slides = await prisma.slider_beranda.findMany({
+    select: { foto_url: true },
+    orderBy: [{ urutan: "asc" }, { id: "asc" }],
+  });
+
+  return slides.length > 0 ? slides : defaultHomeSlides;
+});

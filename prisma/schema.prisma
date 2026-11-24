@@ -88,6 +88,15 @@ model pengaturan_katalog {
   diperbarui_pada DateTime @updatedAt
 }
 
+model slider_beranda {
+  id          Int      @id @default(autoincrement())
+  foto_url    String   @db.VarChar(500)
+  urutan      Int      @default(0)
+  dibuat_pada DateTime @default(now())
+
+  @@index([urutan])
+}
+
 model riwayat_pesanan {
   id              Int      @id @default(autoincrement())
   kode_pesanan    String   @unique @db.VarChar(40)

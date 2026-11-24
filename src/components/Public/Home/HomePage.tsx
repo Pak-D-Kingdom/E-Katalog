@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, Recei
 import Link from "next/link";
 import { hargaSatuan, rupiah } from "@/lib/types";
 import type { Product } from "@/lib/types";
+import type { HomeSlide } from "@/lib/home-slides";
 
 export type HomeOffer = {
   category: string;
@@ -72,12 +73,6 @@ export function getHomeOffers(products: Product[]): HomeOffer[] {
 }
 
 const homeCategories = ["Semua Kategori", "Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
-const homeSlides = [
-  "/commercial-combi-steam-oven.png",
-  "/haccp-food-safety-audit.png",
-  "/maintenance-deep-cleaning.png",
-  "/daging-sapi-australian-striploin.png"
-];
 const homePillars = [
   {
     icon: "◉",
@@ -113,7 +108,14 @@ const homePillars = [
   }
 ];
 
-function HomeHeroSlider({ instanceName }: { instanceName: string }) {
+function HomeHeroSlider({
+  instanceName,
+  slides: configuredSlides,
+}: {
+  instanceName: string;
+  slides: HomeSlide[];
+}) {
+  const homeSlides = configuredSlides.map((slide) => slide.foto_url);
   const [slidePosition, setSlidePosition] = useState(1);
   const [transitionEnabled, setTransitionEnabled] = useState(true);
   const slides = [homeSlides[homeSlides.length - 1], ...homeSlides, homeSlides[0]];
@@ -253,6 +255,7 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
 export default function HomePage({
   offers,
   loading,
+  slides,
   onAddOffer,
   onOpenCart,
   whatsappHref,
@@ -260,6 +263,7 @@ export default function HomePage({
 }: {
   offers: HomeOffer[];
   loading: boolean;
+  slides: HomeSlide[];
   onAddOffer: (offer: HomeOffer, source?: HTMLElement) => void;
   onOpenCart: () => void;
   whatsappHref: string;
@@ -273,7 +277,7 @@ export default function HomePage({
 
   return <>
     <section id="home" className="bg-[#eef3ff]">
-      <HomeHeroSlider instanceName={instanceName} />
+      <HomeHeroSlider instanceName={instanceName} slides={slides} />
       <div className="mx-auto max-w-7xl px-5 pb-8 pt-7 lg:px-8 lg:pb-10 lg:pt-9">
         <div className="mb-6 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
