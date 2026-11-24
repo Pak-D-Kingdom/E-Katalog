@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: e-katalog-mbg:latest
+    container_name: ekatalog_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=mysql://${MYSQL_USER:-mbg_user}:${MYSQL_PASSWORD:-mbg_secret_password}@mysql:3306/${MYSQL_DATABASE:-e_katalog_mbg}
+      - AUTH_SECRET=${AUTH_SECRET:-ganti_dengan_secret_acak_minimal_32_karakter_12345}
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
+      - AUTO_SEED=${AUTO_SEED:-false}
+      - PORT=3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/public/uploads
+    networks:
+      - ekatalog_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: ekatalog_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-e_katalog_mbg}
+      MYSQL_USER: ${MYSQL_USER:-mbg_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mbg_secret_password}
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ekatalog_network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD:-root_secret_password} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mysql_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  ekatalog_network:
+    driver: bridge
