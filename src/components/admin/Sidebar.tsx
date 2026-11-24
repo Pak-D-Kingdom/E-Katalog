@@ -34,6 +34,11 @@ const menuItems = [
         icon: Tags,
     },
     {
+        title: "Kelola Pesanan",
+        href: "/admin/dashboard/pesanan",
+        icon: ShoppingBag,
+    },
+    {
         title: "Pengaturan WhatsApp",
         href: "/admin/dashboard/pengaturan",
         icon: Settings,
@@ -150,9 +155,8 @@ export default function Sidebar({
                                 href={item.href}
                                 title={collapsed ? item.title : undefined}
                                 onClick={onNavigate}
-                                className={`flex h-9 items-center rounded-md text-[12px] font-semibold transition-colors ${
-                                    collapsed ? "lg:justify-center lg:px-0" : "gap-3 px-3"
-                                } ${active
+                                className={`flex h-9 items-center rounded-md text-[12px] font-semibold transition-colors ${collapsed ? "lg:justify-center lg:px-0" : "gap-3 px-3"
+                                    } ${active
                                         ? "bg-[#A83D00] text-white"
                                         : "text-[#51443E] hover:bg-white/80"
                                     }`}
@@ -174,9 +178,8 @@ export default function Sidebar({
                     href="/"
                     title={collapsed ? "Kunjungi Portal Publik" : undefined}
                     onClick={onNavigate}
-                    className={`flex h-9 items-center rounded-md text-[12px] font-semibold text-[#51443E] transition hover:bg-white/80 ${
-                        collapsed ? "lg:justify-center lg:px-0" : "gap-3 px-3"
-                    }`}
+                    className={`flex h-9 items-center rounded-md text-[12px] font-semibold text-[#51443E] transition hover:bg-white/80 ${collapsed ? "lg:justify-center lg:px-0" : "gap-3 px-3"
+                        }`}
                 >
                     <Store size={17} />
                     {!collapsed && <span>Kunjungi Portal Publik</span>}
