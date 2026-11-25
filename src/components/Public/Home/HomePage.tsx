@@ -287,7 +287,7 @@ export default function HomePage({
             <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-4xl">Produk &amp; Layanan Paling Diminati</h1>
             <p className="mt-2 max-w-xl text-sm leading-5 text-slate-600 sm:text-base">Peralatan bersertifikasi, paket legalitas instan, kontrak servis dapur, dan pasokan bahan pokok siap kirim.</p>
           </div>
-          <div className="scrollbar-hide flex max-w-full gap-1 overflow-x-auto rounded-lg bg-[#e5edff] p-1">
+          <div className="flex max-w-full flex-wrap gap-1 rounded-lg bg-[#e5edff] p-1">
             {homeCategories.map((item) => <button key={item} onClick={() => setHomeCategory(item)} className={`shrink-0 rounded-md px-3 py-2 text-[12px] font-semibold ${homeCategory === item ? "bg-white text-slate-800 shadow-sm" : "text-slate-600 hover:bg-white/60"}`}>{item}</button>)}
           </div>
         </div>

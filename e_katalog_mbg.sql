@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 24, 2026 at 08:41 AM
+-- Generation Time: Nov 25, 2026 at 01:25 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -110,15 +110,16 @@ CREATE TABLE `pengaturan_katalog` (
   `template_pesan` text NOT NULL,
   `diperbarui_pada` datetime(3) NOT NULL,
   `email` varchar(191) DEFAULT NULL,
-  `hak_cipta` varchar(500) NOT NULL DEFAULT '© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.'
+  `hak_cipta` varchar(500) NOT NULL DEFAULT '© 2026 PT DapurKita Solusi Kuliner Internasional. Hak Cipta Dilindungi Undang-Undang.',
+  `logo_url` varchar(500) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `pengaturan_katalog`
 --
 
-INSERT INTO `pengaturan_katalog` (`id`, `nama_instansi`, `nomor_whatsapp`, `alamat`, `template_pesan`, `diperbarui_pada`, `email`, `hak_cipta`) VALUES
-(1, 'SPPG Pak D', '6288230229609', 'Jl. Karah No 116', 'Halo SPPG Pak D, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:\n{daftar_pesanan}\nTotal estimasi: {total_harga}\nCatatan: {catatan}\nKode permintaan: {kode_pesanan}', '2026-11-23 08:28:57.594', 'pakd@gmail.com', '© 2026 PT Marsudi Utomo Sejahtera. Hak Cipta Dilindungi Undang-Undang.');
+INSERT INTO `pengaturan_katalog` (`id`, `nama_instansi`, `nomor_whatsapp`, `alamat`, `template_pesan`, `diperbarui_pada`, `email`, `hak_cipta`, `logo_url`) VALUES
+(1, 'CV Beli Indonesia', '085731945605', 'JI. Karah No.116, Kec. Jambangan, Surabaya, Jawa Timur 60232.', 'Halo SPPG Pak D, saya {nama_pemesan} dari {nama_sekolah} ingin meminta penawaran:\n{daftar_pesanan}\nTotal estimasi: {total_harga}\nCatatan: {catatan}\nKode permintaan: {kode_pesanan}', '2026-11-25 07:20:14.949', 'pakd@gmail.com', '© 2026 PT Marsudi Utomo Sejahtera. Hak Cipta Dilindungi Undang-Undang.', '/uploads/b7f85948-0576-4979-9a38-ae12023a9145.png');
 
 -- --------------------------------------------------------
 
@@ -1703,7 +1704,25 @@ INSERT INTO `produk` (`id`, `kategori_id`, `kode_produk`, `nama_produk`, `slug`,
 (1559, 1, 'EQ-01539', 'LPG 12 KG', 'lpg-12-kg', 'Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 250000.00, 'unit', NULL, 1, '2026-11-20 02:59:26.764', '2026-11-20 02:59:26.764', 11, 5, 'tetap', NULL, NULL),
 (1560, 1, 'EQ-01540', 'GAS KALENG PORTABEL 230GR', 'gas-kaleng-portabel-230gr', 'Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 27000.00, 'unit', NULL, 1, '2026-11-20 02:59:26.770', '2026-11-20 02:59:26.770', 11, 5, 'tetap', NULL, NULL),
 (1561, 1, 'EQ-01541', 'Refill tabung gas IJO 50KG', 'refill-tabung-gas-ijo-50kg', 'Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 1193000.00, 'unit', NULL, 1, '2026-11-20 02:59:26.775', '2026-11-20 02:59:26.775', 11, 5, 'tetap', NULL, NULL),
-(1562, 1, 'EQ-01542', 'GAS PORTABLE 235 GR', 'gas-portable-235-gr', 'Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 28000.00, 'unit', NULL, 1, '2026-11-20 02:59:26.781', '2026-11-20 02:59:26.781', 11, 5, 'tetap', NULL, NULL);
+(1562, 1, 'EQ-01542', 'GAS PORTABLE 235 GR', 'gas-portable-235-gr', 'Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 28000.00, 'unit', NULL, 1, '2026-11-20 02:59:26.781', '2026-11-20 02:59:26.781', 11, 5, 'tetap', NULL, NULL),
+(1567, 3, 'LEG-SLHS-001', 'SLHS', 'slhs', 'Pendampingan/pengurusan Sertifikat Laik Higiene Sanitasi untuk mendukung pemenuhan persyaratan higiene sanitasi dapur.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.316', '2026-11-24 08:16:11.316', 13, NULL, 'rentang', 1950000.00, 15000000.00),
+(1568, 3, 'LEG-PBG-001', 'PBG', 'pbg', 'Pendampingan proses Persetujuan Bangunan Gedung dan dokumen teknis sesuai ketentuan yang berlaku.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.359', '2026-11-24 08:16:11.359', 14, NULL, 'rentang', 5000000.00, 30000000.00),
+(1569, 3, 'LEG-SIF-001', 'SIF', 'sif', 'Layanan perizinan/sertifikasi. Jenis dan ruang lingkup SIF perlu dikonfirmasi sebelum penawaran. Harga ditentukan setelah jenis dan ruang lingkup layanan dikonfirmasi.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.389', '2026-11-24 08:16:11.389', 15, NULL, 'rentang', 10000000.00, 45000000.00),
+(1570, 3, 'LEG-HALA-001', 'Halal', 'halal', 'Pendampingan proses sertifikasi halal sesuai jenis produk, proses, dan ketentuan yang berlaku.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.413', '2026-11-24 08:16:11.413', 16, NULL, 'rentang', 650000.00, 6000000.00),
+(1571, 3, 'LEG-HACC-001', 'HACCP', 'haccp', 'Pendampingan penerapan sistem Hazard Analysis and Critical Control Points untuk pengendalian bahaya keamanan pangan.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.438', '2026-11-24 08:16:11.438', 17, NULL, 'rentang', 5000000.00, 20000000.00),
+(1572, 3, 'LEG-ISO-2200-001', 'ISO 22000', 'iso-22000', 'Pendampingan penerapan sistem manajemen keamanan pangan berdasarkan ISO 22000.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.463', '2026-11-24 08:16:11.463', 18, NULL, 'rentang', 18000000.00, 48000000.00),
+(1573, 3, 'LEG-ISO-4500-001', 'ISO 45001', 'iso-45001', 'Pendampingan penerapan sistem manajemen keselamatan dan kesehatan kerja berdasarkan ISO 45001.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.490', '2026-11-24 08:16:11.490', 19, NULL, 'rentang', 16000000.00, 48000000.00),
+(1574, 3, 'LEG-IZIN-LOKA-001', 'Izin Lokasi', 'izin-lokasi', 'Pendampingan pemenuhan dokumen dan persyaratan kesesuaian/perizinan lokasi sesuai ketentuan.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.519', '2026-11-24 08:16:11.519', 20, NULL, 'rentang', 1500000.00, 10000000.00),
+(1575, 4, 'SRV-PEST-CONT-001', 'Pest Control', 'pest-control', 'Layanan pengendalian hama seperti tikus, kecoa, dan serangga pada area dapur.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.544', '2026-11-24 08:16:11.544', 21, NULL, 'rentang', 750000.00, 2000000.00),
+(1576, 4, 'SRV-PIPA-GAS-001', 'Pipa Gas', 'pipa-gas', 'Pemeriksaan, pemasangan, atau perbaikan instalasi pipa gas sesuai kondisi dan kebutuhan dapur.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.568', '2026-11-24 08:16:11.568', 22, NULL, 'rentang', 500000.00, 5000000.00),
+(1577, 4, 'SRV-JASA-PENG-001', 'Jasa Pengelolaan', 'jasa-pengelolaan', 'Layanan pengelolaan operasional/fasilitas sesuai ruang lingkup kerja yang disepakati.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.590', '2026-11-24 08:16:11.590', 23, NULL, 'rentang', 3000000.00, 10000000.00),
+(1578, 4, 'SRV-SERV-AC-001', 'Service AC', 'service-ac', 'Pemeriksaan, pembersihan, dan perawatan unit pendingin udara.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.613', '2026-11-24 08:16:11.613', 24, NULL, 'rentang', 75000.00, 475000.00),
+(1579, 4, 'SRV-SERV-KOMP-001', 'Service Kompor', 'service-kompor', 'Pemeriksaan, pembersihan, dan perbaikan kompor serta komponen pembakarannya.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.635', '2026-11-24 08:16:11.635', 25, NULL, 'rentang', 150000.00, 500000.00),
+(1580, 4, 'SRV-JASA-BANG-001', 'Jasa Bangun', 'jasa-bangun', 'Jasa pembangunan atau renovasi fasilitas dapur berdasarkan desain dan RAB. Harga berdasarkan Rencana Anggaran Biaya (RAB).', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.660', '2026-11-24 08:16:11.660', 26, NULL, 'rentang', 3500000.00, 7500000.00),
+(1581, 4, 'SRV-JASA-DENA-001', 'Jasa Denah Perencanaan', 'jasa-denah-perencanaan', 'Pembuatan denah dan perencanaan tata letak area dapur sesuai kebutuhan operasional.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.684', '2026-11-24 08:16:11.684', 27, NULL, 'rentang', 1500000.00, 5000000.00),
+(1582, 4, 'SRV-ERP-001', 'ERP', 'erp', 'Layanan penyediaan/implementasi sistem Enterprise Resource Planning sesuai kebutuhan organisasi.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.706', '2026-11-24 08:16:11.706', 28, NULL, 'rentang', 5000000.00, 50000000.00),
+(1583, 4, 'SRV-PASA-CCTV-001', 'Pasang CCTV', 'pasang-cctv', 'Pemasangan dan konfigurasi perangkat CCTV sesuai jumlah titik dan kondisi lokasi.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', NULL, 'unit', NULL, 1, '2026-11-24 08:16:11.729', '2026-11-24 08:16:11.729', 29, NULL, 'rentang', 300000.00, 350000.00),
+(1584, 3, 'LEG-TES-001', 'tes', 'tes', 'Pendampingan pemenuhan dokumen dan persyaratan kesesuaian/perizinan lokasi sesuai ketentuan.', '{\"kalori\":0,\"protein\":0,\"karbohidrat\":0,\"lemak\":0}', 600000.00, 'unit', NULL, 1, '2026-11-25 09:42:59.570', '2026-11-25 11:54:59.368', 16, NULL, 'tetap', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1753,6 +1772,35 @@ INSERT INTO `rekap_barang` (`id`, `kategori`, `subkategori`, `jumlah_barang`) VA
 (28, 'Peralatan', 'Alat Kebersihan', 155),
 (29, 'Peralatan', 'Peralatan Gas', 5),
 (30, 'Peralatan', 'TOTAL', 482);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `riwayat_perubahan_harga`
+--
+
+CREATE TABLE `riwayat_perubahan_harga` (
+  `id` int(11) NOT NULL,
+  `produk_id` int(11) DEFAULT NULL,
+  `kode_produk` varchar(80) NOT NULL,
+  `nama_produk` varchar(191) NOT NULL,
+  `jenis_harga_lama` varchar(20) NOT NULL,
+  `harga_lama` decimal(12,2) DEFAULT NULL,
+  `harga_min_lama` decimal(12,2) DEFAULT NULL,
+  `harga_max_lama` decimal(12,2) DEFAULT NULL,
+  `jenis_harga_baru` varchar(20) NOT NULL,
+  `harga_baru` decimal(12,2) DEFAULT NULL,
+  `harga_min_baru` decimal(12,2) DEFAULT NULL,
+  `harga_max_baru` decimal(12,2) DEFAULT NULL,
+  `diubah_pada` datetime(3) NOT NULL DEFAULT current_timestamp(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `riwayat_perubahan_harga`
+--
+
+INSERT INTO `riwayat_perubahan_harga` (`id`, `produk_id`, `kode_produk`, `nama_produk`, `jenis_harga_lama`, `harga_lama`, `harga_min_lama`, `harga_max_lama`, `jenis_harga_baru`, `harga_baru`, `harga_min_baru`, `harga_max_baru`, `diubah_pada`) VALUES
+(1, 1584, 'LEG-TES-001', 'tes', 'tetap', 400000.00, NULL, NULL, 'tetap', 600000.00, NULL, NULL, '2026-11-25 11:54:59.398');
 
 -- --------------------------------------------------------
 
@@ -1838,7 +1886,24 @@ INSERT INTO `subkategori` (`id`, `kategori_id`, `nama_subkategori`, `slug`, `dib
 (9, 1, 'APD', 'apd', '2026-11-20 02:59:24.268'),
 (10, 1, 'Alat Kebersihan', 'alat-kebersihan', '2026-11-20 02:59:24.301'),
 (11, 1, 'Peralatan Gas', 'peralatan-gas', '2026-11-20 02:59:26.752'),
-(12, 4, 'Maintenance', 'maintenance', '2026-11-23 03:05:03.943');
+(12, 4, 'Maintenance', 'maintenance', '2026-11-23 03:05:03.943'),
+(13, 3, 'SLHS', 'slhs', '2026-11-24 08:16:11.307'),
+(14, 3, 'PBG', 'pbg', '2026-11-24 08:16:11.351'),
+(15, 3, 'SIF', 'sif', '2026-11-24 08:16:11.377'),
+(16, 3, 'Halal', 'halal', '2026-11-24 08:16:11.406'),
+(17, 3, 'HACCP', 'haccp', '2026-11-24 08:16:11.430'),
+(18, 3, 'ISO 22000', 'iso-22000', '2026-11-24 08:16:11.456'),
+(19, 3, 'ISO 45001', 'iso-45001', '2026-11-24 08:16:11.484'),
+(20, 3, 'Izin Lokasi', 'izin-lokasi', '2026-11-24 08:16:11.510'),
+(21, 4, 'Pest Control', 'pest-control', '2026-11-24 08:16:11.536'),
+(22, 4, 'Pipa Gas', 'pipa-gas', '2026-11-24 08:16:11.561'),
+(23, 4, 'Jasa Pengelolaan', 'jasa-pengelolaan', '2026-11-24 08:16:11.583'),
+(24, 4, 'Service AC', 'service-ac', '2026-11-24 08:16:11.606'),
+(25, 4, 'Service Kompor', 'service-kompor', '2026-11-24 08:16:11.629'),
+(26, 4, 'Jasa Bangun', 'jasa-bangun', '2026-11-24 08:16:11.654'),
+(27, 4, 'Jasa Denah Perencanaan', 'jasa-denah-perencanaan', '2026-11-24 08:16:11.677'),
+(28, 4, 'ERP', 'erp', '2026-11-24 08:16:11.699'),
+(29, 4, 'Pasang CCTV', 'pasang-cctv', '2026-11-24 08:16:11.722');
 
 -- --------------------------------------------------------
 
@@ -1863,9 +1928,12 @@ CREATE TABLE `_prisma_migrations` (
 
 INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`) VALUES
 ('08d95fdf-cc8e-4d51-9018-5ae2c67b4921', '6f2106e4f8183db95024ceb240ef8dd8ecd5262472552908bff71675434f17f1', '2026-11-24 03:53:36.045', '20261124090000_add_homepage_slider', NULL, NULL, '2026-11-24 03:53:36.004', 1),
+('1c6023fe-8ffa-46c2-a1ca-ee41bb85c576', 'd263740a80db12f2861d8b2c9ebd33e66e210cebf3db63383bfe04954a756eef', '2026-11-25 05:44:40.653', '20261125123000_add_catalog_logo', NULL, NULL, '2026-11-25 05:44:40.626', 1),
 ('21e2480d-486c-41b5-b0d2-647edd8635e5', 'a7c1fdb3110c0901e28f9a16ac645db0aa865fd0ed482c230f55152520d62d25', '2026-11-23 02:52:33.182', '20261121000100_add_price_check', '', NULL, '2026-11-23 02:52:33.182', 0),
 ('2adcfb85-8b74-40b6-ae86-d7a521fa90a8', '6e276c95f7585aa0860dce6493502af79007285cdc1474dde59cfb6ef070e764', '2026-11-23 05:10:26.236', '20261123120000_add_range_order_totals', NULL, NULL, '2026-11-23 05:10:25.138', 1),
+('7a061c72-413d-4b43-973c-1e16ffcaad89', '8386e074f9f17a43d25f6526dad87bd755789eeed773fa6362994ea08927df8a', '2026-11-25 09:56:51.629', '20261125170000_add_price_change_history', NULL, NULL, '2026-11-25 09:56:51.558', 1),
 ('bb292463-fbc3-44ce-bd71-47a2c01bc314', 'e8572c76879636509435d3617552cd3333f3a6e12607765581868e58d5930c16', '2026-11-23 08:19:12.414', '20261123150000_add_footer_settings', NULL, NULL, '2026-11-23 08:19:12.333', 1),
+('c3dd1de0-6be7-4834-af6a-6acc951d1a38', '96d7b9a7dcf86e88c1ea6a58db9dffcb40cb2f44acb36db4a57ecdde29e8f00d', '2026-11-25 09:56:51.555', '20261125150000_set_default_brand_logo', NULL, NULL, '2026-11-25 09:56:51.533', 1),
 ('cab40274-ac8e-4cc4-9ba3-dae1f967cffd', '021dba8550358a726e86745794012ae4619e528c27b5c901a99b05b414c8a9ae', '2026-11-23 02:55:30.115', '20261123000000_add_order_statuses', NULL, NULL, '2026-11-23 02:55:30.019', 1),
 ('e9445a60-1e3c-4458-bd0a-35151345ecf4', 'ff2b1c2c85f1754ba25200460305f4c1a75f78ca35fbdbecae12ead27b52fd39', '2026-11-23 02:52:20.184', '20261121000000_add_price_range', '', NULL, '2026-11-23 02:52:20.184', 0);
 
@@ -1919,6 +1987,15 @@ ALTER TABLE `rekap_barang`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `rekap_barang_kategori_subkategori_key` (`kategori`,`subkategori`),
   ADD KEY `rekap_barang_kategori_idx` (`kategori`);
+
+--
+-- Indexes for table `riwayat_perubahan_harga`
+--
+ALTER TABLE `riwayat_perubahan_harga`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `riwayat_perubahan_harga_diubah_pada_idx` (`diubah_pada`),
+  ADD KEY `riwayat_perubahan_harga_kode_produk_idx` (`kode_produk`),
+  ADD KEY `riwayat_perubahan_harga_produk_id_diubah_pada_idx` (`produk_id`,`diubah_pada`);
 
 --
 -- Indexes for table `riwayat_pesanan`
@@ -1992,6 +2069,12 @@ ALTER TABLE `rekap_barang`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
+-- AUTO_INCREMENT for table `riwayat_perubahan_harga`
+--
+ALTER TABLE `riwayat_perubahan_harga`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `riwayat_pesanan`
 --
 ALTER TABLE `riwayat_pesanan`
@@ -2007,7 +2090,7 @@ ALTER TABLE `slider_beranda`
 -- AUTO_INCREMENT for table `subkategori`
 --
 ALTER TABLE `subkategori`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- Constraints for dumped tables
@@ -2026,6 +2109,12 @@ ALTER TABLE `detail_pesanan`
 ALTER TABLE `produk`
   ADD CONSTRAINT `produk_kategori_id_fkey` FOREIGN KEY (`kategori_id`) REFERENCES `kategori` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `produk_subkategori_id_fkey` FOREIGN KEY (`subkategori_id`) REFERENCES `subkategori` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `riwayat_perubahan_harga`
+--
+ALTER TABLE `riwayat_perubahan_harga`
+  ADD CONSTRAINT `riwayat_perubahan_harga_produk_id_fkey` FOREIGN KEY (`produk_id`) REFERENCES `produk` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `subkategori`

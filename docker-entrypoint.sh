@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
 
-if [ "$(id -u)" -eq 0 ]; then
-  chown nextjs:nodejs /app/public/uploads
-  exec su-exec nextjs "$0" "$@"
-fi
+# Pastikan folder public/uploads ada dan dimiliki oleh nextjs:nodejs (UID/GID 1001)
+mkdir -p /app/public/uploads
+chown -R nextjs:nodejs /app/public/uploads
+chmod -R 775 /app/public/uploads
 
 if [ -n "$DATABASE_URL" ]; then
   MAX_RETRIES=30
@@ -39,4 +39,8 @@ if [ -n "$DATABASE_URL" ]; then
   fi
 fi
 
-exec "$@"
+if [ "$(id -u)" = "0" ]; then
+  exec su-exec nextjs "$@"
+else
+  exec "$@"
+fi

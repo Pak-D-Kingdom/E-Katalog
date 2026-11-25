@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { requireAdmin } from "@/lib/auth";
 
@@ -25,7 +25,13 @@ export async function POST(request: Request) {
     const directory = path.join(process.cwd(), "public", "uploads");
     await mkdir(directory, { recursive: true });
     const filename = `${randomUUID()}${extensions[file.type]}`;
-    await writeFile(path.join(directory, filename), Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+    const filePath = path.join(directory, filename);
+    await writeFile(filePath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+    try {
+      await chmod(filePath, 0o664);
+    } catch {
+      // Abaikan jika OS tidak support chmod
+    }
     return NextResponse.json({ foto_url: `/uploads/${filename}` }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") return NextResponse.json({ error: "Tidak berizin." }, { status: 401 });
