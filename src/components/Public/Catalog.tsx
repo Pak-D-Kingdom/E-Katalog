@@ -265,6 +265,16 @@ export default function PublicCatalog({
     return subcategories.filter((subcategory) => subcategory.kategori_id === categoryId);
   }
 
+  function getSubcategoryProducts(subcategoryId: number) {
+    return products.filter((product) => product.subkategori_id === subcategoryId);
+  }
+
+  function getProductsWithoutSubcategory(categoryId: number) {
+    return products.filter(
+      (product) => product.kategori_id === categoryId && product.subkategori_id === null
+    );
+  }
+
   const openCart = useCallback(() => setCartOpen(true), []);
 
   const animateIntoCart = useCallback((
@@ -599,15 +609,47 @@ export default function PublicCatalog({
                                 Subkategori tidak dapat dimuat: {subcategoryError}
                               </p>
                             ) : getCategorySubcategories(category.id).length ? (
-                              getCategorySubcategories(category.id).map((subcategory) => (
-                                <Link
-                                  key={subcategory.id}
-                                  href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
-                                  className="block rounded-md px-3 py-2 text-sm hover:bg-[#fff1e8] hover:text-[#ad3b00]"
-                                >
-                                  {subcategory.nama_subkategori}
-                                </Link>
-                              ))
+                              getCategorySubcategories(category.id).map((subcategory) => {
+                                const subcategoryProducts = getSubcategoryProducts(subcategory.id);
+                                return (
+                                  <details key={subcategory.id} className="group/subcategory">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-[#fff1e8] hover:text-[#ad3b00]">
+                                      {subcategory.nama_subkategori}
+                                      <ChevronDown
+                                        size={14}
+                                        className="transition-transform group-open/subcategory:rotate-180"
+                                      />
+                                    </summary>
+                                    <div className="ml-3 border-l border-slate-100 py-1 pl-2">
+                                      <Link
+                                        href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
+                                        className="block rounded-md px-3 py-2 text-sm font-semibold text-[#ad3b00] hover:bg-[#fff1e8]"
+                                      >
+                                        Lihat semua produk subkategori
+                                      </Link>
+                                      {productsLoading ? (
+                                        <p className="px-3 py-2 text-sm text-slate-500">Memuat produk...</p>
+                                      ) : productsError ? (
+                                        <p role="alert" className="px-3 py-2 text-sm text-red-600">
+                                          Produk tidak dapat dimuat: {productsError}
+                                        </p>
+                                      ) : subcategoryProducts.length ? (
+                                        subcategoryProducts.map((product) => (
+                                          <Link
+                                            key={product.id}
+                                            href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
+                                            className="block rounded-md px-3 py-2 text-sm hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                                          >
+                                            {product.nama_produk}
+                                          </Link>
+                                        ))
+                                      ) : (
+                                        <p className="px-3 py-2 text-sm text-slate-500">Belum ada produk.</p>
+                                      )}
+                                    </div>
+                                  </details>
+                                );
+                              })
                             ) : (
                               <p className="px-3 py-2 text-sm text-slate-500">Belum ada subkategori.</p>
                             )}
@@ -616,8 +658,12 @@ export default function PublicCatalog({
                             <p className="px-3 py-2 text-sm text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
                             <p role="alert" className="px-3 py-2 text-sm text-red-600">Produk tidak dapat dimuat: {productsError}</p>
-                          ) : getCategoryProducts(category.id).length ? (
-                            getCategoryProducts(category.id).map((product) => (
+                          ) : getProductsWithoutSubcategory(category.id).length ? (
+                            <>
+                              <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                Produk lainnya
+                              </p>
+                              {getProductsWithoutSubcategory(category.id).map((product) => (
                               <a
                                 key={product.id}
                                 href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
@@ -625,9 +671,12 @@ export default function PublicCatalog({
                               >
                                 {product.nama_produk}
                               </a>
-                            ))
-                          ) : (
+                              ))}
+                            </>
+                          ) : getCategoryProducts(category.id).length === 0 ? (
                             <p className="px-3 py-2 text-sm text-slate-500">Belum ada produk.</p>
+                          ) : (
+                            null
                           )}
                         </div>}
                       </details>
@@ -716,16 +765,49 @@ export default function PublicCatalog({
                                 Subkategori tidak dapat dimuat: {subcategoryError}
                               </p>
                             ) : getCategorySubcategories(category.id).length ? (
-                              getCategorySubcategories(category.id).map((subcategory) => (
-                                <Link
-                                  key={subcategory.id}
-                                  href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
-                                  onClick={closeMobileMenu}
-                                  className="block rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]"
-                                >
-                                  {subcategory.nama_subkategori}
-                                </Link>
-                              ))
+                              getCategorySubcategories(category.id).map((subcategory) => {
+                                const subcategoryProducts = getSubcategoryProducts(subcategory.id);
+                                return (
+                                  <details key={subcategory.id} className="group/subcategory">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]">
+                                      {subcategory.nama_subkategori}
+                                      <ChevronDown
+                                        size={16}
+                                        className="transition-transform group-open/subcategory:rotate-180"
+                                      />
+                                    </summary>
+                                    <div className="ml-3 border-l border-slate-100 py-1 pl-2">
+                                      <Link
+                                        href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
+                                        onClick={closeMobileMenu}
+                                        className="block rounded-md px-3 py-2 text-sm font-semibold text-[#ad3b00] hover:bg-[#fff1e8]"
+                                      >
+                                        Lihat semua produk subkategori
+                                      </Link>
+                                      {productsLoading ? (
+                                        <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat produk...</p>
+                                      ) : productsError ? (
+                                        <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">
+                                          Produk tidak dapat dimuat: {productsError}
+                                        </p>
+                                      ) : subcategoryProducts.length ? (
+                                        subcategoryProducts.map((product) => (
+                                          <Link
+                                            key={product.id}
+                                            href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
+                                            onClick={closeMobileMenu}
+                                            className="block rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                                          >
+                                            {product.nama_produk}
+                                          </Link>
+                                        ))
+                                      ) : (
+                                        <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada produk.</p>
+                                      )}
+                                    </div>
+                                  </details>
+                                );
+                              })
                             ) : (
                               <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada subkategori.</p>
                             )}
@@ -734,8 +816,12 @@ export default function PublicCatalog({
                             <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
                             <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">Produk tidak dapat dimuat: {productsError}</p>
-                          ) : getCategoryProducts(category.id).length ? (
-                            getCategoryProducts(category.id).map((product) => (
+                          ) : getProductsWithoutSubcategory(category.id).length ? (
+                            <>
+                              <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                Produk lainnya
+                              </p>
+                              {getProductsWithoutSubcategory(category.id).map((product) => (
                               <Link
                                 key={product.id}
                                 href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(product.nama_produk)}`}
@@ -744,9 +830,12 @@ export default function PublicCatalog({
                               >
                                 {product.nama_produk}
                               </Link>
-                            ))
-                          ) : (
+                              ))}
+                            </>
+                          ) : getCategoryProducts(category.id).length === 0 ? (
                             <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada produk.</p>
+                          ) : (
+                            null
                           )}
                         </div>}
                       </div>
