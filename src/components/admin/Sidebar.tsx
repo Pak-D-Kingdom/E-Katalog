@@ -74,14 +74,14 @@ export default function Sidebar({
                     <img
                         src={logoUrl || "/beli-indonesia-logo.jpeg"}
                         alt="Beli Indonesia"
-                        className="hidden h-auto w-[72px] object-contain lg:block"
+                        className="hidden h-auto w-[60px] object-contain lg:block"
                     />
                 ) : (
                     <div className="text-center">
                         <img
                             src={logoUrl || "/beli-indonesia-logo.jpeg"}
                             alt="Beli Indonesia"
-                            className="mx-auto mb-1 h-auto w-[220px] max-w-full object-contain"
+                            className="mx-auto mb-1 h-auto w-[170px] max-w-full object-contain"
                         />
                     </div>
                 )}
