@@ -11,12 +11,18 @@ import Swal from "sweetalert2";
 interface AdminShellProps {
   children: React.ReactNode;
   initialInstanceName: string;
+  initialLogoUrl: string | null;
 }
 
-export default function AdminShell({ children, initialInstanceName }: AdminShellProps) {
+export default function AdminShell({
+  children,
+  initialInstanceName,
+  initialLogoUrl,
+}: AdminShellProps) {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [instanceName, setInstanceName] = useState(initialInstanceName);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const pathname = usePathname();
@@ -86,8 +92,12 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
 
   useEffect(() => {
     const updateName = (event: Event) => {
-      const { nama_instansi } = (event as CustomEvent<{ nama_instansi?: string }>).detail ?? {};
+      const { nama_instansi, logo_url } = (event as CustomEvent<{
+        nama_instansi?: string;
+        logo_url?: string | null;
+      }>).detail ?? {};
       if (nama_instansi?.trim()) setInstanceName(nama_instansi.trim());
+      if (logo_url !== undefined) setLogoUrl(logo_url);
     };
 
     window.addEventListener("instance-settings-updated", updateName);
@@ -115,6 +125,7 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
       >
         <Sidebar
           instanceName={instanceName}
+          logoUrl={logoUrl}
           collapsed={desktopCollapsed}
           onNavigate={() => setMobileOpen(false)}
           onCloseMobile={() => setMobileOpen(false)}
@@ -163,14 +174,14 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#CBD5E1] text-xs font-bold text-[#334155]">
-              BS
+              PD
             </div>
             <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[11px] font-bold text-[#172B4D]">
-                Budi Santoso, S.T.
+                Pak D Group
               </p>
               <p className="truncate text-[10px] text-[#64748B]">
-                Head of Procurement · Branch: Jakarta Pusat
+                Head of Procurement
               </p>
             </div>
             <button

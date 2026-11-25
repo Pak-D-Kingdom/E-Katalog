@@ -80,6 +80,7 @@ model rekap_barang {
 model pengaturan_katalog {
   id              Int      @id @default(autoincrement())
   nama_instansi   String   @db.VarChar(191)
+  logo_url        String?  @db.VarChar(500)
   nomor_whatsapp  String   @db.VarChar(30)
   alamat          String?  @db.Text
   email           String?  @db.VarChar(191)

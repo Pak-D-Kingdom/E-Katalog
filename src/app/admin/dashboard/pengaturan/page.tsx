@@ -1,7 +1,7 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, type ChangeEvent } from "react";
 import {
   Check,
   MessageCircle,
@@ -14,6 +14,8 @@ import {
   Mail,
   Settings,
   RotateCcw,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 import { api } from "@/lib/types";
 import Swal from "sweetalert2";
@@ -21,6 +23,7 @@ import HomeSliderSettings from "@/components/admin/dashboard/HomeSliderSettings"
 
 type Settings = {
   nama_instansi: string;
+  logo_url: string | null;
   nomor_whatsapp: string;
   alamat: string | null;
   email: string | null;
@@ -32,6 +35,7 @@ type SettingsSection = "instansi" | "template";
 
 const initial: Settings = {
   nama_instansi: "",
+  logo_url: null,
   nomor_whatsapp: "",
   alamat: "",
   email: "procurement@dapurkita.co.id",
@@ -66,6 +70,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
   const [settingsReady, setSettingsReady] = useState(false);
   const [savingSection, setSavingSection] = useState<SettingsSection | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     api<{ pengaturan: Settings | null }>("/api/pengaturan")
@@ -87,7 +92,7 @@ export default function SettingsPage() {
         ? "Simpan informasi instansi?"
         : "Simpan template WhatsApp?",
       text: section === "instansi"
-        ? "Informasi instansi, email, dan teks hak cipta footer akan diperbarui."
+        ? "Logo, informasi instansi, email, dan teks hak cipta footer akan diperbarui."
         : "Template yang digunakan untuk pesan WhatsApp akan diperbarui.",
       icon: "question",
       showCancelButton: true,
@@ -110,6 +115,7 @@ export default function SettingsPage() {
         ...(section === "instansi"
           ? {
               nama_instansi: form.nama_instansi,
+              logo_url: form.logo_url,
               nomor_whatsapp: form.nomor_whatsapp,
               alamat: form.alamat,
               email: form.email,
@@ -128,13 +134,17 @@ export default function SettingsPage() {
       setSavedForm(result.pengaturan);
       if (section === "instansi") {
         window.dispatchEvent(new CustomEvent("instance-settings-updated", {
-          detail: { nama_instansi: result.pengaturan.nama_instansi },
+          detail: {
+            nama_instansi: result.pengaturan.nama_instansi,
+            logo_url: result.pengaturan.logo_url,
+          },
         }));
       }
       setForm((current) => section === "instansi"
         ? {
             ...current,
             nama_instansi: result.pengaturan.nama_instansi,
+            logo_url: result.pengaturan.logo_url,
             nomor_whatsapp: result.pengaturan.nomor_whatsapp,
             alamat: result.pengaturan.alamat,
             email: result.pengaturan.email,
@@ -156,6 +166,37 @@ export default function SettingsPage() {
     } finally {
       setSavingSection(null);
     }
+  }
+
+  async function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setError("");
+    setMessage("");
+    setUploadingLogo(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await api<{ foto_url: string }>("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      setForm((current) => ({ ...current, logo_url: result.foto_url }));
+      setMessage("Logo berhasil diunggah. Simpan informasi instansi untuk menerapkan perubahan.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal mengunggah logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
+  function removeLogo() {
+    setForm((current) => ({ ...current, logo_url: null }));
+    setMessage("Logo dihapus dari formulir. Simpan informasi instansi untuk menerapkan perubahan.");
+    setError("");
   }
 
   function resetTemplate() {
@@ -215,6 +256,52 @@ export default function SettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-[#172B4D]">
+                Logo Instansi
+              </label>
+              <div className="flex flex-col gap-4 rounded-lg border border-[#DCE4F0] bg-[#F8FAFD] p-4 sm:flex-row sm:items-center">
+                <div className="flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E5EAF3] bg-white p-3">
+                  {form.logo_url ? (
+                    <img
+                      src={form.logo_url}
+                      alt="Pratinjau logo instansi"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-[#94A3B8]">Belum ada logo</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#DCE4F0] bg-white px-4 py-2 text-sm font-semibold text-[#172B4D] transition hover:bg-[#F8FAFD]">
+                    <ImagePlus size={17} />
+                    {uploadingLogo ? "Mengunggah..." : "Pilih Logo"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
+                      className="hidden"
+                      disabled={!settingsReady || uploadingLogo || savingSection !== null}
+                      onChange={uploadLogo}
+                    />
+                  </label>
+                  {form.logo_url && (
+                    <button
+                      type="button"
+                      onClick={removeLogo}
+                      disabled={uploadingLogo || savingSection !== null}
+                      className="flex min-h-10 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Trash2 size={16} />
+                      Hapus Logo
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-[#94A3B8]">
+                Format JPG, PNG, WebP, atau AVIF, maksimal 5 MB. Simpan informasi instansi untuk menerapkan logo.
+              </p>
+            </div>
 
             {/* NAMA INSTANSI */}
             <div>

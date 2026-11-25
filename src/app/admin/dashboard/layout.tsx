@@ -15,12 +15,15 @@ export default async function DashboardLayout({
   }
 
   const settings = await prisma.pengaturan_katalog.findFirst({
-    select: { nama_instansi: true },
+    select: { nama_instansi: true, logo_url: true },
     orderBy: { id: "asc" },
   });
 
   return (
-    <AdminShell initialInstanceName={settings?.nama_instansi.trim() || "Nama Instansi"}>
+    <AdminShell
+      initialInstanceName={settings?.nama_instansi.trim() || "Nama Instansi"}
+      initialLogoUrl={settings?.logo_url ?? null}
+    >
       {children}
     </AdminShell>
   );

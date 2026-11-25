@@ -130,6 +130,8 @@ export const kategoriSchema = z.object({
 export const pengaturanSchema = z.object({
   nama_instansi: z.string().trim().min(1).max(191),
 
+  logo_url: z.string().trim().max(500).nullable().optional(),
+
   nomor_whatsapp: z
     .string()
     .trim()

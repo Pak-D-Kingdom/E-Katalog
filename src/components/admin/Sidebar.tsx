@@ -43,6 +43,7 @@ const menuItems = [
 
 interface SidebarProps {
     instanceName: string;
+    logoUrl: string | null;
     collapsed?: boolean;
     onNavigate?: () => void;
     onCloseMobile?: () => void;
@@ -50,6 +51,7 @@ interface SidebarProps {
 
 export default function Sidebar({
     instanceName,
+    logoUrl,
     collapsed = false,
     onNavigate,
     onCloseMobile,
@@ -79,14 +81,30 @@ export default function Sidebar({
                 </button>
 
                 {collapsed ? (
-                    <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-[#A83D00] text-sm font-black text-white lg:flex">
-                        {brandInitials}
-                    </div>
+                    logoUrl ? (
+                        <img
+                            src={logoUrl}
+                            alt={`Logo ${instanceName}`}
+                            className="hidden h-10 w-10 rounded-lg object-contain lg:block"
+                        />
+                    ) : (
+                        <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-[#A83D00] text-sm font-black text-white lg:flex">
+                            {brandInitials}
+                        </div>
+                    )
                 ) : (
                     <div className="text-center">
-                        <h1 className="text-[19px] font-black tracking-tight text-[#172B4D]">
-                            {instanceName}
-                        </h1>
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt={`Logo ${instanceName}`}
+                                className="mx-auto mb-1 h-9 max-w-[170px] object-contain"
+                            />
+                        ) : (
+                            <h1 className="text-[19px] font-black tracking-tight text-[#172B4D]">
+                                {instanceName}
+                            </h1>
+                        )}
                         <p className="text-[9px] font-extrabold tracking-wider text-[#A83D00]">
                             B2B ADMIN
                         </p>
