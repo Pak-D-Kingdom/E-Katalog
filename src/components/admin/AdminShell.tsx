@@ -124,7 +124,6 @@ export default function AdminShell({
         aria-label="Navigasi admin"
       >
         <Sidebar
-          instanceName={instanceName}
           logoUrl={logoUrl}
           collapsed={desktopCollapsed}
           onNavigate={() => setMobileOpen(false)}

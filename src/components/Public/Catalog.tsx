@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
 import { api, formatProductPrice, hargaRentang, hargaSatuan, rupiah, } from "@/lib/types";
 import type { Category, Product, Subcategory } from "@/lib/types";
 import Link from "next/link";
@@ -415,18 +415,13 @@ export default function PublicCatalog({
   return (
     <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
-        <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:gap-y-3 sm:px-5 sm:py-3 lg:px-8">
-          <Link href="/" aria-label={`Beranda ${instanceName}`} className="flex items-center gap-2.5">
-            {settings?.logo_url ? (
-              <img
-                src={settings.logo_url}
-                alt={`Logo ${instanceName}`}
-                className="h-10 w-10 rounded-xl object-contain"
-              />
-            ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ad3b00] text-white"><Leaf size={21} /></span>
-            )}
-            <span><b className="block text-base leading-tight text-slate-900">{instanceName}</b><small className="block text-[11px] leading-3 text-slate-500">Kitchen Supply</small><small className="block text-[10px] leading-3 text-slate-500">& B2B Solutions</small></span>
+        <div className="relative mx-auto flex h-20 max-w-none flex-nowrap items-center justify-between gap-3 px-4 py-0 sm:px-5 lg:px-8">
+          <Link href="/" aria-label={`Beranda ${instanceName}`} className="-ml-4 flex shrink-0 items-center sm:-ml-5 lg:-ml-8">
+            <img
+              src={settings?.logo_url || "/beli-indonesia-logo.jpeg"}
+              alt="Beli Indonesia"
+              className="h-[76px] w-[260px] max-w-[50vw] origin-left scale-[1.3] object-contain"
+            />
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
             {page === "catalog" && (mobileSearchOpen ? (
@@ -874,18 +869,11 @@ export default function PublicCatalog({
         <div className="mx-auto grid max-w-7xl gap-7 pb-7 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1.1fr] lg:gap-10">
           <div>
             <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-slate-900">
-              {settings?.logo_url ? (
-                <img
-                  src={settings.logo_url}
-                  alt={`Logo ${instanceName}`}
-                  className="h-8 w-8 rounded-lg object-contain"
-                />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ad3b00] text-white">
-                  <Leaf size={17} />
-                </span>
-              )}
-              {instanceName}
+              <img
+                src={settings?.logo_url || "/beli-indonesia-logo.jpeg"}
+                alt="Beli Indonesia"
+                className="h-auto w-[220px] object-contain sm:w-[280px]"
+              />
             </Link>
             <p className="mt-3 max-w-xs text-sm leading-5">Penyedia solusi terintegrasi pengadaan perlengkapan dapur komersial, bahan baku horeca, sertifikasi kelayakan, dan servis preventif untuk industri perhotelan dan kuliner nasional.</p>
             <div className="mt-3 flex gap-2 text-xs"><span className="rounded bg-white px-2 py-1">◉ ISO 9001:2015</span><span className="rounded bg-white px-2 py-1">◈ HACCP Compliant</span></div>

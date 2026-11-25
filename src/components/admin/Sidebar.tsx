@@ -42,7 +42,6 @@ const menuItems = [
 ];
 
 interface SidebarProps {
-    instanceName: string;
     logoUrl: string | null;
     collapsed?: boolean;
     onNavigate?: () => void;
@@ -50,7 +49,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-    instanceName,
     logoUrl,
     collapsed = false,
     onNavigate,
@@ -58,19 +56,11 @@ export default function Sidebar({
 }: SidebarProps) {
     const pathname = usePathname();
 
-    const brandInitials = instanceName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase() || "DK";
-
     return (
         <aside className="flex h-full w-full flex-col overflow-y-auto border-r border-[#E5EAF3] bg-white">
 
             {/* Logo */}
-            <div className="relative flex h-[105px] items-center justify-center border-b border-[#E1E8F5]">
+            <div className="relative flex h-[110px] items-center justify-center border-b border-[#E1E8F5]">
                 <button
                     type="button"
                     aria-label="Tutup menu navigasi"
@@ -81,36 +71,18 @@ export default function Sidebar({
                 </button>
 
                 {collapsed ? (
-                    logoUrl ? (
-                        <img
-                            src={logoUrl}
-                            alt={`Logo ${instanceName}`}
-                            className="hidden h-10 w-10 rounded-lg object-contain lg:block"
-                        />
-                    ) : (
-                        <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-[#A83D00] text-sm font-black text-white lg:flex">
-                            {brandInitials}
-                        </div>
-                    )
+                    <img
+                        src={logoUrl || "/beli-indonesia-logo.jpeg"}
+                        alt="Beli Indonesia"
+                        className="hidden h-auto w-[72px] object-contain lg:block"
+                    />
                 ) : (
                     <div className="text-center">
-                        {logoUrl ? (
-                            <img
-                                src={logoUrl}
-                                alt={`Logo ${instanceName}`}
-                                className="mx-auto mb-1 h-9 max-w-[170px] object-contain"
-                            />
-                        ) : (
-                            <h1 className="text-[19px] font-black tracking-tight text-[#172B4D]">
-                                {instanceName}
-                            </h1>
-                        )}
-                        <p className="text-[9px] font-extrabold tracking-wider text-[#A83D00]">
-                            B2B ADMIN
-                        </p>
-                        <p className="text-[9px] font-extrabold tracking-wider text-[#A83D00]">
-                            CONSOLE
-                        </p>
+                        <img
+                            src={logoUrl || "/beli-indonesia-logo.jpeg"}
+                            alt="Beli Indonesia"
+                            className="mx-auto mb-1 h-auto w-[220px] max-w-full object-contain"
+                        />
                     </div>
                 )}
             </div>
