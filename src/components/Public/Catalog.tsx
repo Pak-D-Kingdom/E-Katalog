@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BadgeCheck, ChevronDown, Leaf, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
 import { api, formatProductPrice, hargaRentang, hargaSatuan, rupiah, } from "@/lib/types";
-import type { Category, Product } from "@/lib/types";
+import type { Category, Product, Subcategory } from "@/lib/types";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import HomePage, { getHomeOffers } from "./Home/HomePage";
@@ -51,9 +51,12 @@ export default function PublicCatalog({
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const settings = initialSettings;
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryError, setCategoryError] = useState("");
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(true);
+  const [subcategoryError, setSubcategoryError] = useState("");
   const [catalogSearch, setCatalogSearch] = useState(
     () => page === "catalog" ? searchParams.get("q") || "" : ""
   );
@@ -109,6 +112,9 @@ export default function PublicCatalog({
     setProductsError("");
     setCategoriesLoading(true);
     setCategoryError("");
+    setSubcategories([]);
+    setSubcategoriesLoading(true);
+    setSubcategoryError("");
     const requests: Promise<void>[] = [];
     requests.push(
       api<{ kategori: Category[] }>("/api/kategori")
@@ -118,6 +124,12 @@ export default function PublicCatalog({
           setError(e.message);
         })
         .finally(() => setCategoriesLoading(false))
+    );
+    requests.push(
+      api<{ subkategori: Subcategory[] }>("/api/subkategori")
+        .then(({ subkategori }) => setSubcategories(subkategori))
+        .catch((e: Error) => setSubcategoryError(e.message))
+        .finally(() => setSubcategoriesLoading(false))
     );
     requests.push(
       api<{ produk: Product[] }>("/api/produk")
@@ -247,6 +259,10 @@ export default function PublicCatalog({
 
   function getCategoryProducts(categoryId: number) {
     return products.filter((product) => product.kategori_id === categoryId);
+  }
+
+  function getCategorySubcategories(categoryId: number) {
+    return subcategories.filter((subcategory) => subcategory.kategori_id === categoryId);
   }
 
   const openCart = useCallback(() => setCartOpen(true), []);
@@ -572,6 +588,30 @@ export default function PublicCatalog({
                           >
                             Lihat semua produk kategori
                           </a>
+                          <div className="py-1">
+                            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              Subkategori
+                            </p>
+                            {subcategoriesLoading ? (
+                              <p className="px-3 py-2 text-sm text-slate-500">Memuat subkategori...</p>
+                            ) : subcategoryError ? (
+                              <p role="alert" className="px-3 py-2 text-sm text-red-600">
+                                Subkategori tidak dapat dimuat: {subcategoryError}
+                              </p>
+                            ) : getCategorySubcategories(category.id).length ? (
+                              getCategorySubcategories(category.id).map((subcategory) => (
+                                <Link
+                                  key={subcategory.id}
+                                  href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
+                                  className="block rounded-md px-3 py-2 text-sm hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                                >
+                                  {subcategory.nama_subkategori}
+                                </Link>
+                              ))
+                            ) : (
+                              <p className="px-3 py-2 text-sm text-slate-500">Belum ada subkategori.</p>
+                            )}
+                          </div>
                           {productsLoading ? (
                             <p className="px-3 py-2 text-sm text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
@@ -646,7 +686,7 @@ export default function PublicCatalog({
                         <button
                           type="button"
                           aria-expanded={expanded}
-                          aria-controls={`mobile-category-products-${category.id}`}
+                          aria-controls={`mobile-category-content-${category.id}`}
                           onClick={() =>
                             setMobileExpandedCategoryId((current) =>
                               current === category.id ? null : category.id
@@ -657,7 +697,7 @@ export default function PublicCatalog({
                           {category.nama_kategori}
                           <ChevronDown size={16} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
                         </button>
-                        {expanded && <div id={`mobile-category-products-${category.id}`} className="ml-3 border-l border-slate-100 pb-2 pl-2">
+                        {expanded && <div id={`mobile-category-content-${category.id}`} className="ml-3 border-l border-slate-100 pb-2 pl-2">
                           <Link
                             href={`/katalog?kategori=${encodeURIComponent(category.slug)}`}
                             onClick={closeMobileMenu}
@@ -665,6 +705,31 @@ export default function PublicCatalog({
                           >
                             Lihat semua produk kategori
                           </Link>
+                          <div className="py-1">
+                            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                              Subkategori
+                            </p>
+                            {subcategoriesLoading ? (
+                              <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat subkategori...</p>
+                            ) : subcategoryError ? (
+                              <p role="alert" className="px-3 py-2 text-sm font-normal text-red-600">
+                                Subkategori tidak dapat dimuat: {subcategoryError}
+                              </p>
+                            ) : getCategorySubcategories(category.id).length ? (
+                              getCategorySubcategories(category.id).map((subcategory) => (
+                                <Link
+                                  key={subcategory.id}
+                                  href={`/katalog?kategori=${encodeURIComponent(category.slug)}&q=${encodeURIComponent(subcategory.nama_subkategori)}`}
+                                  onClick={closeMobileMenu}
+                                  className="block rounded-md px-3 py-2 text-sm font-normal hover:bg-[#fff1e8] hover:text-[#ad3b00]"
+                                >
+                                  {subcategory.nama_subkategori}
+                                </Link>
+                              ))
+                            ) : (
+                              <p className="px-3 py-2 text-sm font-normal text-slate-500">Belum ada subkategori.</p>
+                            )}
+                          </div>
                           {productsLoading ? (
                             <p className="px-3 py-2 text-sm font-normal text-slate-500">Memuat produk...</p>
                           ) : productsError ? (
