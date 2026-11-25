@@ -834,7 +834,7 @@ export default function PublicCatalog({
                 {cart.map(({ product, quantity }) => (
                   <div key={product.id} className="rounded-lg border border-slate-100 bg-white p-3">
                     <div className="flex gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff1e8] text-[#ad3b00]">{product.foto_url ? <img src={product.foto_url} alt="" className="h-full w-full object-cover" /> : <Utensils size={21} />}</div>
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff1e8] text-[#ad3b00]">{product.foto_url ? <img src={product.foto_url} alt="" referrerPolicy="no-referrer" onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.src = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23edf2ff'/%3E%3C/svg%3E"; img.onerror = null; }} className="h-full w-full object-cover" /> : <Utensils size={21} />}</div>
                       <div className="min-w-0 flex-1">
                         <b className="block truncate text-sm text-slate-900">{product.nama_produk}</b>
                         <p className="mt-0.5 text-xs text-slate-500">SKU: {product.kode_produk}</p>

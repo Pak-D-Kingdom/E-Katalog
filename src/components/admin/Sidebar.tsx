@@ -13,6 +13,7 @@ import {
     X,
     Tags,
     ShoppingBag,
+    Images,
 } from "lucide-react";
 import { api } from "@/lib/types";
 import Swal from "sweetalert2";
@@ -37,6 +38,11 @@ const menuItems = [
         title: "Kelola Pesanan",
         href: "/admin/dashboard/pesanan",
         icon: ShoppingBag,
+    },
+    {
+        title: "Pencari Gambar Produk",
+        href: "/admin/dashboard/image-finder",
+        icon: Images,
     },
     {
         title: "Pengaturan",

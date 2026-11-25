@@ -28,7 +28,9 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
             ? "Kelola Pesanan"
             : pathname.startsWith("/admin/dashboard/pengaturan")
               ? "Pengaturan WhatsApp"
-              : "Dashboard Admin";
+              : pathname.startsWith("/admin/dashboard/image-finder")
+                ? "Pencari Gambar Produk"
+                : "Dashboard Admin";
 
   useEffect(() => {
     if (!mobileOpen) return;
