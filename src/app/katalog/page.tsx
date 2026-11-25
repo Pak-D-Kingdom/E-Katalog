@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import PublicCatalog from "@/components/Public/Catalog";
 import { getCatalogSettings } from "@/lib/catalog-settings";
 
+export const dynamic = "force-dynamic";
+
 const description = "Jelajahi katalog produk dan layanan pengadaan untuk dapur profesional, HORECA, hotel, restoran, dan catering.";
 
 export async function generateMetadata(): Promise<Metadata> {
