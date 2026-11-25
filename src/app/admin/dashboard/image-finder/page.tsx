@@ -154,6 +154,12 @@ export default function ImageFinderPage() {
   const [progress, setProgress] = useState({ processed: 0, success: 0, failed: 0, notFound: 0 });
   const [lastMessage, setLastMessage] = useState("");
 
+  const [importText, setImportText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    total: number; updated: number; skipped: number; notFound: number;
+  } | null>(null);
+
   const cancelRef = useRef(false);
   const pausedRef = useRef(false);
 
@@ -375,6 +381,93 @@ export default function ImageFinderPage() {
       autoSelect: true,
       ignoreSelection: true,
     });
+  }
+
+  function parseImportItems(text: string): { kode_produk: string; foto_url: string }[] {
+    const items: { kode_produk: string; foto_url: string }[] = [];
+    const trimmed = text.trim();
+    if (!trimmed) return items;
+
+    // Try JSON first
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        const arr = Array.isArray(parsed) ? parsed : parsed.items ?? [];
+        for (const row of arr) {
+          const kode = row.kode_produk ?? row.kode ?? row.code;
+          const url = row.foto_url ?? row.url ?? row.foto;
+          if (kode && url) items.push({ kode_produk: String(kode).trim(), foto_url: String(url).trim() });
+        }
+        return items;
+      } catch {
+        // fall through to SQL/CSV
+      }
+    }
+
+    // SQL: UPDATE produk SET foto_url = '...' WHERE kode_produk = '...';
+    const sqlRegex = /UPDATE\s+produk\s+SET\s+foto_url\s*=\s*'([^']+)'\s+WHERE\s+kode_produk\s*=\s*'([^']+)'/gi;
+    let m: RegExpExecArray | null;
+    while ((m = sqlRegex.exec(trimmed)) !== null) {
+      items.push({ foto_url: m[1], kode_produk: m[2] });
+    }
+    if (items.length > 0) return items;
+
+    // CSV: header + rows
+    const lines = trimmed.split(/\\r?\\n/).filter((l) => l.trim());
+    if (lines.length >= 2) {
+      const header = lines[0].toLowerCase().split(/[;,]/).map((h) => h.trim());
+      const kodeIdx = header.findIndex((h) => h === "kode_produk" || h === "kode" || h === "code");
+      const urlIdx = header.findIndex((h) => h === "foto_url" || h === "url" || h === "foto");
+      if (kodeIdx >= 0 && urlIdx >= 0) {
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(/[;,]/).map((c) => c.trim().replace(/^"|"$/g, ""));
+          if (cols[kodeIdx] && cols[urlIdx]) {
+            items.push({ kode_produk: cols[kodeIdx], foto_url: cols[urlIdx] });
+          }
+        }
+      }
+    }
+    return items;
+  }
+
+  async function handleImport() {
+    if (importing) return;
+    const items = parseImportItems(importText);
+    if (items.length === 0) {
+      Swal.fire("Info", "Tidak ada item yang bisa diparse. Periksa format (SQL/JSON/CSV).", "info");
+      return;
+    }
+    const confirm = await Swal.fire({
+      title: `Import ${items.length} foto URL?`,
+      text: "Produk akan diperbarui berdasarkan kode_produk.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Import",
+      cancelButtonText: "Batal",
+    });
+    if (!confirm.isConfirmed) return;
+
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await api<{
+        total: number; updated: number; skipped: number; notFound: number;
+      }>("/api/image-finder/import-foto-url", {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      });
+      setImportResult(res);
+      await loadSummary();
+      Swal.fire(
+        "Selesai",
+        `Total ${res.total}: diperbarui ${res.updated}, dilewati ${res.skipped}, tidak ditemukan ${res.notFound}.`,
+        "success"
+      );
+    } catch (e) {
+      Swal.fire("Gagal", e instanceof Error ? e.message : "Import gagal.", "error");
+    } finally {
+      setImporting(false);
+    }
   }
 
   function pause() {
@@ -715,6 +808,50 @@ export default function ImageFinderPage() {
           </div>
         </section>
       )}
+
+      {/* Import Foto URL */}
+      <section className="rounded-xl border border-[#E5EAF3] bg-white p-5">
+        <h2 className="text-sm font-bold text-[#172B4D]">Import Foto URL (SQL/JSON/CSV)</h2>
+        <p className="mt-2 text-xs text-[#64748B]">
+          Tempel isi file atau upload. Format: SQL UPDATE, JSON array, atau CSV (header kode_produk,foto_url).
+        </p>
+        <input
+          type="file"
+          accept=".sql,.json,.csv,.txt"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => setImportText(String(reader.result ?? ""));
+            reader.readAsText(file);
+          }}
+          className="mt-3 block w-full text-xs text-[#64748B]"
+        />
+        <textarea
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+          rows={6}
+          placeholder="Tempel SQL/JSON/CSV di sini..."
+          className="field mt-3 w-full font-mono text-xs"
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleImport}
+            disabled={importing || !importText.trim()}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#A83D00] px-4 py-2 text-sm font-bold text-white hover:bg-[#873100] disabled:opacity-50"
+          >
+            {importing ? "Mengimpor..." : "Import Foto URL"}
+          </button>
+          <span className="text-xs text-[#64748B]">
+            Terdeteksi: {parseImportItems(importText).length} item
+          </span>
+        </div>
+        {importResult && (
+          <p className="mt-3 text-xs text-[#172B4D]">
+            Total {importResult.total}: diperbarui {importResult.updated}, dilewati {importResult.skipped}, tidak ditemukan {importResult.notFound}.
+          </p>
+        )}
+      </section>
 
       <section className="rounded-xl border border-[#E5EAF3] bg-white p-4 text-xs text-[#64748B]">
         <AlertTriangle size={14} className="inline mr-1" />
