@@ -1,10 +1,12 @@
 
 "use client";
 
-import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
+import { api } from "@/lib/types";
+import Swal from "sweetalert2";
 
 interface AdminShellProps {
   children: React.ReactNode;
@@ -15,7 +17,10 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [instanceName, setInstanceName] = useState(initialInstanceName);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const pathname = usePathname();
+  const router = useRouter();
 
   const menuTitle =
     pathname === "/admin/dashboard"
@@ -29,6 +34,38 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
             : pathname.startsWith("/admin/dashboard/pengaturan")
               ? "Pengaturan WhatsApp"
               : "Dashboard Admin";
+
+  async function handleLogout() {
+    const confirmation = await Swal.fire({
+      title: "Keluar dari dashboard?",
+      text: "Anda perlu masuk kembali untuk mengakses dashboard.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, keluar",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    setIsLoggingOut(true);
+    setLogoutError("");
+
+    try {
+      await api<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+      router.replace("/admin/auth/login");
+      router.refresh();
+    } catch (error) {
+      setLogoutError(
+        error instanceof Error
+          ? error.message
+          : "Gagal keluar. Silakan coba kembali."
+      );
+      setIsLoggingOut(false);
+    }
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -89,7 +126,7 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
           desktopCollapsed ? "lg:ml-[76px]" : "lg:ml-[230px]"
         }`}
       >
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-[#E5EAF3] bg-white/95 px-4 backdrop-blur sm:px-6 lg:h-16">
+        <header className="relative sticky top-0 z-40 flex h-14 items-center justify-between border-b border-[#E5EAF3] bg-white/95 px-4 backdrop-blur sm:px-6 lg:h-16">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -123,6 +160,41 @@ export default function AdminShell({ children, initialInstanceName }: AdminShell
               </p>
             </div>
           </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#CBD5E1] text-xs font-bold text-[#334155]">
+              BS
+            </div>
+            <div className="hidden min-w-0 sm:block">
+              <p className="truncate text-[11px] font-bold text-[#172B4D]">
+                Budi Santoso, S.T.
+              </p>
+              <p className="truncate text-[10px] text-[#64748B]">
+                Head of Procurement · Branch: Jakarta Pusat
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label={isLoggingOut ? "Keluar..." : "Keluar"}
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#E1E8F5] px-2.5 text-xs font-semibold text-[#A83D00] transition hover:bg-[#FFF4ED] disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">
+                {isLoggingOut ? "Keluar..." : "Keluar"}
+              </span>
+            </button>
+          </div>
+
+          {logoutError && (
+            <p
+              role="alert"
+              className="absolute right-4 top-full z-50 mt-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 shadow-sm"
+            >
+              {logoutError}
+            </p>
+          )}
         </header>
 
         {children}
