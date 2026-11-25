@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+if [ "$(id -u)" -eq 0 ]; then
+  chown nextjs:nodejs /app/public/uploads
+  exec su-exec nextjs "$0" "$@"
+fi
+
 if [ -n "$DATABASE_URL" ]; then
   MAX_RETRIES=30
   COUNT=0
