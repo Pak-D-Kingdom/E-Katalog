@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  Upload,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { api } from "@/lib/types";
@@ -815,18 +816,26 @@ export default function ImageFinderPage() {
         <p className="mt-2 text-xs text-[#64748B]">
           Tempel isi file atau upload. Format: SQL UPDATE, JSON array, atau CSV (header kode_produk,foto_url).
         </p>
-        <input
-          type="file"
-          accept=".sql,.json,.csv,.txt"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => setImportText(String(reader.result ?? ""));
-            reader.readAsText(file);
-          }}
-          className="mt-3 block w-full text-xs text-[#64748B]"
-        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#172B4D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0f1f38]">
+            <Upload size={16} /> Pilih File
+            <input
+              type="file"
+              accept=".sql,.json,.csv,.txt"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => setImportText(String(reader.result ?? ""));
+                reader.readAsText(file);
+              }}
+            />
+          </label>
+          <span className="text-xs text-[#64748B]">
+            Format: .sql, .json, .csv, .txt
+          </span>
+        </div>
         <textarea
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
