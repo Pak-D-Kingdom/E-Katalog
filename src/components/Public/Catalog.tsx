@@ -414,13 +414,13 @@ export default function PublicCatalog({
 
   return (
     <main className={`flex min-h-screen flex-col ${page === "catalog" ? "bg-[#f7f8ff]" : ""}`}>
-      <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
         <div className="relative mx-auto flex h-20 max-w-none flex-nowrap items-center justify-between gap-3 px-4 py-0 sm:px-5 lg:px-8">
           <Link href="/" aria-label={`Beranda ${instanceName}`} className="-ml-4 flex shrink-0 items-center sm:-ml-5 lg:-ml-8">
             <img
               src={settings?.logo_url || "/beli-indonesia-logo.jpeg"}
               alt="Beli Indonesia"
-              className="h-12 w-[200px] max-w-[50vw] object-contain"
+              className="h-12 w-[200px] max-w-[50vw] scale-150 object-contain sm:scale-100"
             />
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
@@ -684,7 +684,7 @@ export default function PublicCatalog({
             </details>
           </nav>
           {mobileMenuOpen && (
-            <nav id="mobile-main-navigation" aria-label="Navigasi mobile" className="max-h-[70vh] w-full overflow-y-auto border-t border-slate-100 pb-2 pt-2 text-sm font-semibold text-slate-700 sm:hidden">
+            <nav id="mobile-main-navigation" aria-label="Navigasi mobile" className="absolute left-0 right-0 top-full z-50 max-h-[70vh] overflow-y-auto overscroll-contain border-t border-slate-100 bg-white px-4 pb-4 pt-2 text-sm font-semibold text-slate-700 shadow-lg sm:hidden">
               <Link
                 href="/"
                 onClick={closeMobileMenu}
