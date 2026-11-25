@@ -420,7 +420,7 @@ export default function PublicCatalog({
             <img
               src={settings?.logo_url || "/beli-indonesia-logo.jpeg"}
               alt="Beli Indonesia"
-              className="h-[76px] w-[260px] max-w-[50vw] origin-left scale-[1.3] object-contain"
+              className="h-12 w-[200px] max-w-[50vw] object-contain"
             />
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
