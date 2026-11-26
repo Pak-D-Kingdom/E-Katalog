@@ -155,7 +155,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const provider = getImageSearchProvider();
+      const provider = await getImageSearchProvider();
       const outcomes: Array<{
         productId: number;
         status: string;

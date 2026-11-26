@@ -2,7 +2,7 @@ import "dotenv/config";
 import { getImageSearchProvider } from "../src/lib/image-search/provider";
 
 async function main() {
-  const provider = getImageSearchProvider();
+  const provider = await getImageSearchProvider();
   const out = await provider.search("ULTRA MILK FULLCREAM 125ml kemasan produk", 5);
   console.log("requestCount", out.requestCount);
   console.log("candidates", out.candidates.length);
