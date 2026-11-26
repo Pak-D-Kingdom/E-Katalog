@@ -39,7 +39,9 @@ export default function AdminShell({
             ? "Kelola Pesanan"
             : pathname.startsWith("/admin/dashboard/pengaturan")
               ? "Pengaturan WhatsApp"
-              : "Dashboard Admin";
+              : pathname.startsWith("/admin/dashboard/image-finder")
+                ? "Pencari Gambar Produk"
+                : "Dashboard Admin";
 
   async function handleLogout() {
     const confirmation = await Swal.fire({

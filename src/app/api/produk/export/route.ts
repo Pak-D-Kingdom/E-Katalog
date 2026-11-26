@@ -265,7 +265,7 @@ export async function GET(request: Request) {
 
             headerRow.height = 32;
 
-            headerRow.eachCell((cell) => {
+            headerRow.eachCell((cell: any) => {
                 cell.font = {
                     name: "Arial",
                     size: 10,
@@ -316,7 +316,7 @@ export async function GET(request: Request) {
 
                 row.height = 30;
 
-                row.eachCell((cell) => {
+                row.eachCell((cell: any) => {
                     cell.font = {
                         name: "Arial",
                         size: 10,
@@ -338,7 +338,7 @@ export async function GET(request: Request) {
 
                 // Warna baris selang-seling.
                 if (row.number % 2 === 1) {
-                    row.eachCell((cell) => {
+                    row.eachCell((cell: any) => {
                         cell.fill = {
                             type: "pattern",
                             pattern: "solid",

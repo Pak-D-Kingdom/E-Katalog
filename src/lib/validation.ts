@@ -61,7 +61,7 @@ export const produkSchema = z
 
     satuan: z.string().trim().min(1).max(40),
 
-    foto_url: z.string().trim().max(500).nullable().optional(),
+    foto_url: z.string().trim().max(2048).nullable().optional(),
 
     tersedia: z.boolean(),
   })

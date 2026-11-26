@@ -30,7 +30,7 @@ const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
     <article className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
       <button onClick={onDetail} aria-label={`Lihat detail ${product.nama_produk}`} className="relative block aspect-[1.55/1] w-full overflow-hidden bg-[#edf2ff] text-left sm:aspect-[1.2/1]">
         {product.foto_url
-          ? <img src={product.foto_url} alt={product.nama_produk} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          ? <img src={product.foto_url} alt={product.nama_produk} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.src = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160'%3E%3Crect width='100%25' height='100%25' fill='%23edf2ff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23ad3b00' font-size='12'%3EGambar tidak tersedia%3C/text%3E%3C/svg%3E"; img.onerror = null; }} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           : <span className="flex h-full w-full items-center justify-center text-[#ad3b00]/35" aria-hidden="true"><PackageOpen size={30}/></span>}
         <span className="absolute right-2 top-2 max-w-[55%] truncate rounded bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">{product.subkategori?.nama_subkategori || product.kategori?.nama_kategori || "Layanan"}</span>
       </button>
@@ -257,7 +257,7 @@ function KatalogPage({
         </div>
         <div className="grid gap-4 p-4 sm:gap-5 sm:p-5 md:grid-cols-[1fr_1fr]">
           <div className="flex min-h-[205px] items-center justify-center overflow-hidden rounded-md bg-[#edf2ff]">
-            {selected.foto_url ? <img src={selected.foto_url} alt={selected.nama_produk} className="h-full max-h-[220px] w-full object-cover" /> : <Utensils size={58} className="text-[#ad3b00]" />}
+            {selected.foto_url ? <img src={selected.foto_url} alt={selected.nama_produk} referrerPolicy="no-referrer" onError={(e) => { const img = e.currentTarget as HTMLImageElement; img.src = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160'%3E%3Crect width='100%25' height='100%25' fill='%23edf2ff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23ad3b00' font-size='12'%3EGambar tidak tersedia%3C/text%3E%3C/svg%3E"; img.onerror = null; }} className="h-full max-h-[220px] w-full object-cover" /> : <Utensils size={58} className="text-[#ad3b00]" />}
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#ad3b00]">{selected.kategori?.nama_kategori || "Menu MBG"}</p>
