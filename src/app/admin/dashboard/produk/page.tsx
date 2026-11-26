@@ -27,6 +27,7 @@ import {
   ChevronRight,
   SlidersHorizontal,
   Save,
+  Layers,
 } from "lucide-react";
 import {
   api,
@@ -83,7 +84,7 @@ const empty: ProductForm = {
   tersedia: true,
 };
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 5;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -501,32 +502,73 @@ export default function ProductsPage() {
     Math.ceil(filteredProductCount / PAGE_SIZE)
   );
   const currentPage = Math.min(page, totalPages);
+
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from(
+        { length: totalPages },
+        (_, index) => index + 1
+      );
+    }
+
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+
+    if (currentPage <= 2) {
+      start = 2;
+      end = Math.min(3, totalPages - 1);
+    }
+
+    if (currentPage >= totalPages - 1) {
+      start = Math.max(2, totalPages - 2);
+      end = totalPages - 1;
+    }
+
+    const items: (number | string)[] = [1];
+
+    if (start > 2) {
+      items.push("ellipsis-left");
+    }
+
+    for (let number = start; number <= end; number++) {
+      items.push(number);
+    }
+
+    if (end < totalPages - 1) {
+      items.push("ellipsis-right");
+    }
+
+    items.push(totalPages);
+
+    return items;
+  }, [totalPages, currentPage]);
+
   const visibleProducts = products;
 
   const stats = [
     {
       title: "TOTAL KATALOG AKTIF",
-      value: `${availableCount} Produk`,
-      description: `${totalProductCount} produk terdaftar`,
+      value: `${availableCount.toLocaleString("id-ID")} Produk`,
+      description: "Seluruh produk terdaftar",
       icon: Package,
       color: "text-[#A83D00]",
       background: "bg-[#E8F0FF]",
     },
     {
-      title: "PRODUK TERSEDIA",
-      value: `${availableCount} Item`,
-      description: "Produk aktif di katalog",
-      icon: CheckCircle2,
-      color: "text-emerald-700",
-      background: "bg-emerald-50",
-    },
-    {
       title: "STRUKTUR KATEGORI",
-      value: `${(categories ?? []).length} Kategori`,
-      description: "Kelompok produk terdaftar",
+      value: `${categories.length} Kategori`,
+      description: "Kategori utama terdaftar",
       icon: Star,
       color: "text-[#A83D00]",
       background: "bg-[#FCE9E1]",
+    },
+    {
+      title: "SUBKATEGORI",
+      value: `${subcategories.length}`,
+      description: "Subkategori terdaftar",
+      icon: Layers,
+      color: "text-[#42577E]",
+      background: "bg-[#E8F0FF]",
     },
     {
       title: "FOTO PRODUK",
@@ -560,30 +602,6 @@ export default function ProductsPage() {
               kitchen, dan informasi katalog B2B.
             </p>
           </div>
-
-          {/* TAB NAVIGATION
-          <div className="flex w-full rounded-xl bg-[#EAF0FC] p-1.5 xl:w-[340px]">
-            <div className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-[#172B4D] shadow-sm">
-              <Package size={17} className="shrink-0 text-[#A83D00]" />
-              <span className="text-center text-[11px] font-bold">
-                Manajemen Produk (CRUD)
-              </span>
-              <span className="rounded-full bg-[#FCE9E1] px-2 py-1 text-[9px] font-bold text-[#A83D00]">
-                {products.length}
-              </span>
-            </div>
-
-            <a
-              href="/admin/dashboard/pengaturan"
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-3 text-[#596780] transition hover:bg-white/70"
-            >
-              <MessageSquare size={16} />
-              <span className="text-center text-[11px] font-semibold">
-                Pengaturan WhatsApp & Brand
-              </span>
-            </a>
-          </div>
-          */}
         </div>
       </section>
 
@@ -595,18 +613,18 @@ export default function ProductsPage() {
           return (
             <div
               key={item.title}
-              className="flex min-h-[112px] items-center justify-between gap-3 rounded-xl border border-[#E5EAF3] bg-white p-4"
+              className="flex min-h-[120px] items-center justify-between gap-3 rounded-xl border border-[#E5EAF3] bg-white p-4"
             >
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold tracking-wide text-[#596780]">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[10px] font-bold tracking-wide text-[#596780]">
                   {item.title}
                 </p>
 
-                <h2 className="mt-2 text-xl font-extrabold text-[#172B4D]">
+                <h2 className="mt-2 whitespace-nowrap text-lg font-extrabold text-[#172B4D] sm:text-xl">
                   {item.value}
                 </h2>
 
-                <p className="mt-1 text-[10px] text-[#64748B]">
+                <p className="mt-1 text-[10px] leading-4 text-[#64748B]">
                   {item.description}
                 </p>
               </div>
@@ -797,8 +815,8 @@ export default function ProductsPage() {
                     <td className="min-w-[120px] px-3 py-4">
                       <span
                         className={`inline-block whitespace-nowrap rounded-md px-2 py-1 text-[9px] font-bold ${product.jenis_harga === "rentang"
-                            ? "bg-orange-50 text-orange-700"
-                            : "bg-blue-50 text-blue-700"
+                          ? "bg-orange-50 text-orange-700"
+                          : "bg-blue-50 text-blue-700"
                           }`}
                       >
                         {product.jenis_harga === "rentang"
@@ -835,14 +853,14 @@ export default function ProductsPage() {
                     <td className="min-w-[110px] px-3 py-4 text-center">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${product.tersedia
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-slate-100 text-slate-500"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
                           }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${product.tersedia
-                              ? "bg-emerald-500"
-                              : "bg-slate-400"
+                            ? "bg-emerald-500"
+                            : "bg-slate-400"
                             }`}
                         />
                         {product.tersedia ? "Aktif" : "Nonaktif"}
@@ -889,508 +907,532 @@ export default function ProductsPage() {
           </div>
 
           {/* PAGINATION */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#EAF0F8] pt-4">
-            <p className="text-[10px] text-[#64748B]">
+          <div className="mt-4 flex flex-col gap-3 border-t border-[#EAF0F8] pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* INFORMASI JUMLAH PRODUK */}
+            <p className="text-[11px] text-[#596780]">
               Menampilkan{" "}
-              <b className="text-[#172B4D]">{visibleProducts.length}</b> dari{" "}
-              <b className="text-[#172B4D]">{filteredProductCount}</b> produk terdaftar
+              <span className="font-semibold text-[#172B4D]">
+                {loading ? "..." : visibleProducts.length}
+              </span>{" "}
+              dari{" "}
+              <span className="font-semibold text-[#172B4D]">
+                {filteredProductCount}
+              </span>{" "}
+              produk terdaftar
             </p>
 
-            <div className="flex items-center gap-1">
+            {/* NAVIGASI HALAMAN */}
+            <div className="flex flex-wrap items-center justify-end gap-1">
+
+              {/* TOMBOL SEBELUMNYA */}
               <button
                 type="button"
-                disabled={currentPage === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] disabled:opacity-40"
+                disabled={currentPage === 1 || loading}
+                onClick={() =>
+                  setPage((value) => Math.max(1, value - 1))
+                }
+                className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Halaman sebelumnya"
               >
                 <ChevronLeft size={14} />
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .slice(
-                  Math.max(0, Math.min(currentPage - 2, totalPages - 3)),
-                  Math.max(3, Math.min(currentPage + 1, totalPages))
-                )
-                .map((number) => (
+              {/* NOMOR HALAMAN */}
+              {paginationItems.map((item, index) =>
+                typeof item === "number" ? (
                   <button
-                    key={number}
                     type="button"
-                    onClick={() => setPage(number)}
-                    className={`min-w-8 rounded-md px-2 py-2 text-[10px] font-bold ${currentPage === number
+                    key={item}
+                    onClick={() => setPage(item)}
+                    disabled={loading}
+                    aria-current={currentPage === item ? "page" : undefined}
+                    className={`min-w-8 rounded-md px-2 py-2 text-[10px] font-bold ${currentPage === item
                       ? "bg-[#A83D00] text-white"
-                      : "bg-[#E5EDFF] text-[#172B4D]"
-                      }`}
+                      : "bg-[#E5EDFF] text-[#172B4D] hover:bg-[#D5E2FA]"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    {number}
+                    {item}
                   </button>
-                ))}
+                ) : (
+                  <span
+                    key={`${item}-${index}`}
+                    className="px-1 text-xs text-[#94A3B8]"
+                  >
+                    ...
+                  </span>
+                )
+              )}
 
+              {/* TOMBOL BERIKUTNYA */}
               <button
                 type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] disabled:opacity-40"
+                disabled={currentPage === totalPages || loading}
+                onClick={() =>
+                  setPage((value) => Math.min(totalPages, value + 1))
+                }
+                className="rounded-md bg-[#E5EDFF] p-2 text-[#172B4D] hover:bg-[#D5E2FA] disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Halaman selanjutnya"
               >
                 <ChevronRight size={14} />
               </button>
+
             </div>
           </div>
         </div>
 
         {/* PRODUCT FORM */}
         {formOpen && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-[1px] sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={editing ? "Edit produk" : "Tambah produk"}
-        >
-          <button
-            type="button"
-            aria-label="Tutup form produk"
-            className="absolute inset-0 cursor-default"
-            onClick={closeForm}
-          />
-          <div className="relative my-auto max-h-[calc(100vh-1.5rem)] w-full max-w-[680px] overflow-y-auto rounded-xl border border-[#E5EAF3] bg-white p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6">
-
-          <div className="mb-5 flex items-start justify-between gap-3">
-            <div>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-sm bg-[#A83D00] px-2 py-1 text-[9px] font-bold text-white">
-                  {editing ? "EDIT PRODUK" : "TAMBAH BARU"}
-                </span>
-
-                <span className="text-[9px] font-bold tracking-wide text-[#64748B]">
-                  AUTO-GEN SKU
-                </span>
-              </div>
-
-              <h2 className="text-lg font-semibold text-[#172B4D]">
-                {editing ? "Form Edit Produk" : "Form Input Produk Baru"}
-              </h2>
-
-              <p className="mt-1 text-[11px] text-[#64748B]">
-                Lengkapi informasi produk komersial.
-              </p>
-            </div>
-
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-[1px] sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editing ? "Edit produk" : "Tambah produk"}
+          >
             <button
               type="button"
+              aria-label="Tutup form produk"
+              className="absolute inset-0 cursor-default"
               onClick={closeForm}
-              title="Tutup form"
-              className="rounded-md p-2 text-[#64748B] hover:bg-[#EEF3FF] hover:text-[#A83D00]"
-            >
-              <X size={18} />
-            </button>
-          </div>
+            />
+            <div className="relative my-auto max-h-[calc(100vh-1.5rem)] w-full max-w-[680px] overflow-y-auto rounded-xl border border-[#E5EAF3] bg-white p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6">
 
-          <form onSubmit={submit} className="space-y-4">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-sm bg-[#A83D00] px-2 py-1 text-[9px] font-bold text-white">
+                      {editing ? "EDIT PRODUK" : "TAMBAH BARU"}
+                    </span>
 
-            {/* PHOTO */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Foto Produk Komersial
-              </label>
-
-              <div className="rounded-lg bg-[#EEF3FF] p-3">
-                {form.foto_url ? (
-                  <div className="relative">
-                    <img
-                      src={form.foto_url}
-                      alt="Preview produk"
-                      className="h-36 w-full rounded-md object-contain"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm({ ...form, foto_url: "" })
-                      }
-                      className="absolute right-2 top-2 rounded-md bg-white p-2 text-red-600 shadow"
-                      aria-label="Hapus foto"
-                    >
-                      <X size={15} />
-                    </button>
+                    <span className="text-[9px] font-bold tracking-wide text-[#64748B]">
+                      AUTO-GEN SKU
+                    </span>
                   </div>
-                ) : (
-                  <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-lg text-center transition hover:bg-[#E3ECFC]">
-                    <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#A83D00]">
-                      {uploading ? (
-                        <RefreshCw size={21} className="animate-spin" />
-                      ) : (
-                        <UploadCloud size={22} />
-                      )}
-                    </span>
 
-                    <span className="text-xs font-bold text-[#172B4D]">
-                      {uploading
-                        ? "Mengunggah foto..."
-                        : "Seret & Lepas file foto ke sini"}
-                    </span>
+                  <h2 className="text-lg font-semibold text-[#172B4D]">
+                    {editing ? "Form Edit Produk" : "Form Input Produk Baru"}
+                  </h2>
 
-                    <span className="mt-1 text-[10px] text-[#64748B]">
-                      JPG, PNG atau WebP
-                    </span>
+                  <p className="mt-1 text-[11px] text-[#64748B]">
+                    Lengkapi informasi produk komersial.
+                  </p>
+                </div>
 
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/avif"
-                      className="hidden"
-                      disabled={uploading}
-                      onChange={upload}
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-
-            {/* NAME */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Nama Produk / Layanan <span className="text-red-500">*</span>
-              </label>
-
-              <input
-                required
-                value={form.nama_produk}
-                onChange={(e) => changeName(e.target.value)}
-                placeholder="Contoh: Spiral Dough Mixer 30L"
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00] focus:bg-white"
-              />
-            </div>
-
-            {/* SKU */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Kode SKU
-              </label>
-
-              <input
-                value={form.kode_produk}
-                onChange={(e) =>
-                  setForm({ ...form, kode_produk: e.target.value })
-                }
-                placeholder="Contoh: EQ-MIX-0030"
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00] focus:bg-white"
-              />
-            </div>
-
-
-            {/* CATEGORY & SUBCATEGORY */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* CATEGORY */}
-              <div className="min-w-0">
-                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                  Kategori <span className="text-red-500">*</span>
-                </label>
-
-                <select
-                  required
-                  value={form.kategori_id}
-                  onChange={(e) => changeCategory(e.target.value)}
-                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  title="Tutup form"
+                  className="rounded-md p-2 text-[#64748B] hover:bg-[#EEF3FF] hover:text-[#A83D00]"
                 >
-                  <option value="">Pilih kategori</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nama_kategori}
-                    </option>
-                  ))}
-                </select>
+                  <X size={18} />
+                </button>
               </div>
 
-              {/* SUBCATEGORY */}
-              <div className="min-w-0">
-                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                  Subkategori
-                </label>
+              <form onSubmit={submit} className="space-y-4">
 
-                <select
-                  value={form.subkategori_id}
-                  onChange={(e) =>
-                    setForm((current) => ({
-                      ...current,
-                      subkategori_id: e.target.value,
-                    }))
-                  }
-                  disabled={
-                    !form.kategori_id ||
-                    availableSubcategories.length === 0
-                  }
-                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                >
-                  <option value="">
-                    {!form.kategori_id
-                      ? "Pilih kategori dahulu"
-                      : availableSubcategories.length === 0
-                        ? "Belum ada subkategori"
-                        : "Tanpa subkategori"}
-                  </option>
-
-                  {availableSubcategories.map((item) => (
-                    <option key={item.id} value={String(item.id)}>
-                      {item.nama_subkategori}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* PRICE */}
-            <div className="space-y-3">
-              <div>
-                <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                  Jenis Harga
-                </label>
-
-                <select
-                  value={form.jenis_harga}
-                  onChange={(e) =>
-                    setForm((current) => ({
-                      ...current,
-                      jenis_harga: e.target.value as ProductForm["jenis_harga"],
-                      harga: "",
-                      harga_min: "",
-                      harga_max: "",
-                    }))
-                  }
-                  className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-                >
-                  <option value="tetap">Harga Tetap</option>
-                  <option value="rentang">Harga Rentang</option>
-                </select>
-              </div>
-
-              {form.jenis_harga === "tetap" ? (
+                {/* PHOTO */}
                 <div>
                   <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                    Harga Tetap (IDR)
+                    Foto Produk Komersial
+                  </label>
+
+                  <div className="rounded-lg bg-[#EEF3FF] p-3">
+                    {form.foto_url ? (
+                      <div className="relative">
+                        <img
+                          src={form.foto_url}
+                          alt="Preview produk"
+                          className="h-36 w-full rounded-md object-contain"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({ ...form, foto_url: "" })
+                          }
+                          className="absolute right-2 top-2 rounded-md bg-white p-2 text-red-600 shadow"
+                          aria-label="Hapus foto"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-lg text-center transition hover:bg-[#E3ECFC]">
+                        <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#A83D00]">
+                          {uploading ? (
+                            <RefreshCw size={21} className="animate-spin" />
+                          ) : (
+                            <UploadCloud size={22} />
+                          )}
+                        </span>
+
+                        <span className="text-xs font-bold text-[#172B4D]">
+                          {uploading
+                            ? "Mengunggah foto..."
+                            : "Seret & Lepas file foto ke sini"}
+                        </span>
+
+                        <span className="mt-1 text-[10px] text-[#64748B]">
+                          JPG, PNG atau WebP
+                        </span>
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/avif"
+                          className="hidden"
+                          disabled={uploading}
+                          onChange={upload}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* NAME */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Nama Produk / Layanan <span className="text-red-500">*</span>
                   </label>
 
                   <input
                     required
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={form.harga}
+                    value={form.nama_produk}
+                    onChange={(e) => changeName(e.target.value)}
+                    placeholder="Contoh: Spiral Dough Mixer 30L"
+                    className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00] focus:bg-white"
+                  />
+                </div>
+
+                {/* SKU */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Kode SKU
+                  </label>
+
+                  <input
+                    value={form.kode_produk}
                     onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        harga: e.target.value,
-                      }))
+                      setForm({ ...form, kode_produk: e.target.value })
                     }
-                    placeholder="25000000"
+                    placeholder="Contoh: EQ-MIX-0030"
+                    className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00] focus:bg-white"
+                  />
+                </div>
+
+
+                {/* CATEGORY & SUBCATEGORY */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* CATEGORY */}
+                  <div className="min-w-0">
+                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                      Kategori <span className="text-red-500">*</span>
+                    </label>
+
+                    <select
+                      required
+                      value={form.kategori_id}
+                      onChange={(e) => changeCategory(e.target.value)}
+                      className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00]"
+                    >
+                      <option value="">Pilih kategori</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nama_kategori}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* SUBCATEGORY */}
+                  <div className="min-w-0">
+                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                      Subkategori
+                    </label>
+
+                    <select
+                      value={form.subkategori_id}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          subkategori_id: e.target.value,
+                        }))
+                      }
+                      disabled={
+                        !form.kategori_id ||
+                        availableSubcategories.length === 0
+                      }
+                      className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-2 py-3 text-[11px] text-[#172B4D] outline-none focus:border-[#A83D00] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <option value="">
+                        {!form.kategori_id
+                          ? "Pilih kategori dahulu"
+                          : availableSubcategories.length === 0
+                            ? "Belum ada subkategori"
+                            : "Tanpa subkategori"}
+                      </option>
+
+                      {availableSubcategories.map((item) => (
+                        <option key={item.id} value={String(item.id)}>
+                          {item.nama_subkategori}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* PRICE */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                      Jenis Harga
+                    </label>
+
+                    <select
+                      value={form.jenis_harga}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          jenis_harga: e.target.value as ProductForm["jenis_harga"],
+                          harga: "",
+                          harga_min: "",
+                          harga_max: "",
+                        }))
+                      }
+                      className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                    >
+                      <option value="tetap">Harga Tetap</option>
+                      <option value="rentang">Harga Rentang</option>
+                    </select>
+                  </div>
+
+                  {form.jenis_harga === "tetap" ? (
+                    <div>
+                      <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                        Harga Tetap (IDR)
+                      </label>
+
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        value={form.harga}
+                        onChange={(e) =>
+                          setForm((current) => ({
+                            ...current,
+                            harga: e.target.value,
+                          }))
+                        }
+                        placeholder="25000000"
+                        className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                          Harga Minimal (IDR)
+                        </label>
+
+                        <input
+                          required
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          value={form.harga_min}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              harga_min: e.target.value,
+                            }))
+                          }
+                          placeholder="1000000"
+                          className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                          Harga Maksimal (IDR)
+                        </label>
+
+                        <input
+                          required
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          value={form.harga_max}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              harga_max: e.target.value,
+                            }))
+                          }
+                          placeholder="1500000"
+                          className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* UNIT */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Satuan Produk
+                  </label>
+
+                  <input
+                    required
+                    value={form.satuan}
+                    onChange={(e) =>
+                      setForm({ ...form, satuan: e.target.value })
+                    }
+                    placeholder="Unit / Kg / Porsi"
                     className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
                   />
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                      Harga Minimal (IDR)
-                    </label>
 
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      value={form.harga_min}
-                      onChange={(e) =>
-                        setForm((current) => ({
-                          ...current,
-                          harga_min: e.target.value,
-                        }))
-                      }
-                      placeholder="1000000"
-                      className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-                    />
-                  </div>
+                {/* STOCK */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Stok (opsional)
+                  </label>
 
-                  <div>
-                    <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                      Harga Maksimal (IDR)
-                    </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="4294967295"
+                    step="1"
+                    value={form.stok}
+                    onChange={(e) =>
+                      setForm({ ...form, stok: e.target.value })
+                    }
+                    placeholder="Belum dicatat"
+                    className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                  />
+                </div>
 
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      value={form.harga_max}
-                      onChange={(e) =>
-                        setForm((current) => ({
-                          ...current,
-                          harga_max: e.target.value,
-                        }))
-                      }
-                      placeholder="1500000"
-                      className="w-full min-w-0 rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-                    />
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Informasi Gizi
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {(["kalori", "protein", "karbohidrat", "lemak"] as const).map(
+                      (key) => (
+                        <label key={key} className="text-[11px] capitalize text-[#64748B]">
+                          {key}
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={form[key]}
+                            onChange={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            className="mt-1 w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                          />
+                        </label>
+                      )
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* UNIT */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Satuan Produk
-              </label>
+                {/* DESCRIPTION */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Deskripsi Lengkap Produk/Layanan
+                  </label>
 
-              <input
-                required
-                value={form.satuan}
-                onChange={(e) =>
-                  setForm({ ...form, satuan: e.target.value })
-                }
-                placeholder="Unit / Kg / Porsi"
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-              />
-            </div>
+                  <textarea
+                    required
+                    rows={3}
+                    value={form.deskripsi}
+                    onChange={(e) =>
+                      setForm({ ...form, deskripsi: e.target.value })
+                    }
+                    placeholder="Jelaskan spesifikasi produk, keandalan, manfaat, dan ketentuan layanan..."
+                    className="w-full resize-y rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs leading-relaxed text-[#172B4D] outline-none focus:border-[#A83D00]"
+                  />
+                </div>
+                {/* SLUG */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-[#172B4D]">
+                    Slug URL
+                  </label>
 
-            {/* STOCK */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Stok (opsional)
-              </label>
+                  <input
+                    required
+                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                    value={form.slug}
+                    onChange={(e) =>
+                      setForm({ ...form, slug: e.target.value })
+                    }
+                    className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                  />
+                </div>
 
-              <input
-                type="number"
-                min="0"
-                max="4294967295"
-                step="1"
-                value={form.stok}
-                onChange={(e) =>
-                  setForm({ ...form, stok: e.target.value })
-                }
-                placeholder="Belum dicatat"
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-              />
-            </div>
+                {/* AVAILABILITY */}
+                <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[#E5EAF3] p-3">
+                  <input
+                    type="checkbox"
+                    checked={form.tersedia}
+                    onChange={(e) =>
+                      setForm({ ...form, tersedia: e.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#A83D00]"
+                  />
 
-            <div className="sm:col-span-2">
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Informasi Gizi
-              </label>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {(["kalori", "protein", "karbohidrat", "lemak"] as const).map(
-                  (key) => (
-                    <label key={key} className="text-[11px] capitalize text-[#64748B]">
-                      {key}
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={form[key]}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            [key]: event.target.value,
-                          }))
-                        }
-                        className="mt-1 w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-                      />
-                    </label>
-                  )
+                  <span>
+                    <span className="block text-xs font-bold text-[#172B4D]">
+                      Tampilkan sebagai produk tersedia
+                    </span>
+                    <span className="mt-1 block text-[10px] text-[#64748B]">
+                      Produk dapat ditampilkan pada katalog publik.
+                    </span>
+                  </span>
+                </label>
+
+                {/* FORM ERROR */}
+                {error && (
+                  <div
+                    role="alert"
+                    className="rounded-md bg-red-50 p-3 text-xs text-red-700"
+                  >
+                    {error}
+                  </div>
                 )}
-              </div>
+
+                {/* FORM ACTION */}
+                <div className="flex flex-wrap justify-end gap-2 border-t border-[#EAF0F8] pt-4">
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    disabled={loading || uploading}
+                    className="rounded-md bg-[#E5EDFF] px-4 py-3 text-xs font-bold text-[#172B4D] transition hover:bg-[#D5E2FA] disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading || uploading}
+                    className="flex items-center gap-2 rounded-md bg-[#A83D00] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Save size={15} />
+                    {loading
+                      ? "Menyimpan..."
+                      : editing
+                        ? "Simpan Perubahan"
+                        : "Simpan Produk"}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            {/* DESCRIPTION */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Deskripsi Lengkap Produk/Layanan
-              </label>
-
-              <textarea
-                required
-                rows={3}
-                value={form.deskripsi}
-                onChange={(e) =>
-                  setForm({ ...form, deskripsi: e.target.value })
-                }
-                placeholder="Jelaskan spesifikasi produk, keandalan, manfaat, dan ketentuan layanan..."
-                className="w-full resize-y rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs leading-relaxed text-[#172B4D] outline-none focus:border-[#A83D00]"
-              />
-            </div>
-            {/* SLUG */}
-            <div>
-              <label className="mb-2 block text-xs font-bold text-[#172B4D]">
-                Slug URL
-              </label>
-
-              <input
-                required
-                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                value={form.slug}
-                onChange={(e) =>
-                  setForm({ ...form, slug: e.target.value })
-                }
-                className="w-full rounded-md border border-[#DCE4F0] bg-[#F8FAFD] px-3 py-3 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
-              />
-            </div>
-
-            {/* AVAILABILITY */}
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-[#E5EAF3] p-3">
-              <input
-                type="checkbox"
-                checked={form.tersedia}
-                onChange={(e) =>
-                  setForm({ ...form, tersedia: e.target.checked })
-                }
-                className="mt-0.5 h-4 w-4 accent-[#A83D00]"
-              />
-
-              <span>
-                <span className="block text-xs font-bold text-[#172B4D]">
-                  Tampilkan sebagai produk tersedia
-                </span>
-                <span className="mt-1 block text-[10px] text-[#64748B]">
-                  Produk dapat ditampilkan pada katalog publik.
-                </span>
-              </span>
-            </label>
-
-            {/* FORM ERROR */}
-            {error && (
-              <div
-                role="alert"
-                className="rounded-md bg-red-50 p-3 text-xs text-red-700"
-              >
-                {error}
-              </div>
-            )}
-
-            {/* FORM ACTION */}
-            <div className="flex flex-wrap justify-end gap-2 border-t border-[#EAF0F8] pt-4">
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={loading || uploading}
-                className="rounded-md bg-[#E5EDFF] px-4 py-3 text-xs font-bold text-[#172B4D] transition hover:bg-[#D5E2FA] disabled:opacity-50"
-              >
-                Batal
-              </button>
-
-              <button
-                type="submit"
-                disabled={loading || uploading}
-                className="flex items-center gap-2 rounded-md bg-[#A83D00] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#873100] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Save size={15} />
-                {loading
-                  ? "Menyimpan..."
-                  : editing
-                    ? "Simpan Perubahan"
-                    : "Simpan Produk"}
-              </button>
-            </div>
-          </form>
           </div>
-        </div>
         )}
       </section>
     </div>
