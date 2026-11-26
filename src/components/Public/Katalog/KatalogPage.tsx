@@ -177,6 +177,10 @@ function KatalogPage({
         inPriceRange;
     });
     filtered.sort((a, b) => {
+      const aHasImage = Boolean(a.foto_url?.trim());
+      const bHasImage = Boolean(b.foto_url?.trim());
+      if (aHasImage !== bHasImage) return aHasImage ? -1 : 1;
+
       const aOrder = productOrder.indexOf(a.kode_produk);
       const bOrder = productOrder.indexOf(b.kode_produk);
       if (aOrder === -1 && bOrder === -1) return a.nama_produk.localeCompare(b.nama_produk);
