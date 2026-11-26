@@ -156,6 +156,11 @@ export default function ImageFinderPage() {
   const [lastMessage, setLastMessage] = useState("");
 
   const [importText, setImportText] = useState("");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [apiKeyStatus, setApiKeyStatus] = useState<{
+    hasKey: boolean; source: string; masked: string | null; decryptError?: boolean;
+  } | null>(null);
+  const [savingKey, setSavingKey] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     total: number; updated: number; skipped: number; notFound: number;
@@ -211,6 +216,17 @@ export default function ImageFinderPage() {
     }
   }, []);
 
+  const loadApiKey = useCallback(async () => {
+    try {
+      const data = await api<{
+        hasKey: boolean; source: string; masked: string | null; decryptError?: boolean;
+      }>("/api/image-finder/serpapi-key");
+      setApiKeyStatus(data);
+    } catch {
+      setApiKeyStatus(null);
+    }
+  }, []);
+
   const loadProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
@@ -236,7 +252,8 @@ export default function ImageFinderPage() {
     loadProducts();
     loadDuplicates();
     loadCategories();
-  }, [loadSummary, loadQuota, loadProducts, loadDuplicates, loadCategories]);
+    loadApiKey();
+  }, [loadSummary, loadQuota, loadProducts, loadDuplicates, loadCategories, loadApiKey]);
 
   useEffect(() => {
     loadProducts();
@@ -468,6 +485,28 @@ export default function ImageFinderPage() {
       Swal.fire("Gagal", e instanceof Error ? e.message : "Import gagal.", "error");
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function handleSaveApiKey(valueOverride?: string) {
+    if (savingKey) return;
+    const value = valueOverride !== undefined ? valueOverride : apiKeyInput;
+    setSavingKey(true);
+    try {
+      const res = await api<{
+        hasKey: boolean; source: string; masked: string | null;
+      }>("/api/image-finder/serpapi-key", {
+        method: "POST",
+        body: JSON.stringify({ apiKey: value }),
+      });
+      setApiKeyStatus(res);
+      setApiKeyInput("");
+      await loadQuota(true);
+      Swal.fire("Berhasil", res.hasKey ? "API key disimpan." : "API key dihapus.", "success");
+    } catch (e) {
+      Swal.fire("Gagal", e instanceof Error ? e.message : "Gagal menyimpan API key.", "error");
+    } finally {
+      setSavingKey(false);
     }
   }
 
@@ -809,6 +848,55 @@ export default function ImageFinderPage() {
           </div>
         </section>
       )}
+
+      {/* API Key SerpApi */}
+      <section className="rounded-xl border border-[#E5EAF3] bg-white p-5">
+        <h2 className="text-sm font-bold text-[#172B4D]">API Key SerpApi</h2>
+        <p className="mt-2 text-xs text-[#64748B]">
+          Key disimpan terenkripsi di database (server-side). Perubahan berlaku langsung tanpa restart server.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className={`rounded-full px-2 py-0.5 font-semibold ${apiKeyStatus?.hasKey ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+            {apiKeyStatus?.hasKey ? "Terkonfigurasi" : "Belum ada key"}
+          </span>
+          {apiKeyStatus?.masked && (
+            <span className="font-mono text-[#172B4D]">{apiKeyStatus.masked}</span>
+          )}
+          {apiKeyStatus?.source && (
+            <span className="text-[#64748B]">(sumber: {apiKeyStatus.source})</span>
+          )}
+          {apiKeyStatus?.decryptError && (
+            <span className="text-red-600">Key tersimpan tidak bisa didekripsi. Simpan ulang.</span>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            type="password"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder="Masukkan SerpApi API key baru"
+            className="field flex-1 min-w-[240px] text-sm"
+          />
+          <button
+            onClick={() => void handleSaveApiKey()}
+            disabled={savingKey}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#A83D00] px-4 py-2 text-sm font-bold text-white hover:bg-[#873100] disabled:opacity-50"
+          >
+            {savingKey ? "Menyimpan..." : "Simpan"}
+          </button>
+          <button
+            onClick={() => void handleSaveApiKey("")}
+            disabled={savingKey || !apiKeyStatus?.hasKey}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#E5EAF3] bg-white px-4 py-2 text-sm font-bold text-[#172B4D] hover:bg-[#F4F6FA] disabled:opacity-50"
+            title="Hapus key tersimpan (kembali ke env)"
+          >
+            Hapus
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-[#64748B]">
+          Kosongkan input lalu klik Hapus untuk kembali ke key dari environment.
+        </p>
+      </section>
 
       {/* Import Foto URL */}
       <section className="rounded-xl border border-[#E5EAF3] bg-white p-5">

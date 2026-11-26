@@ -1,3 +1,5 @@
+import { getSerpApiKey } from "./api-key";
+
 export type SerpApiQuota = {
   planName: string | null;
   searchesPerMonth: number | null;
@@ -28,8 +30,8 @@ function numberOrNull(value: unknown): number | null {
 export async function getSerpApiQuota(force = false): Promise<SerpApiQuota> {
   if (!force && cache && cache.expiresAt > Date.now()) return cache.data;
 
-  const apiKey = process.env.SERPAPI_API_KEY?.trim();
-  if (!apiKey) throw new Error("SERPAPI_API_KEY belum diatur di environment server.");
+  const { key: apiKey } = await getSerpApiKey();
+  if (!apiKey) throw new Error("SERPAPI_API_KEY belum diatur (env atau pengaturan).");
 
   const url = new URL("https://serpapi.com/account.json");
   url.searchParams.set("api_key", apiKey);
@@ -58,4 +60,8 @@ export async function getSerpApiQuota(force = false): Promise<SerpApiQuota> {
 
   cache = { data, expiresAt: Date.now() + CACHE_MS };
   return data;
+}
+
+export function clearSerpApiQuotaCache() {
+  cache = null;
 }
