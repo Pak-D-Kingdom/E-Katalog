@@ -104,6 +104,11 @@ export default function ProductsPage() {
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [moveKategori, setMoveKategori] = useState("");
+  const [moveSubkategori, setMoveSubkategori] = useState("");
+  const [moving, setMoving] = useState(false);
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,6 +188,10 @@ export default function ProductsPage() {
       controller.abort();
     };
   }, [page, query, categoryFilter, subcategoryFilter, loadProducts]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, query, categoryFilter, subcategoryFilter]);
 
   useEffect(() => {
     let active = true;
@@ -493,6 +502,76 @@ export default function ProductsPage() {
       setError((e as Error).message);
     }
   }
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) return new Set();
+      const next = new Set(prev);
+      visibleProducts.forEach((p) => next.add(p.id));
+      return next;
+    });
+  }
+
+  async function handleMove() {
+    if (moving || selectedCount === 0 || !moveKategori) return;
+    const kategoriId = Number(moveKategori);
+    const subkategoriId = moveSubkategori ? Number(moveSubkategori) : null;
+
+    const targetLabel =
+      moveSubcategories.find((s) => String(s.id) === moveSubkategori)?.nama_subkategori ||
+      categories.find((c) => String(c.id) === moveKategori)?.nama_kategori ||
+      "";
+
+    const confirmation = await Swal.fire({
+      title: `Pindahkan ${selectedCount} produk?`,
+      text: `Produk akan dipindahkan ke ${targetLabel || "kategori tujuan"}.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, pindahkan",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+    if (!confirmation.isConfirmed) return;
+
+    setMoving(true);
+    setError("");
+    try {
+      const res = await api<{ updated: number }>("/api/produk/move", {
+        method: "POST",
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          kategori_id: kategoriId,
+          subkategori_id: subkategoriId,
+        }),
+      });
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
+      setSelectedIds(new Set());
+      setMoveKategori("");
+      setMoveSubkategori("");
+      setMessage(`${res.updated} produk berhasil dipindahkan.`);
+      await Swal.fire({
+        title: "Berhasil",
+        text: `${res.updated} produk dipindahkan.`,
+        icon: "success",
+        confirmButtonColor: "#A83D00",
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMoving(false);
+    }
+  }
+
   const availableSubcategories = useMemo(
     () =>
       subcategories.filter(
@@ -516,6 +595,20 @@ export default function ProductsPage() {
   );
   const currentPage = Math.min(page, totalPages);
   const visibleProducts = products;
+
+  const moveSubcategories = useMemo(
+    () =>
+      moveKategori === ""
+        ? []
+        : subcategories.filter((item) => String(item.kategori_id) === moveKategori),
+    [subcategories, moveKategori]
+  );
+
+  const allVisibleSelected =
+    visibleProducts.length > 0 &&
+    visibleProducts.every((p) => selectedIds.has(p.id));
+
+  const selectedCount = selectedIds.size;
 
   const stats = [
     {
@@ -742,11 +835,84 @@ export default function ProductsPage() {
             </div>
           </div>
 
+          {/* TOOLBAR PINDAH */}
+          {selectedCount > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-[#E5EAF3] bg-[#F8FAFD] p-3">
+              <span className="text-xs font-bold text-[#172B4D]">
+                {selectedCount} produk terpilih
+              </span>
+              <select
+                value={moveKategori}
+                onChange={(e) => {
+                  setMoveKategori(e.target.value);
+                  setMoveSubkategori("");
+                }}
+                className="rounded-md border border-[#E5EAF3] bg-white px-3 py-2 text-xs text-[#172B4D] outline-none"
+                aria-label="Kategori tujuan"
+              >
+                <option value="">Pilih kategori tujuan</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.nama_kategori}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={moveSubkategori}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setMoveSubkategori(v);
+                  if (v) {
+                    const sub = subcategories.find((s) => String(s.id) === v);
+                    if (sub) setMoveKategori(String(sub.kategori_id));
+                  }
+                }}
+                disabled={!moveKategori}
+                className="rounded-md border border-[#E5EAF3] bg-white px-3 py-2 text-xs text-[#172B4D] outline-none disabled:opacity-50"
+                aria-label="Subkategori tujuan"
+              >
+                <option value="">Tanpa subkategori</option>
+                {moveSubcategories.map((s) => (
+                  <option key={s.id} value={String(s.id)}>
+                    {s.nama_subkategori}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void handleMove()}
+                disabled={moving || !moveKategori}
+                className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#873100] disabled:opacity-50"
+              >
+                {moving ? "Memindahkan..." : "Pindahkan"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIds(new Set());
+                  setMoveKategori("");
+                  setMoveSubkategori("");
+                }}
+                className="rounded-md px-3 py-2 text-xs font-bold text-[#64748B] hover:bg-white"
+              >
+                Batal
+              </button>
+            </div>
+          )}
+
           {/* TABLE */}
           <div className="w-full overflow-x-auto rounded-md">
             <table className="w-full min-w-[1500px] border-collapse text-left">
               <thead>
                 <tr className="bg-[#EEF3FF] text-[10px] font-bold uppercase tracking-wide text-[#596780]">
+                  <th className="w-10 px-3 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Pilih semua produk di halaman ini"
+                    />
+                  </th>
                   <th className="px-3 py-3">Foto, Produk & SKU</th>
                   <th className="px-3 py-3">Kategori</th>
                   <th className="px-3 py-3">Subkategori</th>
@@ -766,6 +932,14 @@ export default function ProductsPage() {
                     key={product.id}
                     className="border-b border-[#EDF1F7] align-top transition hover:bg-[#F8FAFD]"
                   >
+                    <td className="px-3 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleSelect(product.id)}
+                        aria-label={`Pilih ${product.nama_produk}`}
+                      />
+                    </td>
                     {/* FOTO, NAMA, SKU */}
                     <td className="min-w-[230px] px-3 py-4">
                       <div className="flex items-center gap-3">
@@ -891,7 +1065,7 @@ export default function ProductsPage() {
                 {visibleProducts.length === 0 && (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       className="px-4 py-12 text-center text-xs text-[#64748B]"
                     >
                       Produk tidak ditemukan.
