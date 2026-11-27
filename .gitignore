@@ -9,3 +9,5 @@ public/uploads/*
 !public/uploads/.gitkeep
 *.log
 *.tsbuildinfo
+
+cookies.txt

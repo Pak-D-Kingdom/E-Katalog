@@ -62,6 +62,17 @@ type ProductForm = {
   tersedia: boolean;
 };
 
+type PhotoCandidate = {
+  id: number;
+  produk_id: number;
+  image_url: string;
+  thumbnail_url: string | null;
+  judul: string | null;
+  domain: string | null;
+  relevansi: number;
+  dipilih: boolean;
+};
+
 const empty: ProductForm = {
   kategori_id: "",
   subkategori_id: "",
@@ -110,6 +121,22 @@ export default function ProductsPage() {
   const [moveSubkategori, setMoveSubkategori] = useState("");
   const [moving, setMoving] = useState(false);
 
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
+  const [checkingImages, setCheckingImages] = useState(false);
+  const [showBrokenOnly, setShowBrokenOnly] = useState(false);
+  const [clearingPhotos, setClearingPhotos] = useState(false);
+
+  // Modal ganti gambar
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoModalTab, setPhotoModalTab] = useState<"finder" | "manual">("finder");
+  const [photoProducts, setPhotoProducts] = useState<Product[]>([]);
+  const [photoCandidates, setPhotoCandidates] = useState<Record<number, PhotoCandidate[]>>({});
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoSearching, setPhotoSearching] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState("");
+  const [manualUrls, setManualUrls] = useState<Record<number, string>>({});
+  const [manualChecking, setManualChecking] = useState<Record<number, boolean>>({});
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -129,38 +156,53 @@ export default function ProductsPage() {
       setLoading(true);
       setError("");
 
-      const params = new URLSearchParams({
-        admin: "1",
-        page: String(requestedPage),
-        pageSize: String(PAGE_SIZE),
-        q: search.trim(),
-        kategori: category,
-        subkategori: subcategory,
-      });
-      if (refreshStats) params.set("stats", "1");
-
       try {
-        const result = await api<{
-          produk: Product[];
-          pagination: { total: number; page: number; totalPages: number };
-          stats?: {
-            totalProduk: number;
-            produkAktif: number;
-            totalFoto: number;
-          };
-        }>(`/api/produk?${params}`, { signal, cache: "no-store" });
+        if (showBrokenOnly && brokenImageIds.size > 0) {
+          const params = new URLSearchParams({
+            admin: "1",
+            ids: Array.from(brokenImageIds).join(","),
+          });
+          const result = await api<{ produk: Product[] }>(
+            `/api/produk?${params}`,
+            { signal, cache: "no-store" }
+          );
+          if (!Array.isArray(result.produk)) return;
+          setProducts(result.produk);
+          setFilteredProductCount(result.produk.length);
+        } else {
+          const params = new URLSearchParams({
+            admin: "1",
+            page: String(requestedPage),
+            pageSize: String(PAGE_SIZE),
+            q: search.trim(),
+            kategori: category,
+            subkategori: subcategory,
+          });
+          if (refreshStats) params.set("stats", "1");
 
-        setProducts(result.produk);
-        setFilteredProductCount(result.pagination.total);
-        if (result.stats) {
-          setTotalProductCount(result.stats.totalProduk);
-          setAvailableCount(result.stats.produkAktif);
-          setPhotoCount(result.stats.totalFoto);
-          statsNeedRefresh.current = false;
-        }
+          const result = await api<{
+            produk: Product[];
+            pagination: { total: number; page: number; totalPages: number };
+            stats?: {
+              totalProduk: number;
+              produkAktif: number;
+              totalFoto: number;
+            };
+          }>(`/api/produk?${params}`, { signal, cache: "no-store" });
 
-        if (result.pagination.page !== requestedPage) {
-          setPage(result.pagination.page);
+          if (!Array.isArray(result.produk) || !result.pagination) return;
+          setProducts(result.produk);
+          setFilteredProductCount(result.pagination.total);
+          if (result.stats) {
+            setTotalProductCount(result.stats.totalProduk);
+            setAvailableCount(result.stats.produkAktif);
+            setPhotoCount(result.stats.totalFoto);
+            statsNeedRefresh.current = false;
+          }
+
+          if (result.pagination.page !== requestedPage) {
+            setPage(result.pagination.page);
+          }
         }
       } catch (e) {
         if (signal?.aborted) return;
@@ -169,7 +211,7 @@ export default function ProductsPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    []
+    [showBrokenOnly, brokenImageIds]
   );
 
   useEffect(() => {
@@ -189,7 +231,7 @@ export default function ProductsPage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [page, query, categoryFilter, subcategoryFilter, loadProducts]);
+  }, [page, query, categoryFilter, subcategoryFilter, showBrokenOnly, loadProducts]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -226,6 +268,20 @@ export default function ProductsPage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("brokenImageIds");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          setBrokenImageIds(new Set(arr.filter((v) => Number.isInteger(v))));
+        }
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -582,6 +638,215 @@ export default function ProductsPage() {
     }
   }
 
+  function saveBrokenIds(next: Set<number>) {
+    setBrokenImageIds(next);
+    try {
+      window.localStorage.setItem(
+        "brokenImageIds",
+        JSON.stringify(Array.from(next))
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleCheckImages() {
+    if (checkingImages) return;
+    setCheckingImages(true);
+    setError("");
+    try {
+      const res = await api<{ total: number; checked: number; broken: number[] }>(
+        "/api/produk/check-images",
+        { method: "POST" }
+      );
+      const set = new Set(res.broken);
+      saveBrokenIds(set);
+      await Swal.fire({
+        title: "Pemeriksaan selesai",
+        text: `${res.broken.length} dari ${res.total} produk memiliki gambar rusak/tidak tersedia.`,
+        icon: res.broken.length > 0 ? "warning" : "success",
+        confirmButtonColor: "#A83D00",
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCheckingImages(false);
+    }
+  }
+
+  async function handleClearSelectedPhotos() {
+    if (clearingPhotos || selectedCount === 0) return;
+    const confirmation = await Swal.fire({
+      title: `Hapus foto ${selectedCount} produk?`,
+      text: "Foto yang rusak akan dihapus agar bisa dicari ulang via Image Finder.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, hapus foto",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+    if (!confirmation.isConfirmed) return;
+
+    setClearingPhotos(true);
+    setError("");
+    try {
+      const res = await api<{ updated: number }>("/api/produk/clear-photo", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      // Remove cleared ids from broken set
+      const nextBroken = new Set(brokenImageIds);
+      selectedIds.forEach((id) => nextBroken.delete(id));
+      saveBrokenIds(nextBroken);
+      setShowBrokenOnly(false);
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
+      setSelectedIds(new Set());
+      setMessage(`${res.updated} foto produk berhasil dihapus.`);
+      await Swal.fire({
+        title: "Berhasil",
+        text: `${res.updated} foto dihapus.`,
+        icon: "success",
+        confirmButtonColor: "#A83D00",
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setClearingPhotos(false);
+    }
+  }
+
+  async function openPhotoModal() {
+    if (selectedCount === 0) return;
+    setPhotoModalOpen(true);
+    setPhotoModalTab("finder");
+    setPhotoMessage("");
+    setPhotoCandidates({});
+    setManualUrls({});
+    setPhotoLoading(true);
+    try {
+      const params = new URLSearchParams({
+        admin: "1",
+        ids: Array.from(selectedIds).join(","),
+      });
+      const result = await api<{ produk: Product[] }>(`/api/produk?${params}`);
+      if (Array.isArray(result.produk)) setPhotoProducts(result.produk);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
+
+  function closePhotoModal() {
+    setPhotoModalOpen(false);
+    setPhotoProducts([]);
+    setPhotoCandidates({});
+    setManualUrls({});
+    setPhotoMessage("");
+  }
+
+  async function runPhotoSearch() {
+    if (photoSearching || selectedIds.size === 0) return;
+    setPhotoSearching(true);
+    setPhotoMessage("");
+    try {
+      await api("/api/image-finder/search-batch", {
+        method: "POST",
+        body: JSON.stringify({
+          productIds: Array.from(selectedIds),
+          candidates: 5,
+          force: true,
+          autoSelect: false,
+        }),
+      });
+      // Ambil kandidat terbaru
+      const params = new URLSearchParams({
+        ids: Array.from(selectedIds).join(","),
+      });
+      const data = await api<{ products: { id: number; kandidat: PhotoCandidate[] }[] }>(
+        `/api/image-finder/products?${params}`
+      );
+      const map: Record<number, PhotoCandidate[]> = {};
+      for (const p of data.products ?? []) {
+        map[p.id] = p.kandidat ?? [];
+      }
+      setPhotoCandidates(map);
+      setPhotoMessage("Pencarian selesai. Pilih gambar untuk setiap produk.");
+    } catch (e) {
+      setPhotoMessage((e as Error).message);
+    } finally {
+      setPhotoSearching(false);
+    }
+  }
+
+  async function applyCandidate(productId: number, candidateId: number) {
+    try {
+      await api("/api/image-finder/select", {
+        method: "POST",
+        body: JSON.stringify({ productId, candidateId }),
+      });
+      // Refresh kandidat + produk
+      const params = new URLSearchParams({ ids: String(productId) });
+      const data = await api<{ products: { id: number; foto_url: string | null; kandidat: PhotoCandidate[] }[] }>(
+        `/api/image-finder/products?${params}`
+      );
+      const p = data.products?.[0];
+      if (p) {
+        setPhotoCandidates((prev) => ({ ...prev, [productId]: p.kandidat ?? prev[productId] }));
+        setPhotoProducts((prev) =>
+          prev.map((x) => (x.id === productId ? { ...x, foto_url: p.foto_url } : x))
+        );
+      }
+      setBrokenImageIds((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        try {
+          window.localStorage.setItem("brokenImageIds", JSON.stringify(Array.from(next)));
+        } catch {}
+        return next;
+      });
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
+      setPhotoMessage("Gambar diterapkan.");
+    } catch (e) {
+      setPhotoMessage((e as Error).message);
+    }
+  }
+
+  async function applyManualUrl(productId: number) {
+    const url = (manualUrls[productId] || "").trim();
+    if (!url) return;
+    setManualChecking((prev) => ({ ...prev, [productId]: true }));
+    setPhotoMessage("");
+    try {
+      const res = await api<{ updated: number }>("/api/produk/set-photo", {
+        method: "POST",
+        body: JSON.stringify({ ids: [productId], foto_url: url }),
+      });
+      if (res.updated > 0) {
+        setPhotoProducts((prev) =>
+          prev.map((x) => (x.id === productId ? { ...x, foto_url: url } : x))
+        );
+        setManualUrls((prev) => ({ ...prev, [productId]: "" }));
+        setBrokenImageIds((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          try {
+            window.localStorage.setItem("brokenImageIds", JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
+        });
+        await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
+        setPhotoMessage("Foto berhasil diperbarui.");
+      }
+    } catch (e) {
+      setPhotoMessage((e as Error).message);
+    } finally {
+      setManualChecking((prev) => ({ ...prev, [productId]: false }));
+    }
+  }
+
   const availableSubcategories = useMemo(
     () =>
       subcategories.filter(
@@ -657,6 +922,137 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen space-y-6 bg-[#F2F5FC] p-4 sm:p-6 lg:p-7">
+      {photoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[#172B4D]">
+                Ganti gambar ({selectedCount} produk)
+              </h2>
+              <button
+                type="button"
+                onClick={closePhotoModal}
+                className="rounded-md p-1 text-[#64748B] hover:bg-[#F8FAFD]"
+                aria-label="Tutup"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mb-4 flex gap-2 border-b border-[#E5EAF3]">
+              <button
+                type="button"
+                onClick={() => setPhotoModalTab("finder")}
+                className={`px-3 py-2 text-xs font-bold ${photoModalTab === "finder" ? "border-b-2 border-[#A83D00] text-[#A83D00]" : "text-[#64748B]"}`}
+              >
+                Cari gambar (Image Finder)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhotoModalTab("manual")}
+                className={`px-3 py-2 text-xs font-bold ${photoModalTab === "manual" ? "border-b-2 border-[#A83D00] text-[#A83D00]" : "text-[#64748B]"}`}
+              >
+                Tempel URL
+              </button>
+            </div>
+
+            {photoMessage && (
+              <p className="mb-3 rounded-md bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D]">
+                {photoMessage}
+              </p>
+            )}
+
+            {photoLoading ? (
+              <p className="py-6 text-center text-sm text-[#64748B]">Memuat produk...</p>
+            ) : photoModalTab === "finder" ? (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => void runPhotoSearch()}
+                  disabled={photoSearching}
+                  className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#873100] disabled:opacity-50"
+                >
+                  {photoSearching ? "Mencari..." : "Cari gambar untuk terpilih"}
+                </button>
+                {photoProducts.map((product) => (
+                  <div key={product.id} className="rounded-md border border-[#E5EAF3] p-3">
+                    <div className="mb-2 flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#EAF0FC]">
+                        {product.foto_url ? (
+                          <img src={product.foto_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <ImagePlus size={16} className="text-[#A83D00]" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-[#172B4D]">{product.nama_produk}</p>
+                        <p className="text-[10px] text-[#64748B]">{product.kode_produk}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(photoCandidates[product.id] ?? []).map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => void applyCandidate(product.id, c.id)}
+                          className={`relative h-20 w-20 overflow-hidden rounded-md border-2 ${c.dipilih ? "border-[#A83D00]" : "border-[#E5EAF3]"} transition hover:border-[#A83D00]`}
+                          title={c.judul ?? c.domain ?? ""}
+                        >
+                          <img
+                            src={c.thumbnail_url || c.image_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                      {(photoCandidates[product.id] ?? []).length === 0 && (
+                        <p className="text-[11px] text-[#94A3B8]">
+                          Belum ada kandidat. Klik "Cari gambar".
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {photoProducts.map((product) => (
+                  <div key={product.id} className="flex flex-col gap-2 rounded-md border border-[#E5EAF3] p-3 sm:flex-row sm:items-center">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#EAF0FC]">
+                      {product.foto_url ? (
+                        <img src={product.foto_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <ImagePlus size={16} className="text-[#A83D00]" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-[#172B4D]">{product.nama_produk}</p>
+                      <p className="text-[10px] text-[#64748B]">{product.kode_produk}</p>
+                    </div>
+                    <input
+                      type="url"
+                      value={manualUrls[product.id] ?? ""}
+                      onChange={(e) =>
+                        setManualUrls((prev) => ({ ...prev, [product.id]: e.target.value }))
+                      }
+                      placeholder="https://... (URL gambar)"
+                      className="w-full rounded-md border border-[#E5EAF3] bg-[#F8FAFD] px-3 py-2 text-xs text-[#172B4D] outline-none sm:w-64"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void applyManualUrl(product.id)}
+                      disabled={manualChecking[product.id] || !(manualUrls[product.id] || "").trim()}
+                      className="rounded-md bg-[#A83D00] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#873100] disabled:opacity-50"
+                    >
+                      {manualChecking[product.id] ? "Mengecek..." : "Terapkan"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* HEADER */}
       <section className="space-y-5">
@@ -835,6 +1231,26 @@ export default function ProductsPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => void handleCheckImages()}
+                  disabled={checkingImages}
+                  className="flex items-center gap-2 rounded-md border border-[#E5EAF3] bg-white px-3 py-2 text-xs font-bold text-[#172B4D] transition hover:bg-[#F8FAFD] disabled:opacity-50"
+                >
+                  {checkingImages ? "Mengecek..." : "Cek gambar rusak"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBrokenOnly((v) => !v)}
+                  disabled={brokenImageIds.size === 0}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${
+                    showBrokenOnly
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "border border-[#E5EAF3] bg-white text-[#172B4D] hover:bg-[#F8FAFD]"
+                  }`}
+                >
+                  {showBrokenOnly ? "Tampilkan semua" : `Gambar rusak (${brokenImageIds.size})`}
+                </button>
+                <button
+                  type="button"
                   onClick={() => startEdit()}
                   className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#873100]"
                 >
@@ -895,6 +1311,21 @@ export default function ProductsPage() {
                 className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#873100] disabled:opacity-50"
               >
                 {moving ? "Memindahkan..." : "Pindahkan"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void openPhotoModal()}
+                className="flex items-center gap-2 rounded-md border border-[#E5EAF3] bg-white px-3 py-2 text-xs font-bold text-[#172B4D] transition hover:bg-[#F8FAFD]"
+              >
+                Ganti gambar terpilih
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleClearSelectedPhotos()}
+                disabled={clearingPhotos}
+                className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+              >
+                {clearingPhotos ? "Menghapus..." : "Hapus foto terpilih"}
               </button>
               <button
                 type="button"
@@ -959,6 +1390,17 @@ export default function ProductsPage() {
                               src={product.foto_url}
                               alt={product.nama_produk}
                               className="h-full w-full object-cover"
+                              onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                setBrokenImageIds((prev) => {
+                                  const next = new Set(prev);
+                                  next.add(product.id);
+                                  return next;
+                                });
+                                img.src =
+                                  "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Crect width='100%25' height='100%25' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23b91c1c' font-size='8'%3Erusak%3C/text%3E%3C/svg%3E";
+                                img.onerror = null;
+                              }}
                             />
                           ) : (
                             <ImagePlus size={18} />

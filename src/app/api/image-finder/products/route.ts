@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
     const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") ?? "24") || 24));
     const kategoriId = Number(searchParams.get("kategoriId") ?? "");
+    const idsParam = searchParams.get("ids");
 
     if (!ALLOWED_STATUSES.has(statusFilter)) {
       return NextResponse.json({ error: "Filter status tidak valid." }, { status: 400 });
@@ -39,6 +40,14 @@ export async function GET(request: Request) {
         { nama_produk: { contains: q } },
         { kode_produk: { contains: q } },
       ];
+    }
+
+    if (idsParam) {
+      const ids = idsParam
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((v) => Number.isInteger(v) && v > 0);
+      if (ids.length > 0) where.id = { in: ids };
     }
 
     const products = await prisma.produk.findMany({
