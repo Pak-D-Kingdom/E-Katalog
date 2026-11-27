@@ -75,6 +75,59 @@ export async function GET(request: Request) {
         );
       }
 
+      const idsParam = searchParams.get("ids");
+      if (idsParam) {
+        const ids = idsParam
+          .split(",")
+          .map((v) => Number(v.trim()))
+          .filter((v) => Number.isInteger(v) && v > 0);
+
+        if (ids.length === 0) {
+          return NextResponse.json({ produk: [] });
+        }
+
+        const produk = await prisma.produk.findMany({
+          where: { id: { in: ids } },
+          select: {
+            id: true,
+            kategori_id: true,
+            subkategori_id: true,
+            kode_produk: true,
+            nama_produk: true,
+            slug: true,
+            deskripsi: true,
+            informasi_gizi: true,
+            jenis_harga: true,
+            harga: true,
+            harga_min: true,
+            harga_max: true,
+            stok: true,
+            satuan: true,
+            foto_url: true,
+            tersedia: true,
+            kategori: {
+              select: {
+                id: true,
+                nama_kategori: true,
+                slug: true,
+                ikon_url: true,
+              },
+            },
+            subkategori: {
+              select: {
+                id: true,
+                kategori_id: true,
+                nama_subkategori: true,
+                slug: true,
+              },
+            },
+          },
+          orderBy: { dibuat_pada: "desc" },
+        });
+
+        return NextResponse.json({ produk });
+      }
+
       const where = {
         ...(parsedCategoryId !== null
           ? { kategori_id: parsedCategoryId }

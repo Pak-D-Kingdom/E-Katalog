@@ -110,6 +110,11 @@ export default function ProductsPage() {
   const [moveSubkategori, setMoveSubkategori] = useState("");
   const [moving, setMoving] = useState(false);
 
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
+  const [checkingImages, setCheckingImages] = useState(false);
+  const [showBrokenOnly, setShowBrokenOnly] = useState(false);
+  const [clearingPhotos, setClearingPhotos] = useState(false);
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -129,38 +134,51 @@ export default function ProductsPage() {
       setLoading(true);
       setError("");
 
-      const params = new URLSearchParams({
-        admin: "1",
-        page: String(requestedPage),
-        pageSize: String(PAGE_SIZE),
-        q: search.trim(),
-        kategori: category,
-        subkategori: subcategory,
-      });
-      if (refreshStats) params.set("stats", "1");
-
       try {
-        const result = await api<{
-          produk: Product[];
-          pagination: { total: number; page: number; totalPages: number };
-          stats?: {
-            totalProduk: number;
-            produkAktif: number;
-            totalFoto: number;
-          };
-        }>(`/api/produk?${params}`, { signal });
+        if (showBrokenOnly && brokenImageIds.size > 0) {
+          const params = new URLSearchParams({
+            admin: "1",
+            ids: Array.from(brokenImageIds).join(","),
+          });
+          const result = await api<{ produk: Product[] }>(
+            `/api/produk?${params}`,
+            { signal }
+          );
+          setProducts(result.produk);
+          setFilteredProductCount(result.produk.length);
+        } else {
+          const params = new URLSearchParams({
+            admin: "1",
+            page: String(requestedPage),
+            pageSize: String(PAGE_SIZE),
+            q: search.trim(),
+            kategori: category,
+            subkategori: subcategory,
+          });
+          if (refreshStats) params.set("stats", "1");
 
-        setProducts(result.produk);
-        setFilteredProductCount(result.pagination.total);
-        if (result.stats) {
-          setTotalProductCount(result.stats.totalProduk);
-          setAvailableCount(result.stats.produkAktif);
-          setPhotoCount(result.stats.totalFoto);
-          statsNeedRefresh.current = false;
-        }
+          const result = await api<{
+            produk: Product[];
+            pagination: { total: number; page: number; totalPages: number };
+            stats?: {
+              totalProduk: number;
+              produkAktif: number;
+              totalFoto: number;
+            };
+          }>(`/api/produk?${params}`, { signal });
 
-        if (result.pagination.page !== requestedPage) {
-          setPage(result.pagination.page);
+          setProducts(result.produk);
+          setFilteredProductCount(result.pagination.total);
+          if (result.stats) {
+            setTotalProductCount(result.stats.totalProduk);
+            setAvailableCount(result.stats.produkAktif);
+            setPhotoCount(result.stats.totalFoto);
+            statsNeedRefresh.current = false;
+          }
+
+          if (result.pagination.page !== requestedPage) {
+            setPage(result.pagination.page);
+          }
         }
       } catch (e) {
         if (signal?.aborted) return;
@@ -169,7 +187,7 @@ export default function ProductsPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    []
+    [showBrokenOnly, brokenImageIds]
   );
 
   useEffect(() => {
@@ -189,11 +207,22 @@ export default function ProductsPage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [page, query, categoryFilter, subcategoryFilter, loadProducts]);
+  }, [page, query, categoryFilter, subcategoryFilter, showBrokenOnly, loadProducts]);
 
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page, query, categoryFilter, subcategoryFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        "brokenImageIds",
+        JSON.stringify(Array.from(brokenImageIds))
+      );
+    } catch {
+      // ignore
+    }
+  }, [brokenImageIds]);
 
   useEffect(() => {
     let active = true;
@@ -226,6 +255,20 @@ export default function ProductsPage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("brokenImageIds");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          setBrokenImageIds(new Set(arr.filter((v) => Number.isInteger(v))));
+        }
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -582,6 +625,75 @@ export default function ProductsPage() {
     }
   }
 
+  async function handleCheckImages() {
+    if (checkingImages) return;
+    setCheckingImages(true);
+    setError("");
+    try {
+      const res = await api<{ total: number; checked: number; broken: number[] }>(
+        "/api/produk/check-images",
+        { method: "POST" }
+      );
+      const set = new Set(res.broken);
+      setBrokenImageIds(set);
+      await Swal.fire({
+        title: "Pemeriksaan selesai",
+        text: `${res.broken.length} dari ${res.total} produk memiliki gambar rusak/tidak tersedia.`,
+        icon: res.broken.length > 0 ? "warning" : "success",
+        confirmButtonColor: "#A83D00",
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCheckingImages(false);
+    }
+  }
+
+  async function handleClearSelectedPhotos() {
+    if (clearingPhotos || selectedCount === 0) return;
+    const confirmation = await Swal.fire({
+      title: `Hapus foto ${selectedCount} produk?`,
+      text: "Foto yang rusak akan dihapus agar bisa dicari ulang via Image Finder.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#A83D00",
+      cancelButtonColor: "#64748B",
+      confirmButtonText: "Ya, hapus foto",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+    });
+    if (!confirmation.isConfirmed) return;
+
+    setClearingPhotos(true);
+    setError("");
+    try {
+      const res = await api<{ updated: number }>("/api/produk/clear-photo", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      // Remove cleared ids from broken set
+      setBrokenImageIds((prev) => {
+        const next = new Set(prev);
+        selectedIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setShowBrokenOnly(false);
+      await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
+      setSelectedIds(new Set());
+      setMessage(`${res.updated} foto produk berhasil dihapus.`);
+      await Swal.fire({
+        title: "Berhasil",
+        text: `${res.updated} foto dihapus.`,
+        icon: "success",
+        confirmButtonColor: "#A83D00",
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setClearingPhotos(false);
+    }
+  }
+
   const availableSubcategories = useMemo(
     () =>
       subcategories.filter(
@@ -835,6 +947,26 @@ export default function ProductsPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => void handleCheckImages()}
+                  disabled={checkingImages}
+                  className="flex items-center gap-2 rounded-md border border-[#E5EAF3] bg-white px-3 py-2 text-xs font-bold text-[#172B4D] transition hover:bg-[#F8FAFD] disabled:opacity-50"
+                >
+                  {checkingImages ? "Mengecek..." : "Cek gambar rusak"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBrokenOnly((v) => !v)}
+                  disabled={brokenImageIds.size === 0}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${
+                    showBrokenOnly
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "border border-[#E5EAF3] bg-white text-[#172B4D] hover:bg-[#F8FAFD]"
+                  }`}
+                >
+                  {showBrokenOnly ? "Tampilkan semua" : `Gambar rusak (${brokenImageIds.size})`}
+                </button>
+                <button
+                  type="button"
                   onClick={() => startEdit()}
                   className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#873100]"
                 >
@@ -895,6 +1027,14 @@ export default function ProductsPage() {
                 className="flex items-center gap-2 rounded-md bg-[#A83D00] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#873100] disabled:opacity-50"
               >
                 {moving ? "Memindahkan..." : "Pindahkan"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleClearSelectedPhotos()}
+                disabled={clearingPhotos}
+                className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+              >
+                {clearingPhotos ? "Menghapus..." : "Hapus foto terpilih"}
               </button>
               <button
                 type="button"
@@ -959,6 +1099,17 @@ export default function ProductsPage() {
                               src={product.foto_url}
                               alt={product.nama_produk}
                               className="h-full w-full object-cover"
+                              onError={(e) => {
+                                const img = e.currentTarget as HTMLImageElement;
+                                setBrokenImageIds((prev) => {
+                                  const next = new Set(prev);
+                                  next.add(product.id);
+                                  return next;
+                                });
+                                img.src =
+                                  "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Crect width='100%25' height='100%25' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23b91c1c' font-size='8'%3Erusak%3C/text%3E%3C/svg%3E";
+                                img.onerror = null;
+                              }}
                             />
                           ) : (
                             <ImagePlus size={18} />
