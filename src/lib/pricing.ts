@@ -21,6 +21,15 @@ export function hasPriceChanged(
 ): boolean {
   return (
     current.jenis_harga !== next.jenis_harga ||
+    hasPriceAmountChanged(current, next)
+  );
+}
+
+export function hasPriceAmountChanged(
+  current: PriceFields,
+  next: PriceFields
+): boolean {
+  return (
     !samePrice(current.harga, next.harga) ||
     !samePrice(current.harga_min, next.harga_min) ||
     !samePrice(current.harga_max, next.harga_max)
