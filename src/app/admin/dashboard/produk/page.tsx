@@ -144,6 +144,7 @@ export default function ProductsPage() {
             `/api/produk?${params}`,
             { signal }
           );
+          if (!Array.isArray(result.produk)) return;
           setProducts(result.produk);
           setFilteredProductCount(result.produk.length);
         } else {
@@ -167,6 +168,7 @@ export default function ProductsPage() {
             };
           }>(`/api/produk?${params}`, { signal });
 
+          if (!Array.isArray(result.produk) || !result.pagination) return;
           setProducts(result.produk);
           setFilteredProductCount(result.pagination.total);
           if (result.stats) {
@@ -212,17 +214,6 @@ export default function ProductsPage() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page, query, categoryFilter, subcategoryFilter]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        "brokenImageIds",
-        JSON.stringify(Array.from(brokenImageIds))
-      );
-    } catch {
-      // ignore
-    }
-  }, [brokenImageIds]);
 
   useEffect(() => {
     let active = true;
@@ -625,6 +616,18 @@ export default function ProductsPage() {
     }
   }
 
+  function saveBrokenIds(next: Set<number>) {
+    setBrokenImageIds(next);
+    try {
+      window.localStorage.setItem(
+        "brokenImageIds",
+        JSON.stringify(Array.from(next))
+      );
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleCheckImages() {
     if (checkingImages) return;
     setCheckingImages(true);
@@ -635,7 +638,7 @@ export default function ProductsPage() {
         { method: "POST" }
       );
       const set = new Set(res.broken);
-      setBrokenImageIds(set);
+      saveBrokenIds(set);
       await Swal.fire({
         title: "Pemeriksaan selesai",
         text: `${res.broken.length} dari ${res.total} produk memiliki gambar rusak/tidak tersedia.`,
@@ -672,11 +675,9 @@ export default function ProductsPage() {
         body: JSON.stringify({ ids: Array.from(selectedIds) }),
       });
       // Remove cleared ids from broken set
-      setBrokenImageIds((prev) => {
-        const next = new Set(prev);
-        selectedIds.forEach((id) => next.delete(id));
-        return next;
-      });
+      const nextBroken = new Set(brokenImageIds);
+      selectedIds.forEach((id) => nextBroken.delete(id));
+      saveBrokenIds(nextBroken);
       setShowBrokenOnly(false);
       await loadProducts(page, query, categoryFilter, subcategoryFilter, undefined, true);
       setSelectedIds(new Set());

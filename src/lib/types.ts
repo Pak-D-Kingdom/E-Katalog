@@ -64,7 +64,11 @@ export async function api<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), ...init?.headers }
   });
-  const result = await response.json().catch(() => ({}));
+  const result = await response.json().catch((error) => {
+    // Request yang dibatalkan (AbortController) tidak boleh dianggap respons kosong.
+    if ((error as Error)?.name === "AbortError") throw error;
+    return {};
+  });
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/auth/login")) {
       window.location.assign("/admin/auth/login");
