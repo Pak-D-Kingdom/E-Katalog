@@ -95,9 +95,10 @@ export async function GET(request: Request) {
                 ? { kategori_id: selectedCategory.id }
                 : undefined,
 
-            orderBy: {
-                nama_produk: "asc",
-            },
+            orderBy: [
+                { kategori: { nama_kategori: "asc" } },
+                { kode_produk: "asc" },
+            ],
 
             include: {
                 kategori: {

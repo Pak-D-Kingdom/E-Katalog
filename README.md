@@ -4,7 +4,7 @@ Aplikasi web full-stack untuk mengelola katalog Makan Bergizi Gratis (MBG), mena
 
 ## Fitur
 
-- **Katalog publik:** pencarian, filter kategori, detail produk, dan informasi gizi.
+- **Katalog publik:** pencarian, filter kategori, detail produk, informasi gizi, dan unduhan pricelist PDF sesuai filter yang aktif.
 - **Keranjang belanja:** tersimpan di `localStorage`, dengan subtotal otomatis.
 - **Checkout WhatsApp:** data pesanan disimpan beserta snapshot harga dan nama produk sebelum WhatsApp dibuka.
 - **Dashboard admin:** autentikasi dan pengelolaan produk, kategori, riwayat pesanan, serta pengaturan katalog.
@@ -95,6 +95,8 @@ Untuk produksi, buat build lalu jalankan server standalone:
 npm run build
 npm run start
 ```
+
+Proses build juga menyalin aset `public` dan `.next/static` ke folder standalone agar halaman dan stylesheet tersaji saat server dijalankan.
 
 ## Akun admin awal
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BadgeCheck, ChevronDown, MapPin, Menu, MessageCircle, Minus, Plus, Search, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, MapPin, Menu, MessageCircle, Minus, Plus, ShoppingBag, ShoppingCart, Trash2, Utensils, X } from "lucide-react";
 import { api, formatProductPrice, hargaRentang, hargaSatuan, rupiah, } from "@/lib/types";
 import type { Category, Product, Subcategory } from "@/lib/types";
 import Link from "next/link";
@@ -10,21 +10,13 @@ import HomePage, { getHomeOffers } from "./Home/HomePage";
 import type { HomeOffer } from "./Home/HomePage";
 import type { HomeSlide } from "@/lib/home-slides";
 import KatalogPage from "./Katalog/KatalogPage";
-import type { CartItem } from "./types";
+import type { CartItem, CatalogSettings } from "./types";
 
 type HomeCartItem = { offer: HomeOffer; quantity: number };
 type PublicCatalogProps = {
   page?: "home" | "catalog";
-  initialSettings: Settings | null;
+  initialSettings: CatalogSettings | null;
   homeSlides?: HomeSlide[];
-};
-type Settings = {
-  nama_instansi: string;
-  logo_url: string | null;
-  nomor_whatsapp: string;
-  alamat: string | null;
-  email: string | null;
-  hak_cipta: string;
 };
 type FlyingItem = { key: number; left: number; top: number; x: number; y: number; image: string | null };
 const cartKey = "mbg-cart-v1";
@@ -61,8 +53,6 @@ export default function PublicCatalog({
     () => page === "catalog" ? searchParams.get("q") || "" : ""
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [desktopExpandedCategoryId, setDesktopExpandedCategoryId] = useState<number | null>(null);
   const [mobileExpandedCategoryId, setMobileExpandedCategoryId] = useState<number | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -428,47 +418,6 @@ export default function PublicCatalog({
             />
           </Link>
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 sm:hidden">
-            {page === "catalog" && (mobileSearchOpen ? (
-              <>
-                <label id="mobile-catalog-search" className="relative min-w-0 flex-1">
-                  <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="search"
-                    aria-label="Cari produk katalog"
-                    autoFocus
-                    value={catalogSearch}
-                    onChange={(event) => setCatalogSearch(event.target.value)}
-                    placeholder="Cari produk..."
-                    className="h-10 w-full min-w-0 rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-                  />
-                </label>
-                <button
-                  type="button"
-                  aria-label="Tutup pencarian"
-                  aria-expanded="true"
-                  aria-controls="mobile-catalog-search"
-                  onClick={() => setMobileSearchOpen(false)}
-                  className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
-                >
-                  <X size={20} />
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                aria-label="Cari produk"
-                aria-expanded="false"
-                aria-controls="mobile-catalog-search"
-                onClick={() => {
-                  setMobileSearchOpen(true);
-                  setMobileMenuOpen(false);
-                  setMobileExpandedCategoryId(null);
-                }}
-                className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
-              >
-                <Search size={20} />
-              </button>
-            ))}
             <button
               type="button"
               aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu"}
@@ -477,7 +426,6 @@ export default function PublicCatalog({
               onClick={() => {
                 if (mobileMenuOpen) setMobileExpandedCategoryId(null);
                 setMobileMenuOpen(!mobileMenuOpen);
-                setMobileSearchOpen(false);
               }}
               className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
             >
@@ -485,47 +433,6 @@ export default function PublicCatalog({
             </button>
           </div>
           <nav aria-label="Navigasi utama" className="ml-auto hidden items-center gap-3 text-sm font-semibold text-slate-700 sm:flex sm:max-w-full sm:flex-wrap sm:justify-end">
-            {page === "catalog" && (
-              <div
-                className={`flex shrink-0 items-center transition-[width] duration-300 ease-out ${
-                  desktopSearchOpen ? "w-64" : "w-9"
-                }`}
-              >
-                {desktopSearchOpen ? (
-                  <>
-                    <label className="relative min-w-0 flex-1">
-                      <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                      <input
-                        type="search"
-                        aria-label="Cari produk katalog"
-                        autoFocus
-                        value={catalogSearch}
-                        onChange={(event) => setCatalogSearch(event.target.value)}
-                        placeholder="Cari produk..."
-                        className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      aria-label="Tutup pencarian"
-                      onClick={() => setDesktopSearchOpen(false)}
-                      className="ml-1 rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
-                    >
-                      <X size={18} />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label="Cari produk"
-                    onClick={() => setDesktopSearchOpen(true)}
-                    className="rounded-md p-2 text-slate-700 transition hover:bg-slate-100"
-                  >
-                    <Search size={20} />
-                  </button>
-                )}
-              </div>
-            )}
             <Link
               href="/"
               aria-current={page === "home" ? "page" : undefined}
@@ -860,6 +767,7 @@ export default function PublicCatalog({
       /> : <KatalogPage
         products={products}
         categories={categories}
+        settings={settings}
         loading={loading}
         error={error}
         cart={cart}

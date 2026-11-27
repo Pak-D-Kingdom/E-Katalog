@@ -2,6 +2,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPriceChanged } from "@/lib/pricing";
+import { LEGACY_DEFAULT_PRODUCT_DESCRIPTION } from "@/lib/types";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,27 @@ function getText(
   ...headerNames: string[]
 ): string {
   return String(getCell(row, ...headerNames) ?? "").trim();
+}
+
+function getDescriptionText(row: ExcelRow): string {
+  const description = getText(
+    row,
+    "Deskripsi Lengkap",
+    "Deskripsi Lengkap Produk/Layanan",
+    "Deskripsi Produk/Layanan",
+    "Deskripsi Produk",
+    "Deskripsi",
+    "Description"
+  );
+  if (description) return description;
+
+  const matchingColumn = Object.entries(row).find(
+    ([header, value]) =>
+      /deskripsi|description/i.test(header) &&
+      String(value ?? "").trim() !== ""
+  );
+
+  return String(matchingColumn?.[1] ?? "").trim();
 }
 
 // Membaca harga dalam format angka maupun Rupiah Indonesia.
@@ -539,6 +561,8 @@ export async function POST(request: Request) {
     let berhasil = 0;
     let produkBaru = 0;
     let hargaBerubah = 0;
+    let deskripsiBerubah = 0;
+    let deskripsiTerbaca = 0;
     let dilewati = 0;
     let totalBaris = 0;
     const processedImportRows = new Set<string>();
@@ -613,13 +637,7 @@ export async function POST(request: Request) {
         const satuan =
           getText(row, "Satuan Produk", "Satuan") || "unit";
 
-        const deskripsi =
-          getText(
-            row,
-            "Deskripsi Lengkap",
-            "Deskripsi"
-          ) ||
-          "Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.";
+        const deskripsiExcel = getDescriptionText(row);
 
         const fotoUrl = getText(
           row,
@@ -895,7 +913,7 @@ export async function POST(request: Request) {
 
         if (existingProduct) {
           try {
-            const changed = await prisma.$transaction(async (transaction) => {
+            const changes = await prisma.$transaction(async (transaction) => {
               const current = await transaction.produk.findUnique({
                 where: { id: existingProduct.id },
               });
@@ -911,35 +929,51 @@ export async function POST(request: Request) {
                 harga_max,
               };
 
-              if (!hasPriceChanged(current, nextPrice)) return false;
+              const priceChanged = hasPriceChanged(current, nextPrice);
+              const descriptionChanged =
+                deskripsiExcel !== ""
+                  ? current.deskripsi !== deskripsiExcel
+                  : current.deskripsi.trim() === LEGACY_DEFAULT_PRODUCT_DESCRIPTION;
+              const nextDescription = deskripsiExcel || "";
+
+              if (!priceChanged && !descriptionChanged) {
+                return { priceChanged: false, descriptionChanged: false };
+              }
 
               const updated = await transaction.produk.update({
                 where: { id: current.id },
-                data: nextPrice,
-              });
-
-              await transaction.riwayat_perubahan_harga.create({
                 data: {
-                  produk_id: current.id,
-                  kode_produk: current.kode_produk,
-                  nama_produk: current.nama_produk,
-                  jenis_harga_lama: current.jenis_harga,
-                  harga_lama: current.harga,
-                  harga_min_lama: current.harga_min,
-                  harga_max_lama: current.harga_max,
-                  jenis_harga_baru: updated.jenis_harga,
-                  harga_baru: updated.harga,
-                  harga_min_baru: updated.harga_min,
-                  harga_max_baru: updated.harga_max,
+                  ...(priceChanged ? nextPrice : {}),
+                  ...(descriptionChanged ? { deskripsi: nextDescription } : {}),
                 },
               });
 
-              return true;
+              if (priceChanged) {
+                await transaction.riwayat_perubahan_harga.create({
+                  data: {
+                    produk_id: current.id,
+                    kode_produk: current.kode_produk,
+                    nama_produk: current.nama_produk,
+                    jenis_harga_lama: current.jenis_harga,
+                    harga_lama: current.harga,
+                    harga_min_lama: current.harga_min,
+                    harga_max_lama: current.harga_max,
+                    jenis_harga_baru: updated.jenis_harga,
+                    harga_baru: updated.harga,
+                    harga_min_baru: updated.harga_min,
+                    harga_max_baru: updated.harga_max,
+                  },
+                });
+              }
+
+              return { priceChanged, descriptionChanged };
             });
 
             processedImportRows.add(importRowKey);
             berhasil++;
-            if (changed) hargaBerubah++;
+            if (changes.priceChanged) hargaBerubah++;
+            if (changes.descriptionChanged) deskripsiBerubah++;
+            if (deskripsiExcel) deskripsiTerbaca++;
           } catch (error) {
             gagal.push({
               sheet: actualSheetName,
@@ -1006,7 +1040,7 @@ export async function POST(request: Request) {
               kode_produk: kodeProduk,
               nama_produk: namaProduk,
               slug,
-              deskripsi,
+              deskripsi: deskripsiExcel,
               informasi_gizi: informasiGizi,
               stok,
 
@@ -1042,6 +1076,7 @@ export async function POST(request: Request) {
           processedImportRows.add(importRowKey);
           berhasil++;
           produkBaru++;
+          if (deskripsiExcel) deskripsiTerbaca++;
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -1072,6 +1107,8 @@ export async function POST(request: Request) {
       berhasil,
       produkBaru,
       hargaBerubah,
+      deskripsiBerubah,
+      deskripsiTerbaca,
       dilewati,
       gagal: gagal.length,
       detailGagal: gagal.slice(0, 100),

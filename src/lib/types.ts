@@ -20,6 +20,16 @@ export type Subcategory = {
 
 export type JenisHarga = "tetap" | "rentang";
 
+export const LEGACY_DEFAULT_PRODUCT_DESCRIPTION =
+  "Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.";
+
+export function getProductDescription(description: string): string {
+  const value = description.trim();
+  return value.toLowerCase() === LEGACY_DEFAULT_PRODUCT_DESCRIPTION.toLowerCase()
+    ? ""
+    : value;
+}
+
 export type Gizi = {
   kalori: number;
   protein: number;

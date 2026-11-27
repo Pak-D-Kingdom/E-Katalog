@@ -35,6 +35,7 @@ import {
   Subcategory,
   Product,
   formatProductPrice,
+  getProductDescription,
   slugify,
 } from "@/lib/types";
 
@@ -108,6 +109,7 @@ export default function ProductsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [failedPreviewUrl, setFailedPreviewUrl] = useState("");
   const statsNeedRefresh = useRef(true);
 
   const loadProducts = useCallback(
@@ -255,6 +257,10 @@ export default function ProductsPage() {
     };
   }, [formOpen, loading, uploading]);
 
+  useEffect(() => {
+    setFailedPreviewUrl("");
+  }, [form.foto_url]);
+
   function startEdit(product?: Product) {
     setFormOpen(true);
 
@@ -271,7 +277,7 @@ export default function ProductsPage() {
         kode_produk: product.kode_produk,
         nama_produk: product.nama_produk,
         slug: product.slug,
-        deskripsi: product.deskripsi,
+        deskripsi: getProductDescription(product.deskripsi),
         kalori: String(product.informasi_gizi.kalori),
         protein: String(product.informasi_gizi.protein),
         karbohidrat: String(product.informasi_gizi.karbohidrat),
@@ -834,7 +840,7 @@ export default function ProductsPage() {
                     {/* DESKRIPSI */}
                     <td className="min-w-[260px] max-w-[300px] px-3 py-4">
                       <p className="whitespace-normal break-words text-[10px] leading-5 text-[#596780]">
-                        {product.deskripsi || "Belum ada deskripsi"}
+                        {getProductDescription(product.deskripsi) || "Belum ada deskripsi"}
                       </p>
                     </td>
 
@@ -1008,14 +1014,25 @@ export default function ProductsPage() {
                 Foto Produk Komersial
               </label>
 
-              <div className="rounded-lg bg-[#EEF3FF] p-3">
+              <div className="space-y-3 rounded-lg bg-[#EEF3FF] p-3">
                 {form.foto_url ? (
                   <div className="relative">
-                    <img
-                      src={form.foto_url}
-                      alt="Preview produk"
-                      className="h-36 w-full rounded-md object-contain"
-                    />
+                    {failedPreviewUrl === form.foto_url ? (
+                      <div
+                        role="alert"
+                        className="flex h-36 flex-col items-center justify-center rounded-md bg-white px-4 text-center text-xs text-amber-800"
+                      >
+                        <ImagePlus size={22} className="mb-2 text-amber-600" />
+                        Link ini tidak menampilkan file gambar langsung atau situs sumber menolak akses. Gunakan URL gambar publik langsung, atau unggah file.
+                      </div>
+                    ) : (
+                      <img
+                        src={form.foto_url}
+                        alt="Preview produk"
+                        onError={() => setFailedPreviewUrl(form.foto_url)}
+                        className="h-36 w-full rounded-md object-contain"
+                      />
+                    )}
 
                     <button
                       type="button"
@@ -1029,34 +1046,58 @@ export default function ProductsPage() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-lg text-center transition hover:bg-[#E3ECFC]">
-                    <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#A83D00]">
-                      {uploading ? (
-                        <RefreshCw size={21} className="animate-spin" />
-                      ) : (
-                        <UploadCloud size={22} />
-                      )}
-                    </span>
-
-                    <span className="text-xs font-bold text-[#172B4D]">
-                      {uploading
-                        ? "Mengunggah foto..."
-                        : "Seret & Lepas file foto ke sini"}
-                    </span>
-
-                    <span className="mt-1 text-[10px] text-[#64748B]">
-                      JPG, PNG atau WebP
-                    </span>
-
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/avif"
-                      className="hidden"
-                      disabled={uploading}
-                      onChange={upload}
-                    />
-                  </label>
+                  <div className="flex min-h-[76px] flex-col items-center justify-center rounded-lg text-center text-[#64748B]">
+                    <ImagePlus size={22} className="mb-2 text-[#A83D00]" />
+                    <span className="text-xs">Belum ada foto produk</span>
+                  </div>
                 )}
+
+                <div>
+                  <label
+                    htmlFor="product-image-url"
+                    className="mb-1 block text-[11px] font-bold text-[#172B4D]"
+                  >
+                    Link gambar (opsional)
+                  </label>
+                  <input
+                    id="product-image-url"
+                    type="text"
+                    inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    value={form.foto_url}
+                    onChange={(event) =>
+                      setForm({ ...form, foto_url: event.target.value })
+                    }
+                    placeholder="https://contoh.com/foto-produk.jpg"
+                    className="w-full rounded-md border border-[#DCE4F0] bg-white px-3 py-2 text-xs text-[#172B4D] outline-none focus:border-[#A83D00]"
+                  />
+                  <p className="mt-1 text-[10px] text-[#64748B]">
+                    Tempel URL gambar, atau unggah file. Mengunggah file akan mengganti link ini.
+                  </p>
+                </div>
+
+                <label className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#C7D3E5] bg-white/70 text-center transition hover:bg-white">
+                  <span className="mb-1 flex items-center gap-2 text-xs font-bold text-[#172B4D]">
+                    {uploading ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : (
+                      <UploadCloud size={17} />
+                    )}
+                    {uploading ? "Mengunggah foto..." : "Pilih file gambar"}
+                  </span>
+                  <span className="text-[10px] text-[#64748B]">
+                    JPG, PNG, WebP atau AVIF, maksimal 5 MB
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={upload}
+                  />
+                </label>
               </div>
             </div>
 

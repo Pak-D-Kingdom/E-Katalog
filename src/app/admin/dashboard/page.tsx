@@ -177,6 +177,8 @@ function ImportExcel() {
     berhasil: number;
     produkBaru?: number;
     hargaBerubah?: number;
+    deskripsiBerubah?: number;
+    deskripsiTerbaca?: number;
     dilewati?: number;
     gagal: number;
     jenis?: "rekap_subkategori" | "produk";
@@ -242,7 +244,7 @@ function ImportExcel() {
             Import Data Produk / Rekap
           </h2>
           <p className="mt-1 text-xs text-[#64748B]">
-            Impor produk atau rekap; produk yang cocok lewat SKU atau nama dan kategori akan memperbarui harga serta mencatat riwayat.
+            Impor produk atau rekap; produk yang cocok lewat SKU atau nama dan kategori akan memperbarui harga serta deskripsi. Header kolom deskripsi harus mengandung kata “Deskripsi” atau “Description”.
           </p>
         </div>
       </div>
@@ -335,6 +337,12 @@ function ImportExcel() {
                 </p>
                 <p className="text-[#172B4D]">
                   Harga berubah: {result.hargaBerubah ?? 0}
+                </p>
+                <p className="text-[#172B4D]">
+                  Deskripsi berubah: {result.deskripsiBerubah ?? 0}
+                </p>
+                <p className="text-[#172B4D]">
+                  Deskripsi terbaca: {result.deskripsiTerbaca ?? 0}
                 </p>
               </>
             )}

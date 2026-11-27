@@ -2,10 +2,16 @@
 
 import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BadgeCheck, ChevronLeft, ChevronRight, Layers3, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
-import { formatProductPrice, hargaRentang, hargaSatuan, slugify } from "@/lib/types";
+import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Download, Layers3, Minus, PackageOpen, Plus, Search, ShoppingCart, SlidersHorizontal, Utensils, X } from "lucide-react";
+import {
+  formatProductPrice,
+  getProductDescription,
+  hargaRentang,
+  hargaSatuan,
+  slugify,
+} from "@/lib/types";
 import type { Category, Product } from "@/lib/types";
-import type { CartItem } from "../types";
+import type { CartItem, CatalogSettings } from "../types";
 
 const categoryOrder = [
   "bahan-baku",
@@ -88,6 +94,7 @@ const ProductCard = memo(function ProductCard({ product, onDetail, onAdd }: {
 function KatalogPage({
   products,
   categories,
+  settings,
   loading,
   error,
   cart,
@@ -99,6 +106,7 @@ function KatalogPage({
 }: {
   products: Product[];
   categories: Category[];
+  settings: CatalogSettings | null;
   loading: boolean;
   error: string;
   cart: CartItem[];
@@ -115,6 +123,10 @@ function KatalogPage({
   const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfCategory, setPdfCategory] = useState("all");
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
@@ -202,6 +214,160 @@ function KatalogPage({
   const page = Math.min(currentPage, totalPages);
   const pageProducts = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const paginationItems = getPaginationItems(page, totalPages);
+  const selectedPdfCategoryId =
+    pdfCategory === "all" ? null : Number(pdfCategory);
+  const selectedPdfCategory = selectedPdfCategoryId === null
+    ? null
+    : catalogCategories.find((item) => item.id === selectedPdfCategoryId) ?? null;
+  const downloadableProducts = b2bProducts.filter(
+    (product) =>
+      product.tersedia &&
+      (selectedPdfCategoryId === null ||
+        product.kategori_id === selectedPdfCategoryId)
+  );
+  const canDownloadPricelist = b2bProducts.some((product) => product.tersedia);
+
+  async function downloadPricelist() {
+    setPdfError("");
+    setGeneratingPdf(true);
+
+    try {
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+      const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 36;
+      const today = new Date();
+      const dateLabel = new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(today);
+      const companyName = settings?.nama_instansi.trim() || "DapurKita";
+      const categoryName = selectedPdfCategory?.nama_kategori || "Semua kategori";
+      const filterLines = pdf.splitTextToSize(
+        `Kategori: ${categoryName} | Tanggal: ${dateLabel} | Total: ${downloadableProducts.length} produk`,
+        pageWidth - margin * 2
+      );
+      const contactDetails = [
+        settings?.alamat?.trim(),
+        settings?.nomor_whatsapp.trim()
+          ? `WhatsApp: ${settings.nomor_whatsapp.trim()}`
+          : null,
+        settings?.email?.trim(),
+      ].filter((value): value is string => Boolean(value));
+      const contactLines = contactDetails.length
+        ? pdf.splitTextToSize(contactDetails.join(" | "), pageWidth - margin * 2)
+        : [];
+      const titleY = 38 + contactLines.length * 12 + 15;
+      const filterY = titleY + 18;
+      const tableStartY = filterY + filterLines.length * 10 + 8;
+      const productsForPdf = [...downloadableProducts].sort((a, b) =>
+        a.kode_produk.localeCompare(b.kode_produk, "id-ID", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
+      pdf.setProperties({
+        title: `Pricelist ${companyName}`,
+        subject: `Daftar harga ${productsForPdf.length} produk`,
+      });
+
+      autoTable(pdf, {
+        startY: tableStartY,
+        margin: { top: tableStartY, left: margin, right: margin, bottom: 42 },
+        head: [["Kode SKU", "Nama produk", "Kategori", "Harga", "Satuan"]],
+        body: productsForPdf.map((product) => [
+          product.kode_produk,
+          product.nama_produk,
+          [
+            product.kategori?.nama_kategori,
+            product.subkategori?.nama_subkategori,
+          ].filter(Boolean).join(" / ") || "-",
+          formatProductPrice(product).replace(/\u2013/g, "-"),
+          `Per ${product.satuan}`,
+        ]),
+        styles: {
+          font: "helvetica",
+          fontSize: 8,
+          cellPadding: 5,
+          overflow: "linebreak",
+          valign: "top",
+          textColor: [39, 51, 42],
+          lineColor: [225, 231, 228],
+          lineWidth: 0.5,
+        },
+        headStyles: {
+          fillColor: [168, 61, 0],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+        },
+        alternateRowStyles: { fillColor: [248, 249, 246] },
+        columnStyles: {
+          0: { cellWidth: 75 },
+          1: { cellWidth: 280 },
+          2: { cellWidth: 145 },
+          3: { cellWidth: 145 },
+          4: { cellWidth: 70 },
+        },
+        didDrawPage: () => {
+          pdf.setTextColor(35, 51, 42);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(15);
+          pdf.text(companyName, margin, 31);
+
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+          if (contactLines.length) {
+            pdf.text(contactLines, margin, 47);
+          }
+
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(11);
+          pdf.text("PRICELIST PRODUK", margin, titleY);
+
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+          pdf.text(filterLines, margin, filterY);
+        },
+      });
+
+      const pageCount = pdf.getNumberOfPages();
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        pdf.setPage(pageNumber);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(92, 102, 94);
+        pdf.text(
+          "Harga belum termasuk PPN.",
+          margin,
+          pageHeight - 20
+        );
+        pdf.text(
+          `Halaman ${pageNumber} dari ${pageCount}`,
+          pageWidth - margin,
+          pageHeight - 20,
+          { align: "right" }
+        );
+      }
+
+      pdf.save(`${slugify(companyName)}-pricelist.pdf`);
+      setPdfModalOpen(false);
+    } catch (error) {
+      console.error("Pricelist PDF error:", error);
+      setPdfError(
+        error instanceof Error
+          ? `PDF gagal dibuat: ${error.message}`
+          : "PDF gagal dibuat. Silakan coba kembali."
+      );
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }
 
   const selectedCartQuantity = selected
     ? cart.find((item) => item.product.id === selected.id)?.quantity ?? 0
@@ -261,6 +427,37 @@ function KatalogPage({
       <div aria-hidden="true" className="pointer-events-none absolute right-[14.5rem] top-[24rem] hidden h-16 w-16 rounded-2xl border border-[#2563EB]/20 bg-white/50 shadow-[0_12px_28px_rgba(37,99,235,.08)] rotate-12 xl:block" />
       <div aria-hidden="true" className="pointer-events-none absolute right-[18rem] top-[20rem] hidden h-3 w-3 rounded-full bg-[#60B7CD]/75 shadow-[24px_18px_0_2px_rgba(96,183,205,.42),-18px_36px_0_2px_rgba(37,99,235,.28),20px_58px_0_2px_rgba(37,99,235,.24),-4px_82px_0_3px_rgba(96,183,205,.38),34px_100px_0_2px_rgba(96,183,205,.3)] xl:block" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-28 pt-5 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6">
+        <form
+          role="search"
+          aria-label="Cari produk katalog"
+          onSubmit={(event) => {
+            event.preventDefault();
+            document.getElementById("daftar-produk")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }}
+          className="mb-4 flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:flex-row sm:items-center"
+        >
+          <label htmlFor="catalog-search" className="relative min-w-0 flex-1">
+            <Search size={17} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              id="catalog-search"
+              type="search"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Cari produk pengadaan, peralatan stainless, bahan baku, sertifikasi, atau SKU..."
+              className="h-11 w-full rounded-md border border-slate-100 bg-slate-50 pl-10 pr-3 text-sm text-slate-700 outline-none placeholder:text-slate-500 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+            />
+          </label>
+          <button
+            type="submit"
+            className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-md bg-[#0F2B5C] px-5 text-sm font-bold text-white transition hover:bg-[#0b2148] sm:w-auto"
+          >
+            Cari Produk
+            <ArrowRight size={16} aria-hidden="true" />
+          </button>
+        </form>
         <div className="mb-5 rounded-2xl border border-[#e3eaf7] bg-white/85 p-4 shadow-[0_8px_24px_rgba(15,43,92,.05)] backdrop-blur sm:p-5">
         <div className="mb-4">
         <span className="mb-2 inline-flex items-center gap-1.5 text-sm font-bold text-slate-700"><SlidersHorizontal size={15} />Kategori:</span>
@@ -274,9 +471,24 @@ function KatalogPage({
         <select value={priceRange} onChange={(event) => setPriceRange(event.target.value)} className="h-9 w-[160px] max-w-full min-w-0 rounded-md border-0 bg-[#edf2ff] px-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#2563EB]/20"><option value="all">Harga</option><option value="under-1m">Di bawah Rp 1 juta</option><option value="1m-5m">Rp 1–5 juta</option><option value="5m-15m">Rp 5–15 juta</option><option value="over-15m">Di atas Rp 15 juta</option></select>
       </div>
         </div>
-      <div className="mb-3 mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div id="daftar-produk" className="mb-3 mt-4 scroll-mt-24 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2"><h2 className="text-base font-black text-slate-900">Daftar Produk &amp; Jasa</h2><span className="rounded bg-[#e8eeff] px-2 py-1 text-[10px] font-semibold text-slate-600">{loading ? "Memuat..." : `${visible.length} Item Ditemukan`}</span></div>
-        <span className="inline-flex items-start gap-1 text-[11px] leading-4 text-slate-600"><BadgeCheck size={12} className="mt-0.5 shrink-0 text-[#2563EB]" />Harga resmi tertera belum termasuk PPN faktur B2B</span>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="inline-flex items-start gap-1 text-[11px] leading-4 text-slate-600"><BadgeCheck size={12} className="mt-0.5 shrink-0 text-[#2563EB]" />Harga resmi tertera belum termasuk PPN faktur B2B</span>
+          <button
+            type="button"
+            onClick={() => {
+              setPdfCategory(category === null ? "all" : String(category));
+              setPdfError("");
+              setPdfModalOpen(true);
+            }}
+            disabled={loading || generatingPdf || !canDownloadPricelist}
+            className="inline-flex items-center gap-2 rounded-md bg-[#0F2B5C] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0b2148] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} />
+            {generatingPdf ? "Membuat PDF..." : "Download Pricelist PDF"}
+          </button>
+        </div>
       </div>
       {requestedCategoryMissing && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Kategori “{requestedCategory?.replace(/-/g, " ")}” belum ditemukan. Tambahkan kategori ini melalui dashboard admin atau pilih kategori lain.</div>}
       {error && <div role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-base text-red-700">Katalog tidak dapat dimuat: {error}</div>}
@@ -300,6 +512,53 @@ function KatalogPage({
       </div>
     </section>
 
+    {pdfModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && !generatingPdf && setPdfModalOpen(false)}>
+      <div role="dialog" aria-modal="true" aria-labelledby="pricelist-dialog-title" className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="pricelist-dialog-title" className="text-lg font-black text-slate-900">Download Pricelist PDF</h2>
+            <p className="mt-1 text-sm text-slate-600">Pilih kategori produk yang ingin dimasukkan.</p>
+          </div>
+          <button type="button" onClick={() => setPdfModalOpen(false)} disabled={generatingPdf} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50" aria-label="Tutup pilihan kategori"><X size={18}/></button>
+        </div>
+        <label htmlFor="pricelist-category" className="mt-5 block text-sm font-bold text-slate-700">Kategori</label>
+        <select
+          id="pricelist-category"
+          value={pdfCategory}
+          onChange={(event) => {
+            setPdfCategory(event.target.value);
+            setPdfError("");
+          }}
+          disabled={generatingPdf}
+          className="mt-2 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+        >
+          <option value="all">Semua kategori</option>
+          {catalogCategories.map((item) => {
+            const count = b2bProducts.filter(
+              (product) => product.tersedia && product.kategori_id === item.id
+            ).length;
+            return (
+              <option key={item.id} value={String(item.id)} disabled={count === 0}>
+                {item.nama_kategori} ({count})
+              </option>
+            );
+          })}
+        </select>
+        <p className="mt-2 text-xs text-slate-500">
+          PDF akan berisi {downloadableProducts.length} produk tersedia dan mengabaikan filter katalog lainnya.
+        </p>
+        {downloadableProducts.length === 0 && <p role="status" className="mt-2 text-sm text-amber-700">Tidak ada produk tersedia pada kategori ini.</p>}
+        {pdfError && <p role="alert" className="mt-3 rounded-md bg-red-50 p-2 text-sm text-red-700">{pdfError}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setPdfModalOpen(false)} disabled={generatingPdf} className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Batal</button>
+          <button type="button" onClick={downloadPricelist} disabled={generatingPdf || downloadableProducts.length === 0} className="inline-flex items-center gap-2 rounded-md bg-[#0F2B5C] px-4 py-2 text-sm font-bold text-white hover:bg-[#0b2148] disabled:cursor-not-allowed disabled:opacity-50">
+            <Download size={15}/>
+            {generatingPdf ? "Membuat PDF..." : "Download"}
+          </button>
+        </div>
+      </div>
+    </div>}
+
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && setSelected(null)}>
       <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
@@ -321,7 +580,7 @@ function KatalogPage({
                 Per {selected.satuan}
               </span>
             </div>
-            <p className="mt-3 text-[13px] leading-5 text-slate-600">{selected.deskripsi}</p>
+            <p className="mt-3 text-[13px] leading-5 text-slate-600">{getProductDescription(selected.deskripsi)}</p>
           </div>
         </div>
         <div className="px-4 pb-4 sm:px-5 sm:pb-5">

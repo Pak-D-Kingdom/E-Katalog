@@ -13,6 +13,7 @@ import {
     XCircle,
     Package,
 } from "lucide-react";
+import { getProductDescription } from "@/lib/types";
 
 interface Product {
     id: number;
@@ -405,7 +406,7 @@ export default function DashboardBottom() {
                                         {/* Deskripsi */}
                                         <td className="min-w-[260px] max-w-[300px] px-3 py-3">
                                             <p className="whitespace-normal break-words text-[10px] leading-5 text-[#596780]">
-                                                {product.deskripsi || "Belum ada deskripsi"}
+                                                {getProductDescription(product.deskripsi) || "Belum ada deskripsi"}
                                             </p>
                                         </td>
 

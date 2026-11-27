@@ -3,7 +3,11 @@
 import { useEffect, useState, type TransitionEvent } from "react";
 import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, MessageCircle, ShoppingBag, ShoppingCart, X } from "lucide-react";
 import Link from "next/link";
-import { hargaSatuan, rupiah } from "@/lib/types";
+import {
+  getProductDescription,
+  hargaSatuan,
+  rupiah,
+} from "@/lib/types";
 import type { Product } from "@/lib/types";
 import type { HomeSlide } from "@/lib/home-slides";
 
@@ -12,6 +16,7 @@ export type HomeOffer = {
   category: string;
   sku: string;
   title: string;
+  description: string;
   details: string[];
   priceLabel: string;
   price: string;
@@ -22,8 +27,6 @@ export type HomeOffer = {
 };
 
 const homeCategoryOrder = ["Bahan Baku", "Perizinan", "Perawatan", "Peralatan"];
-const defaultProductDescription =
-  "Detail produk belum tersedia. Silakan hubungi Admin untuk informasi lebih lanjut.";
 
 export function getHomeOffers(products: Product[]): HomeOffer[] {
   const firstProductByCategory = new Map<number, Product>();
@@ -48,20 +51,15 @@ export function getHomeOffers(products: Product[]): HomeOffer[] {
     })
     .map((product) => {
       const priceValue = hargaSatuan(product) ?? 0;
-      const description = product.deskripsi.trim();
       const unit = product.satuan.trim() || "unit";
+      const description = getProductDescription(product.deskripsi);
       return {
         productId: product.id,
         category: product.kategori?.nama_kategori || "Lainnya",
         sku: product.kode_produk,
         title: product.nama_produk,
-        details: [
-          ...(description &&
-          description.toLowerCase() !== defaultProductDescription.toLowerCase()
-            ? [description]
-            : []),
-          ...(unit ? [`Satuan: ${unit}`] : [])
-        ],
+        description,
+        details: [`Satuan: ${unit}`],
         priceLabel: "Harga Satuan",
         price: rupiah(priceValue),
         priceValue,
@@ -270,9 +268,7 @@ function HomeOfferCard({ item, onDetail, onAdd }: { item: HomeOffer; onDetail: (
       <div className="flex min-h-[190px] flex-col p-2.5 sm:min-h-[205px] sm:p-4">
         <p className="text-[9px] font-bold uppercase tracking-[.1em] text-slate-500 sm:text-[11px] sm:tracking-[.13em]">SKU: {item.sku}</p>
         <h3 className="mt-1.5 min-h-9 text-[13px] font-extrabold leading-4 text-slate-900 sm:mt-2 sm:min-h-10 sm:text-base sm:leading-5">{item.title}</h3>
-        <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-slate-600 sm:mt-2 sm:space-y-1.5 sm:text-[13px] sm:leading-5">
-          {item.details.map((detail) => <p key={detail} className="flex gap-1.5"><BadgeCheck size={12} className="mt-0.5 shrink-0 text-[#2563EB]"/>{detail}</p>)}
-        </div>
+        <p className="mt-1.5 line-clamp-3 text-[11px] leading-4 text-slate-600 sm:mt-2 sm:text-[13px] sm:leading-5">{item.description}</p>
         <div className="mt-auto space-y-2 pt-3">
           <div className="min-w-0"><small className="block text-[10px] text-slate-500 sm:text-[11px]">{item.priceLabel}</small><b className="text-sm font-extrabold text-[#2563EB] sm:text-lg">{item.price}</b>{item.unit && <small className="ml-1 text-[10px] text-slate-500 sm:text-[11px]">{item.unit}</small>}</div>
           <div className="flex gap-1.5">
@@ -397,6 +393,7 @@ export default function HomePage({
             <p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#2563EB]">{selectedHomeOffer.category}</p>
             <h2 id="home-offer-title" className="mt-1.5 text-xl font-black leading-tight text-slate-900">{selectedHomeOffer.title}</h2>
             <div className="mt-2 flex items-end gap-1.5"><b className="text-2xl font-black text-[#2563EB]">{selectedHomeOffer.price}</b>{selectedHomeOffer.unit && <span className="pb-1 text-[11px] text-slate-500">{selectedHomeOffer.unit}</span>}</div>
+            <p className="mt-3 text-[13px] leading-5 text-slate-600">{selectedHomeOffer.description}</p>
             <div className="mt-3 flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md bg-[#edf2ff] px-2 py-1.5 text-[11px] font-bold text-slate-700">Pengadaan B2B</span></div>
           </div>
         </div>
