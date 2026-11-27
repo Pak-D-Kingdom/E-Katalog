@@ -168,23 +168,36 @@ function Statistics() {
   );
 }
 
-//import data exel
+type ProductImportMode = "baru" | "update";
 
-function ImportExcel() {
+type ImportResult = {
+  berhasil: number;
+  produkBaru?: number;
+  hargaBerubah?: number;
+  satuanBerubah?: number;
+  deskripsiBerubah?: number;
+  dataBerubah?: number;
+  deskripsiTerbaca?: number;
+  deskripsiKosong?: number;
+  dilewati?: number;
+  gagal: number;
+  jenis?: "rekap_subkategori" | "produk";
+  mode?: "baru" | "update" | "semua";
+  detailGagal: { sheet?: string; baris: number; pesan: string }[];
+};
+
+function ProductImportCard({
+  mode,
+  title,
+  description,
+}: {
+  mode: ProductImportMode;
+  title: string;
+  description: string;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    berhasil: number;
-    produkBaru?: number;
-    hargaBerubah?: number;
-    deskripsiBerubah?: number;
-    deskripsiTerbaca?: number;
-    deskripsiKosong?: number;
-    dilewati?: number;
-    gagal: number;
-    jenis?: "rekap_subkategori" | "produk";
-    detailGagal: { sheet?: string; baris: number; pesan: string }[];
-  } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -200,7 +213,7 @@ function ImportExcel() {
     }
   }
 
-  async function handleImport() {
+  async function handleImport(mode: "baru" | "update") {
     if (!file) return;
 
     setLoading(true);
@@ -210,6 +223,7 @@ function ImportExcel() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("mode", mode);
 
       const response = await fetch("/api/produk/import", {
         method: "POST",
@@ -224,6 +238,9 @@ function ImportExcel() {
 
       setResult(data);
       setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Terjadi kesalahan saat import."
@@ -234,54 +251,47 @@ function ImportExcel() {
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-[#E8ECF4] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+    <section className="flex flex-col gap-5 rounded-xl border border-[#E8ECF4] bg-white p-5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F0FF] text-[#172B4D]">
           <FileSpreadsheet size={21} />
         </div>
 
         <div>
           <h2 className="text-base font-bold text-[#172B4D]">
-            Import Data Produk / Rekap
+            {title}
           </h2>
           <p className="mt-1 text-xs text-[#64748B]">
-            Impor produk atau rekap; produk yang cocok lewat SKU atau nama dan kategori akan memperbarui harga serta deskripsi. Header kolom deskripsi harus mengandung kata “Deskripsi” atau “Description”.
+            {description}
+          </p>
+          <p className="mt-2 text-[11px] text-[#64748B]">
+            Format .xlsx, .xls, atau .csv. Header kolom deskripsi harus
+            “Deskripsi” atau “Description”.
           </p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:items-end">
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Link
-            href="/admin/dashboard/riwayat-harga"
-            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#DCE4F0] bg-white px-4 text-sm font-bold text-[#172B4D] transition hover:bg-[#F8FAFD]"
-          >
-            <History size={17} />
-            Riwayat Perubahan Harga
-          </Link>
+      <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+        <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#A83D00] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100]">
+          <FileSpreadsheet size={17} />
+          Pilih File Excel
 
-          <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#A83D00] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100]">
-            <FileSpreadsheet size={17} />
-            Pilih File Excel
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              disabled={loading}
-              onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null);
-                setResult(null);
-                setError("");
-              }}
-            />
-          </label>
-        </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            disabled={loading}
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null);
+              setResult(null);
+              setError("");
+            }}
+          />
+        </label>
 
         {file && (
           <>
-            {/* Nama file dan tombol batal */}
             <div className="flex max-w-full items-center justify-end gap-2">
               <p className="max-w-[220px] break-all text-right text-xs font-medium text-[#172B4D]">
                 File dipilih: {file.name}
@@ -299,21 +309,30 @@ function ImportExcel() {
               </button>
             </div>
 
-            {/* Tombol import */}
             <button
               type="button"
-              onClick={handleImport}
+              onClick={() => handleImport(mode)}
               disabled={loading}
-              className="flex h-10 items-center justify-center rounded-lg bg-[#172B4D] px-5 text-xs font-bold text-white transition hover:bg-[#263F66] disabled:cursor-not-allowed disabled:opacity-60"
+              className={`flex h-10 items-center justify-center rounded-lg px-5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                mode === "baru"
+                  ? "bg-[#172B4D] text-white hover:bg-[#263F66]"
+                  : "border border-[#172B4D] bg-white text-[#172B4D] hover:bg-[#F8FAFD]"
+              }`}
             >
-              {loading ? "Sedang Mengimport..." : "Import Produk"}
+              {loading
+                ? mode === "baru"
+                  ? "Mengimport produk baru..."
+                  : "Mengupdate data..."
+                : mode === "baru"
+                  ? "Import Produk Baru"
+                  : "Import Update Data"}
             </button>
           </>
         )}
 
         {!file && !result && (
           <p className="text-[10px] text-[#94A3B8]">
-            Format .xlsx, .xls, atau .csv
+            Pilih file .xlsx, .xls, atau .csv
           </p>
         )}
 
@@ -326,7 +345,11 @@ function ImportExcel() {
         {result && (
           <div className="w-full rounded-lg border border-[#E8ECF4] bg-[#F8FAFD] p-3 text-xs sm:min-w-64">
             <p className="font-bold text-green-700">
-              Import selesai!
+              {result.jenis === "rekap_subkategori"
+                ? "Import rekap selesai!"
+                : result.mode === "update"
+                  ? "Update data selesai!"
+                  : "Import produk baru selesai!"}
             </p>
             <p className="mt-1 text-[#172B4D]">
               Berhasil: {result.berhasil} {result.jenis === "rekap_subkategori" ? "rekap" : "produk"}
@@ -340,8 +363,16 @@ function ImportExcel() {
                   Harga berubah: {result.hargaBerubah ?? 0}
                 </p>
                 <p className="text-[#172B4D]">
+                  Satuan berubah: {result.satuanBerubah ?? 0}
+                </p>
+                <p className="text-[#172B4D]">
                   Deskripsi berubah: {result.deskripsiBerubah ?? 0}
                 </p>
+                {result.mode === "update" && (
+                  <p className="font-semibold text-[#172B4D]">
+                    Data diperbarui: {result.dataBerubah ?? 0}
+                  </p>
+                )}
                 <p className="text-[#172B4D]">
                   Deskripsi terbaca: {result.deskripsiTerbaca ?? 0}
                 </p>
@@ -373,6 +404,33 @@ function ImportExcel() {
         )}
       </div>
     </section>
+  );
+}
+
+function ImportExcel() {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Link
+          href="/admin/dashboard/riwayat-harga"
+          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#DCE4F0] bg-white px-4 text-sm font-bold text-[#172B4D] transition hover:bg-[#F8FAFD]"
+        >
+          <History size={17} />
+          Riwayat Perubahan Produk
+        </Link>
+      </div>
+
+      <ProductImportCard
+        mode="baru"
+        title="Import Data Produk Baru"
+        description="Menambahkan produk baru berdasarkan SKU. Produk yang sudah terdaftar akan dilewati dan tidak diubah."
+      />
+      <ProductImportCard
+        mode="update"
+        title="Import Update Data"
+        description="Memperbarui data produk dari kolom selain Nama Barang dan Kode SKU. Produk dicocokkan berdasarkan SKU; nama dan SKU tidak diubah, dan SKU yang tidak ditemukan akan dilewati."
+      />
+    </div>
   );
 }
 

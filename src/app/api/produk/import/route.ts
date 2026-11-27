@@ -1,13 +1,18 @@
 ﻿import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPriceChanged } from "@/lib/pricing";
+import {
+  hasPriceAmountChanged,
+  hasPriceChanged,
+} from "@/lib/pricing";
 import { LEGACY_DEFAULT_PRODUCT_DESCRIPTION } from "@/lib/types";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
-type ExcelRow = Record<string, unknown>;
+type ExcelRow = Record<string, unknown> & {
+  __sourceRowNumber?: number;
+};
 
 type SheetConfig = {
   name: string;
@@ -251,6 +256,21 @@ export async function POST(request: Request) {
     // Menerima file Excel.
     const formData = await request.formData();
     const file = formData.get("file");
+    const modeValue = formData.get("mode");
+
+    if (
+      modeValue !== null &&
+      modeValue !== "baru" &&
+      modeValue !== "update" &&
+      modeValue !== "semua"
+    ) {
+      return NextResponse.json(
+        { error: "Mode import tidak valid." },
+        { status: 400 }
+      );
+    }
+
+    const importMode = modeValue ?? "semua";
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -369,35 +389,150 @@ export async function POST(request: Request) {
       });
     }
 
-    // Membaca sheet kategori yang dikenal sistem.
-    // Sheet Panduan Import otomatis diabaikan.
-    const preparedSheets = sourceSheets.map((config) => {
-      const acceptedNames = [
-        config.name,
-        ...config.sheetAliases,
-      ].map(normalizeText);
+    const knownCategorySheetNames = sourceSheets.flatMap((config) => [
+      config.name,
+      ...config.sheetAliases,
+    ]);
+    const hasKnownCategorySheet = workbook.SheetNames.some((name) =>
+      knownCategorySheetNames.some(
+        (knownName) => normalizeText(knownName) === normalizeText(name)
+      )
+    );
 
-      const actualSheetName = workbook.SheetNames.find((name) =>
-        acceptedNames.includes(normalizeText(name))
-      );
+    let flatExport: {
+      sheetName: string;
+      rows: ExcelRow[];
+    } | null = null;
 
-      const sheet = actualSheetName
-        ? workbook.Sheets[actualSheetName]
-        : undefined;
+    if (!hasKnownCategorySheet) {
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+          header: 1,
+          defval: "",
+          blankrows: true,
+        });
+        const headerIndex = rawRows.findIndex((row, index) => {
+          if (index > 10) return false;
 
-      const rows = sheet
-        ? XLSX.utils.sheet_to_json<ExcelRow>(sheet, {
-            defval: "",
-            blankrows: false,
+          const normalizedHeaders = row.map((value) =>
+            normalizeHeader(String(value ?? ""))
+          );
+          return ["namabarang", "kodesku", "kategori"].every((header) =>
+            normalizedHeaders.includes(header)
+          );
+        });
+
+        if (headerIndex === -1) continue;
+
+        const headers = rawRows[headerIndex].map((value) =>
+          String(value ?? "").trim()
+        );
+        const rows = rawRows
+          .slice(headerIndex + 1)
+          .map((values, index) => {
+            const row: ExcelRow = {};
+            headers.forEach((header, columnIndex) => {
+              if (header) row[header] = values[columnIndex] ?? "";
+            });
+            Object.defineProperty(row, "__sourceRowNumber", {
+              value: headerIndex + index + 2,
+            });
+            return row;
           })
-        : [];
+          .filter((row) =>
+            Object.entries(row).some(
+              ([key, value]) =>
+                key !== "__sourceRowNumber" &&
+                String(value ?? "").trim() !== ""
+            )
+          );
 
-      return {
-        config,
-        actualSheetName: actualSheetName ?? config.name,
-        rows,
-      };
-    });
+        flatExport = { sheetName, rows };
+        break;
+      }
+    }
+
+    const rowWithoutCategory = flatExport?.rows.find(
+      (row) => !getText(row, "Kategori")
+    );
+    if (rowWithoutCategory) {
+      return NextResponse.json(
+        {
+          error: `Kolom Kategori wajib diisi pada baris ${rowWithoutCategory.__sourceRowNumber}.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Impor ekspor katalog yang berisi satu sheet dengan kolom kategori.
+    const preparedSheets = flatExport
+      ? (() => {
+          const rowsByCategory = new Map<
+            string,
+            { categoryName: string; rows: ExcelRow[] }
+          >();
+
+          for (const row of flatExport.rows) {
+            const categoryName = getText(row, "Kategori");
+            const key = normalizeText(categoryName);
+            const group = rowsByCategory.get(key) ?? {
+              categoryName,
+              rows: [],
+            };
+            group.rows.push(row);
+            rowsByCategory.set(key, group);
+          }
+
+          return Array.from(rowsByCategory.values()).map(
+            ({ categoryName, rows }) => {
+              const config = sourceSheets.find((candidate) =>
+                candidate.categoryAliases.some(
+                  (alias) =>
+                    normalizeText(alias) === normalizeText(categoryName)
+                )
+              ) ?? {
+                name: categoryName,
+                sheetAliases: [],
+                categoryAliases: [categoryName],
+                prefix: "PRD",
+              };
+
+              return {
+                config,
+                actualSheetName: flatExport.sheetName,
+                rows,
+              };
+            }
+          );
+        })()
+      : sourceSheets.map((config) => {
+          const acceptedNames = [
+            config.name,
+            ...config.sheetAliases,
+          ].map(normalizeText);
+
+          const actualSheetName = workbook.SheetNames.find((name) =>
+            acceptedNames.includes(normalizeText(name))
+          );
+
+          const sheet = actualSheetName
+            ? workbook.Sheets[actualSheetName]
+            : undefined;
+
+          const rows = sheet
+            ? XLSX.utils.sheet_to_json<ExcelRow>(sheet, {
+                defval: "",
+                blankrows: false,
+              })
+            : [];
+
+          return {
+            config,
+            actualSheetName: actualSheetName ?? config.name,
+            rows,
+          };
+        });
 
     const activeSheets = preparedSheets.filter(({ rows }) =>
       rows.some((row) =>
@@ -561,7 +696,9 @@ export async function POST(request: Request) {
     let berhasil = 0;
     let produkBaru = 0;
     let hargaBerubah = 0;
+    let satuanBerubah = 0;
     let deskripsiBerubah = 0;
+    let dataBerubah = 0;
     let deskripsiTerbaca = 0;
     let deskripsiKosong = 0;
     let dilewati = 0;
@@ -579,7 +716,7 @@ export async function POST(request: Request) {
     for (const { config, actualSheetName, rows, category } of resolvedSheets) {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const barisExcel = i + 2;
+        const barisExcel = row.__sourceRowNumber ?? i + 2;
 
         // Lewati baris yang benar-benar kosong.
         if (
@@ -605,6 +742,8 @@ export async function POST(request: Request) {
           "Subkategori",
           "Sub Kategori"
         );
+        const hasSubcategoryColumn =
+          getCell(row, "Subkategori", "Sub Kategori") !== undefined;
 
         const skuExcel = getText(
           row,
@@ -616,6 +755,14 @@ export async function POST(request: Request) {
         const jenisHargaExcel = normalizeText(
           getText(row, "Jenis Harga")
         );
+        const hasPriceColumns = [
+          "Jenis Harga",
+          "Harga Tetap (IDR)",
+          "Harga Jual",
+          "Harga",
+          "Harga Minimal (IDR)",
+          "Harga Maksimal (IDR)",
+        ].some((header) => getCell(row, header) !== undefined);
 
         // Harga tetap mendukung header Excel lama.
         const hargaTetap = parsePrice(
@@ -635,16 +782,19 @@ export async function POST(request: Request) {
           getCell(row, "Harga Maksimal (IDR)")
         );
 
-        const satuan =
-          getText(row, "Satuan Produk", "Satuan") || "unit";
+        const satuanCell = getCell(row, "Satuan Produk", "Satuan");
+        const hasSatuanColumn = satuanCell !== undefined;
+        const satuan = getText(row, "Satuan Produk", "Satuan") || "unit";
 
         const deskripsiExcel = getDescriptionText(row);
+        const hasDescriptionColumn = Object.keys(row).some((header) =>
+          /deskripsi|description/i.test(header)
+        );
 
-        const fotoUrl = getText(
-          row,
-          "Foto URL",
-          "URL Foto"
-        ) || null;
+        const fotoCell = getCell(row, "Foto URL", "URL Foto");
+        const hasFotoColumn = fotoCell !== undefined;
+        const fotoUrl = String(fotoCell ?? "").trim() || null;
+        const slugExcel = getText(row, "Slug URL", "Slug");
         const informasiGizi = {
           kalori: parseNonnegativeNumber(getCell(row, "Kalori")),
           protein: parseNonnegativeNumber(getCell(row, "Protein")),
@@ -654,12 +804,44 @@ export async function POST(request: Request) {
           lemak: parseNonnegativeNumber(getCell(row, "Lemak")),
         };
         const stokCell = getCell(row, "Stok", "Jumlah Barang");
+        const hasStokColumn = stokCell !== undefined;
         const stok =
           stokCell === null ||
           stokCell === undefined ||
           String(stokCell).trim() === ""
             ? null
             : parsePrice(stokCell);
+        const hasNutritionColumns = [
+          "Kalori",
+          "Protein",
+          "Karbohidrat",
+          "Lemak",
+        ].some((header) => getCell(row, header) !== undefined);
+        const availabilityCell = getCell(row, "Tersedia", "Status");
+        let tersedia: boolean | undefined;
+        if (
+          availabilityCell !== undefined &&
+          String(availabilityCell).trim() !== ""
+        ) {
+          const normalizedAvailability = normalizeText(availabilityCell);
+          if (["true", "aktif", "ya", "yes", "1"].includes(normalizedAvailability)) {
+            tersedia = true;
+          } else if (
+            ["false", "nonaktif", "tidak", "no", "0"].includes(
+              normalizedAvailability
+            )
+          ) {
+            tersedia = false;
+          } else {
+            gagal.push({
+              sheet: actualSheetName,
+              baris: barisExcel,
+              nama: namaProduk,
+              pesan: 'Kolom "Tersedia" harus berisi TRUE/FALSE atau Aktif/Nonaktif.',
+            });
+            continue;
+          }
+        }
 
         // Validasi nama produk.
         if (!namaProduk) {
@@ -682,8 +864,39 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Kategori pada kolom Excel harus sesuai dengan sheet.
-        if (
+        let targetCategory = category;
+        if (kategoriExcel && importMode === "update") {
+          const matchingConfig = sourceSheets.find((candidate) =>
+            candidate.categoryAliases.some(
+              (alias) =>
+                normalizeText(alias) === normalizeText(kategoriExcel)
+            )
+          );
+          const target = categories.find(
+            (item) =>
+              normalizeText(item.nama_kategori) ===
+              normalizeText(kategoriExcel)
+          ) ?? (matchingConfig
+            ? categories.find((item) =>
+                matchingConfig.categoryAliases.some(
+                  (alias) =>
+                    normalizeText(alias) ===
+                    normalizeText(item.nama_kategori)
+                )
+              )
+            : undefined);
+
+          if (!target) {
+            gagal.push({
+              sheet: actualSheetName,
+              baris: barisExcel,
+              nama: namaProduk,
+              pesan: `Kategori "${kategoriExcel}" tidak ditemukan.`,
+            });
+            continue;
+          }
+          targetCategory = target;
+        } else if (
           kategoriExcel &&
           ![
             category.nama_kategori,
@@ -718,6 +931,21 @@ export async function POST(request: Request) {
             baris: barisExcel,
             nama: namaProduk,
             pesan: "Kode SKU maksimal 80 karakter.",
+          });
+          continue;
+        }
+
+        if (
+          importMode === "update" &&
+          slugExcel &&
+          (slugExcel.length > 191 ||
+            !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugExcel))
+        ) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Slug URL harus huruf kecil, angka, dan tanda hubung.",
           });
           continue;
         }
@@ -773,8 +1001,11 @@ export async function POST(request: Request) {
 
         // Menentukan jenis harga.
         let jenisHarga: "tetap" | "rentang";
+        const preservePrice = importMode === "update" && !hasPriceColumns;
 
-        if (
+        if (preservePrice) {
+          jenisHarga = "tetap";
+        } else if (
           jenisHargaExcel === "tetap" ||
           jenisHargaExcel === "harga tetap"
         ) {
@@ -807,7 +1038,7 @@ export async function POST(request: Request) {
         let harga_min: number | null = null;
         let harga_max: number | null = null;
 
-        if (jenisHarga === "tetap") {
+        if (!preservePrice && jenisHarga === "tetap") {
           if (
             hargaTetap === null ||
             !Number.isFinite(hargaTetap) ||
@@ -823,7 +1054,7 @@ export async function POST(request: Request) {
           }
 
           harga = hargaTetap;
-        } else {
+        } else if (!preservePrice) {
           if (
             hargaMin === null ||
             hargaMax === null ||
@@ -858,7 +1089,7 @@ export async function POST(request: Request) {
 
         // SKU menjadi identitas utama; nama dan kategori dipakai sebagai fallback.
         const productKey =
-          `${category.id}:${normalizeText(namaProduk)}`;
+          `${targetCategory.id}:${normalizeText(namaProduk)}`;
         const importRowKey = skuExcel
           ? `sku:${skuExcel.toLowerCase()}`
           : `product:${productKey}`;
@@ -874,8 +1105,9 @@ export async function POST(request: Request) {
         const matchingByName = existingByProduct.get(productKey) ?? [];
 
         if (
+          importMode !== "update" &&
           matchingBySku?.kategori_id != null &&
-          matchingBySku.kategori_id !== category.id
+          matchingBySku.kategori_id !== targetCategory.id
         ) {
           gagal.push({
             sheet: actualSheetName,
@@ -898,49 +1130,178 @@ export async function POST(request: Request) {
 
         const existingProduct = matchingBySku ?? matchingByName[0];
 
+        if (
+          (importMode === "baru" && existingProduct) ||
+          (importMode === "update" && !existingProduct)
+        ) {
+          processedImportRows.add(importRowKey);
+          dilewati++;
+          continue;
+        }
+
         if (existingProduct) {
           try {
+            let targetSubcategoryId: number | null = null;
+            if (hasSubcategoryColumn && subcategoryName) {
+              targetSubcategoryId = await getSubcategoryId(
+                targetCategory.id,
+                subcategoryName
+              );
+            }
+
             const changes = await prisma.$transaction(async (transaction) => {
               const current = await transaction.produk.findUnique({
                 where: { id: existingProduct.id },
+                include: {
+                  kategori: { select: { nama_kategori: true } },
+                  subkategori: { select: { nama_subkategori: true } },
+                },
               });
 
               if (!current) {
                 throw new Error("Produk tidak ditemukan saat import.");
               }
 
+              const categoryChanged =
+                current.kategori_id !== targetCategory.id;
+              const nextSubcategoryId = hasSubcategoryColumn
+                ? targetSubcategoryId
+                : categoryChanged
+                  ? null
+                  : current.subkategori_id;
+              const subcategoryChanged =
+                current.subkategori_id !== nextSubcategoryId;
+              const unitChanged =
+                hasSatuanColumn && current.satuan !== satuan;
+              const descriptionChanged =
+                hasDescriptionColumn &&
+                (deskripsiExcel !== ""
+                  ? current.deskripsi !== deskripsiExcel
+                  : current.deskripsi.trim() === LEGACY_DEFAULT_PRODUCT_DESCRIPTION);
+              const nextDescription = deskripsiExcel || "";
+              const photoChanged =
+                hasFotoColumn && current.foto_url !== fotoUrl;
+              const stockChanged =
+                hasStokColumn && current.stok !== stok;
+              const currentNutrition =
+                typeof current.informasi_gizi === "object" &&
+                current.informasi_gizi !== null &&
+                !Array.isArray(current.informasi_gizi)
+                  ? current.informasi_gizi
+                  : null;
+              const nutritionChanged =
+                hasNutritionColumns &&
+                Object.entries(informasiGizi).some(
+                  ([key, value]) =>
+                    Number(currentNutrition?.[key] ?? 0) !== value
+                );
+              const availabilityChanged =
+                tersedia !== undefined && current.tersedia !== tersedia;
+              const slugChanged =
+                slugExcel !== "" && current.slug !== slugExcel;
+
+              if (slugChanged) {
+                const conflictingSlug = await transaction.produk.findFirst({
+                  where: {
+                    slug: slugExcel,
+                    id: { not: current.id },
+                  },
+                  select: { id: true },
+                });
+                if (conflictingSlug) {
+                  throw new Error(`Slug "${slugExcel}" sudah digunakan.`);
+                }
+              }
+
               const nextPrice = {
-                jenis_harga: jenisHarga,
-                harga,
-                harga_min,
-                harga_max,
+                jenis_harga: preservePrice ? current.jenis_harga : jenisHarga,
+                harga: preservePrice ? current.harga : harga,
+                harga_min: preservePrice ? current.harga_min : harga_min,
+                harga_max: preservePrice ? current.harga_max : harga_max,
               };
 
               const priceChanged = hasPriceChanged(current, nextPrice);
-              const descriptionChanged =
-                deskripsiExcel !== ""
-                  ? current.deskripsi !== deskripsiExcel
-                  : current.deskripsi.trim() === LEGACY_DEFAULT_PRODUCT_DESCRIPTION;
-              const nextDescription = deskripsiExcel || "";
+              const dataChanged =
+                priceChanged ||
+                categoryChanged ||
+                subcategoryChanged ||
+                unitChanged ||
+                descriptionChanged ||
+                photoChanged ||
+                stockChanged ||
+                nutritionChanged ||
+                availabilityChanged ||
+                slugChanged;
 
-              if (!priceChanged && !descriptionChanged) {
-                return { priceChanged: false, descriptionChanged: false };
+              if (!dataChanged) {
+                return {
+                  priceChanged: false,
+                  descriptionChanged: false,
+                  unitChanged: false,
+                  dataChanged: false,
+                };
               }
 
               const updated = await transaction.produk.update({
                 where: { id: current.id },
                 data: {
                   ...(priceChanged ? nextPrice : {}),
+                  ...(categoryChanged
+                    ? { kategori_id: targetCategory.id }
+                    : {}),
+                  ...(subcategoryChanged
+                    ? { subkategori_id: nextSubcategoryId }
+                    : {}),
+                  ...(unitChanged ? { satuan } : {}),
                   ...(descriptionChanged ? { deskripsi: nextDescription } : {}),
+                  ...(photoChanged ? { foto_url: fotoUrl } : {}),
+                  ...(stockChanged ? { stok } : {}),
+                  ...(nutritionChanged
+                    ? { informasi_gizi: informasiGizi }
+                    : {}),
+                  ...(availabilityChanged ? { tersedia } : {}),
+                  ...(slugChanged ? { slug: slugExcel } : {}),
+                },
+                include: {
+                  kategori: { select: { nama_kategori: true } },
+                  subkategori: { select: { nama_subkategori: true } },
                 },
               });
 
-              if (priceChanged) {
+              if (
+                priceChanged ||
+                categoryChanged ||
+                subcategoryChanged ||
+                descriptionChanged ||
+                unitChanged
+              ) {
                 await transaction.riwayat_perubahan_harga.create({
                   data: {
                     produk_id: current.id,
                     kode_produk: current.kode_produk,
                     nama_produk: current.nama_produk,
+                    kategori_lama:
+                      current.kategori?.nama_kategori ?? null,
+                    kategori_baru:
+                      updated.kategori?.nama_kategori ?? null,
+                    subkategori_lama:
+                      current.subkategori?.nama_subkategori ?? null,
+                    subkategori_baru:
+                      updated.subkategori?.nama_subkategori ?? null,
+                    kategori_berubah: categoryChanged,
+                    subkategori_berubah: subcategoryChanged,
+                    satuan_lama: current.satuan,
+                    satuan_baru: updated.satuan,
+                    satuan_berubah: unitChanged,
+                    deskripsi_lama: current.deskripsi,
+                    deskripsi_baru: updated.deskripsi,
+                    deskripsi_berubah: descriptionChanged,
+                    jenis_harga_berubah:
+                      current.jenis_harga !== updated.jenis_harga,
+                    harga_berubah: hasPriceAmountChanged(
+                      current,
+                      nextPrice
+                    ),
                     jenis_harga_lama: current.jenis_harga,
                     harga_lama: current.harga,
                     harga_min_lama: current.harga_min,
@@ -953,13 +1314,20 @@ export async function POST(request: Request) {
                 });
               }
 
-              return { priceChanged, descriptionChanged };
+              return {
+                priceChanged,
+                descriptionChanged,
+                unitChanged,
+                dataChanged,
+              };
             });
 
             processedImportRows.add(importRowKey);
             berhasil++;
             if (changes.priceChanged) hargaBerubah++;
+            if (changes.unitChanged) satuanBerubah++;
             if (changes.descriptionChanged) deskripsiBerubah++;
+            if (changes.dataChanged) dataBerubah++;
             if (deskripsiExcel) {
               deskripsiTerbaca++;
             } else {
@@ -1098,11 +1466,14 @@ export async function POST(request: Request) {
     return NextResponse.json({
       message: "Import katalog selesai.",
       jenis: "produk",
+      mode: importMode,
       total: totalBaris,
       berhasil,
       produkBaru,
       hargaBerubah,
+      satuanBerubah,
       deskripsiBerubah,
+      dataBerubah,
       deskripsiTerbaca,
       deskripsiKosong,
       dilewati,

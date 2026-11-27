@@ -175,20 +175,34 @@ model detail_pesanan {
 }
 
 model riwayat_perubahan_harga {
-  id               Int      @id @default(autoincrement())
-  produk_id        Int?
-  kode_produk      String   @db.VarChar(80)
-  nama_produk      String   @db.VarChar(191)
-  jenis_harga_lama String   @db.VarChar(20)
-  harga_lama       Decimal? @db.Decimal(12, 2)
-  harga_min_lama   Decimal? @db.Decimal(12, 2)
-  harga_max_lama   Decimal? @db.Decimal(12, 2)
-  jenis_harga_baru String   @db.VarChar(20)
-  harga_baru       Decimal? @db.Decimal(12, 2)
-  harga_min_baru   Decimal? @db.Decimal(12, 2)
-  harga_max_baru   Decimal? @db.Decimal(12, 2)
-  diubah_pada      DateTime @default(now())
-  produk           produk?  @relation(fields: [produk_id], references: [id], onDelete: SetNull)
+  id                  Int      @id @default(autoincrement())
+  produk_id           Int?
+  kode_produk         String   @db.VarChar(80)
+  nama_produk         String   @db.VarChar(191)
+  kategori_lama       String?  @db.VarChar(191)
+  kategori_baru       String?  @db.VarChar(191)
+  subkategori_lama    String?  @db.VarChar(191)
+  subkategori_baru    String?  @db.VarChar(191)
+  kategori_berubah    Boolean  @default(false)
+  subkategori_berubah Boolean  @default(false)
+  satuan_lama        String?  @db.VarChar(40)
+  satuan_baru        String?  @db.VarChar(40)
+  satuan_berubah     Boolean  @default(false)
+  deskripsi_lama     String?  @db.Text
+  deskripsi_baru     String?  @db.Text
+  deskripsi_berubah  Boolean  @default(false)
+  jenis_harga_berubah Boolean  @default(false)
+  harga_berubah       Boolean  @default(false)
+  jenis_harga_lama    String   @db.VarChar(20)
+  harga_lama          Decimal? @db.Decimal(12, 2)
+  harga_min_lama      Decimal? @db.Decimal(12, 2)
+  harga_max_lama      Decimal? @db.Decimal(12, 2)
+  jenis_harga_baru    String   @db.VarChar(20)
+  harga_baru          Decimal? @db.Decimal(12, 2)
+  harga_min_baru      Decimal? @db.Decimal(12, 2)
+  harga_max_baru      Decimal? @db.Decimal(12, 2)
+  diubah_pada         DateTime @default(now())
+  produk              produk?  @relation(fields: [produk_id], references: [id], onDelete: SetNull)
 
   @@index([diubah_pada])
   @@index([kode_produk])

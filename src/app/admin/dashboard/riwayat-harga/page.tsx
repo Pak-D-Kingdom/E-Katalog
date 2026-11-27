@@ -12,10 +12,24 @@ type PriceSnapshot = {
   harga_min: PriceValue;
   harga_max: PriceValue;
 };
-type PriceHistoryEntry = {
+type ProductHistoryEntry = {
   id: number;
   kode_produk: string;
   nama_produk: string;
+  kategori_lama: string | null;
+  kategori_baru: string | null;
+  subkategori_lama: string | null;
+  subkategori_baru: string | null;
+  kategori_berubah: boolean;
+  subkategori_berubah: boolean;
+  satuan_lama: string | null;
+  satuan_baru: string | null;
+  satuan_berubah: boolean;
+  deskripsi_lama: string | null;
+  deskripsi_baru: string | null;
+  deskripsi_berubah: boolean;
+  jenis_harga_berubah: boolean;
+  harga_berubah: boolean;
   jenis_harga_lama: string;
   harga_lama: PriceValue;
   harga_min_lama: PriceValue;
@@ -33,6 +47,28 @@ type Pagination = {
   totalPages: number;
 };
 
+type ChangeFilter =
+  | "all"
+  | "kategori"
+  | "subkategori"
+  | "satuan"
+  | "deskripsi"
+  | "harga";
+
+type ChangeField = Exclude<ChangeFilter, "all">;
+const ALL_CHANGE_LABELS = [
+  "Kategori Sebelum",
+  "Kategori Baru",
+  "Subkategori Sebelum",
+  "Subkategori Baru",
+  "Satuan Sebelum",
+  "Satuan Baru",
+  "Deskripsi Sebelum",
+  "Deskripsi Baru",
+  "Harga Sebelumnya",
+  "Harga Baru",
+];
+
 function formatPrice(snapshot: PriceSnapshot) {
   if (snapshot.jenis_harga === "rentang") {
     if (snapshot.harga_min == null || snapshot.harga_max == null) return "—";
@@ -48,8 +84,124 @@ function formatDate(value: string) {
   });
 }
 
-export default function PriceHistoryPage() {
-  const [entries, setEntries] = useState<PriceHistoryEntry[]>([]);
+function getChangeLabels(field: ChangeField): [string, string] {
+  switch (field) {
+    case "kategori":
+      return ["Kategori Sebelum", "Kategori Baru"];
+    case "subkategori":
+      return ["Subkategori Sebelum", "Subkategori Baru"];
+    case "satuan":
+      return ["Satuan Sebelum", "Satuan Baru"];
+    case "deskripsi":
+      return ["Deskripsi Sebelum", "Deskripsi Baru"];
+    case "harga":
+      return ["Harga Sebelumnya", "Harga Baru"];
+  }
+}
+
+function getChangeValues(
+  entry: ProductHistoryEntry,
+  field: ChangeField
+): [string, string] {
+  switch (field) {
+    case "kategori":
+      return entry.kategori_berubah
+        ? [entry.kategori_lama || "—", entry.kategori_baru || "—"]
+        : ["—", "—"];
+    case "subkategori":
+      return entry.subkategori_berubah
+        ? [entry.subkategori_lama || "—", entry.subkategori_baru || "—"]
+        : ["—", "—"];
+    case "satuan":
+      return entry.satuan_berubah
+        ? [entry.satuan_lama || "—", entry.satuan_baru || "—"]
+        : ["—", "—"];
+    case "deskripsi":
+      return entry.deskripsi_berubah
+        ? [entry.deskripsi_lama || "—", entry.deskripsi_baru || "—"]
+        : ["—", "—"];
+    case "harga":
+      return entry.harga_berubah || entry.jenis_harga_berubah
+        ? [
+            formatPrice({
+              jenis_harga: entry.jenis_harga_lama,
+              harga: entry.harga_lama,
+              harga_min: entry.harga_min_lama,
+              harga_max: entry.harga_max_lama,
+            }),
+            formatPrice({
+              jenis_harga: entry.jenis_harga_baru,
+              harga: entry.harga_baru,
+              harga_min: entry.harga_min_baru,
+              harga_max: entry.harga_max_baru,
+            }),
+          ]
+        : ["—", "—"];
+  }
+}
+
+function getAllChangeValues(entry: ProductHistoryEntry) {
+  return [
+    {
+      label: "Kategori Sebelum",
+      value: entry.kategori_berubah ? entry.kategori_lama || "—" : "—",
+    },
+    {
+      label: "Kategori Baru",
+      value: entry.kategori_berubah ? entry.kategori_baru || "—" : "—",
+    },
+    {
+      label: "Subkategori Sebelum",
+      value: entry.subkategori_berubah ? entry.subkategori_lama || "—" : "—",
+    },
+    {
+      label: "Subkategori Baru",
+      value: entry.subkategori_berubah ? entry.subkategori_baru || "—" : "—",
+    },
+    {
+      label: "Satuan Sebelum",
+      value: entry.satuan_berubah ? entry.satuan_lama || "—" : "—",
+    },
+    {
+      label: "Satuan Baru",
+      value: entry.satuan_berubah ? entry.satuan_baru || "—" : "—",
+    },
+    {
+      label: "Deskripsi Sebelum",
+      value: entry.deskripsi_berubah ? entry.deskripsi_lama || "—" : "—",
+    },
+    {
+      label: "Deskripsi Baru",
+      value: entry.deskripsi_berubah ? entry.deskripsi_baru || "—" : "—",
+    },
+    {
+      label: "Harga Sebelumnya",
+      value: entry.harga_berubah || entry.jenis_harga_berubah
+        ? formatPrice({
+            jenis_harga: entry.jenis_harga_lama,
+            harga: entry.harga_lama,
+            harga_min: entry.harga_min_lama,
+            harga_max: entry.harga_max_lama,
+          })
+        : "—",
+    },
+    {
+      label: "Harga Baru",
+      value: entry.harga_berubah || entry.jenis_harga_berubah
+        ? formatPrice({
+            jenis_harga: entry.jenis_harga_baru,
+            harga: entry.harga_baru,
+            harga_min: entry.harga_min_baru,
+            harga_max: entry.harga_max_baru,
+          })
+        : "—",
+    },
+  ];
+}
+
+export default function ProductHistoryPage() {
+  const [entries, setEntries] = useState<ProductHistoryEntry[]>([]);
+  const [filter, setFilter] = useState<ChangeFilter>("all");
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -67,17 +219,18 @@ export default function PriceHistoryPage() {
     const params = new URLSearchParams({
       page: String(page),
       q: submittedQuery,
+      filter,
     });
 
     setLoading(true);
     setError("");
 
-    api<{ riwayatHarga: PriceHistoryEntry[]; pagination: Pagination }>(
+    api<{ riwayatProduk: ProductHistoryEntry[]; pagination: Pagination }>(
       `/api/produk/riwayat-harga?${params}`
     )
       .then((result) => {
         if (!active) return;
-        setEntries(result.riwayatHarga);
+        setEntries(result.riwayatProduk);
         setPagination(result.pagination);
       })
       .catch((cause: Error) => {
@@ -90,13 +243,15 @@ export default function PriceHistoryPage() {
     return () => {
       active = false;
     };
-  }, [page, submittedQuery]);
+  }, [filter, page, submittedQuery]);
 
   function search(event: FormEvent) {
     event.preventDefault();
     setPage(1);
     setSubmittedQuery(query.trim());
   }
+
+  const showAllChanges = filter === "all";
 
   return (
     <div className="min-h-screen space-y-5 bg-[#F2F5FC] p-4 sm:p-6 lg:p-7">
@@ -118,32 +273,52 @@ export default function PriceHistoryPage() {
               </span>
             </div>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#172B4D]">
-              Riwayat Perubahan Harga
+              Riwayat Perubahan Produk
             </h1>
             <p className="mt-1 text-sm text-[#64748B]">
-              Catatan perubahan harga produk dari pengelolaan katalog.
+              Catatan perubahan kategori, subkategori, satuan, deskripsi, dan harga produk.
             </p>
           </div>
 
-          <form onSubmit={search} className="flex w-full gap-2 sm:max-w-sm">
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#DCE4F0] bg-[#F8FAFD] px-3">
-              <Search size={16} className="shrink-0 text-[#64748B]" />
-              <input
-                type="search"
-                maxLength={191}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Cari nama produk atau SKU"
-                className="min-w-0 flex-1 bg-transparent py-2.5 text-xs text-[#172B4D] outline-none placeholder:text-[#94A3B8]"
-              />
+          <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
+            <label className="flex min-w-0 items-center rounded-lg border border-[#DCE4F0] bg-[#F8FAFD] px-3 sm:w-48">
+              <span className="sr-only">Filter perubahan produk</span>
+              <select
+                value={filter}
+                onChange={(event) => {
+                  setFilter(event.target.value as ChangeFilter);
+                  setPage(1);
+                }}
+                className="w-full bg-transparent py-2.5 text-xs text-[#172B4D] outline-none"
+              >
+                <option value="all">Semua perubahan</option>
+                <option value="kategori">Perubahan kategori</option>
+                <option value="subkategori">Perubahan subkategori</option>
+                <option value="satuan">Perubahan satuan produk</option>
+                <option value="deskripsi">Perubahan deskripsi</option>
+                <option value="harga">Perubahan nominal harga</option>
+              </select>
             </label>
-            <button
-              type="submit"
-              className="rounded-lg bg-[#A83D00] px-4 text-xs font-bold text-white transition hover:bg-[#873100]"
-            >
-              Cari
-            </button>
-          </form>
+            <form onSubmit={search} className="flex min-w-0 flex-1 gap-2">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#DCE4F0] bg-[#F8FAFD] px-3">
+                <Search size={16} className="shrink-0 text-[#64748B]" />
+                <input
+                  type="search"
+                  maxLength={191}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Cari nama produk atau SKU"
+                  className="min-w-0 flex-1 bg-transparent py-2.5 text-xs text-[#172B4D] outline-none placeholder:text-[#94A3B8]"
+                />
+              </label>
+              <button
+                type="submit"
+                className="rounded-lg bg-[#A83D00] px-4 text-xs font-bold text-white transition hover:bg-[#873100]"
+              >
+                Cari
+              </button>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -161,56 +336,88 @@ export default function PriceHistoryPage() {
           <p role="alert" className="p-6 text-sm text-red-600">{error}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
+            <table
+              className={`w-full text-left ${
+                showAllChanges ? "min-w-[1700px]" : "min-w-[620px]"
+              }`}
+            >
               <thead className="bg-[#F8FAFD] text-[10px] font-bold uppercase tracking-wide text-[#64748B]">
                 <tr>
-                  <th className="px-5 py-3">Waktu</th>
+                  {showAllChanges && (
+                    <th className="px-5 py-3">Waktu</th>
+                  )}
                   <th className="px-5 py-3">Produk</th>
-                  <th className="px-5 py-3">Harga Sebelumnya</th>
-                  <th className="px-5 py-3">Harga Baru</th>
+                  <th className="px-5 py-3">SKU</th>
+                  {showAllChanges
+                    ? ALL_CHANGE_LABELS.map((label) => (
+                        <th key={label} className="px-5 py-3">
+                          {label}
+                        </th>
+                      ))
+                    : getChangeLabels(filter).map((label) => (
+                        <th key={label} className="px-5 py-3">
+                          {label}
+                        </th>
+                      ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EDF1F7]">
                 {entries.map((entry) => (
                   <tr key={entry.id} className="text-xs text-[#172B4D]">
-                    <td className="whitespace-nowrap px-5 py-4 text-[#64748B]">
-                      {formatDate(entry.diubah_pada)}
-                    </td>
+                    {showAllChanges && (
+                      <td className="whitespace-nowrap px-5 py-4 text-[#64748B]">
+                        {formatDate(entry.diubah_pada)}
+                      </td>
+                    )}
                     <td className="px-5 py-4">
                       <p className="font-semibold">{entry.nama_produk}</p>
-                      <p className="mt-1 text-[10px] text-[#64748B]">
-                        SKU: {entry.kode_produk}
-                      </p>
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-[#64748B]">
-                      {formatPrice({
-                        jenis_harga: entry.jenis_harga_lama,
-                        harga: entry.harga_lama,
-                        harga_min: entry.harga_min_lama,
-                        harga_max: entry.harga_max_lama,
-                      })}
+                      {entry.kode_produk}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-4 font-bold text-[#A83D00]">
-                      {formatPrice({
-                        jenis_harga: entry.jenis_harga_baru,
-                        harga: entry.harga_baru,
-                        harga_min: entry.harga_min_baru,
-                        harga_max: entry.harga_max_baru,
-                      })}
-                    </td>
+                    {showAllChanges
+                      ? getAllChangeValues(entry).map(({ label, value }) => (
+                          <td
+                            key={label}
+                            className={`px-5 py-4 text-[#64748B] ${
+                              label.startsWith("Deskripsi")
+                                ? "max-w-[360px] break-words whitespace-pre-wrap"
+                                : "whitespace-nowrap"
+                            }`}
+                          >
+                            {value}
+                          </td>
+                        ))
+                      : getChangeValues(entry, filter).map((value, index) => (
+                          <td
+                            key={index}
+                            className={`px-5 py-4 text-[#64748B] ${
+                              filter === "deskripsi"
+                                ? "max-w-[360px] break-words whitespace-pre-wrap"
+                                : "whitespace-nowrap"
+                            }`}
+                          >
+                            {value}
+                          </td>
+                        ))}
                   </tr>
                 ))}
                 {!loading && entries.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center">
+                    <td
+                      colSpan={showAllChanges ? 13 : 4}
+                      className="px-5 py-12 text-center"
+                    >
                       <p className="text-sm font-semibold text-[#172B4D]">
                         {submittedQuery
-                          ? "Tidak ada perubahan harga yang cocok."
-                          : "Belum ada riwayat perubahan harga."}
+                          ? "Tidak ada perubahan produk yang cocok."
+                          : filter === "all"
+                            ? "Belum ada riwayat perubahan produk."
+                            : "Belum ada perubahan yang cocok dengan filter ini."}
                       </p>
-                      {!submittedQuery && (
+                      {!submittedQuery && filter === "all" && (
                         <p className="mt-1 text-xs text-[#64748B]">
-                          Perubahan harga mulai dicatat setelah fitur ini aktif.
+                          Perubahan produk mulai dicatat setelah fitur ini aktif.
                         </p>
                       )}
                     </td>
@@ -218,8 +425,11 @@ export default function PriceHistoryPage() {
                 )}
                 {loading && (
                   <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center text-sm text-[#64748B]">
-                      Memuat riwayat harga...
+                    <td
+                      colSpan={showAllChanges ? 13 : 4}
+                      className="px-5 py-12 text-center text-sm text-[#64748B]"
+                    >
+                      Memuat riwayat produk...
                     </td>
                   </tr>
                 )}

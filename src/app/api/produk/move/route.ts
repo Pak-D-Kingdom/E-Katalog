@@ -32,12 +32,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Kategori tujuan tidak ditemukan." }, { status: 404 });
     }
 
+    let targetSubcategory: {
+      id: number;
+      nama_subkategori: string;
+    } | null = null;
     if (subkategori_id != null) {
-      const sub = await prisma.subkategori.findFirst({
+      targetSubcategory = await prisma.subkategori.findFirst({
         where: { id: subkategori_id, kategori_id },
-        select: { id: true },
+        select: { id: true, nama_subkategori: true },
       });
-      if (!sub) {
+      if (!targetSubcategory) {
         return NextResponse.json(
           { error: "Subkategori tidak sesuai dengan kategori tujuan." },
           { status: 400 }
@@ -47,7 +51,10 @@ export async function POST(request: Request) {
 
     const products = await prisma.produk.findMany({
       where: { id: { in: uniqueIds } },
-      select: { id: true, kode_produk: true, kategori_id: true },
+      include: {
+        kategori: { select: { nama_kategori: true } },
+        subkategori: { select: { nama_subkategori: true } },
+      },
     });
 
     if (products.length === 0) {
@@ -86,20 +93,70 @@ export async function POST(request: Request) {
       updates.push({ id: product.id, kode_produk: nextSku });
     }
 
+    let historyRecords = 0;
     await prisma.$transaction(async (tx) => {
       for (const u of updates) {
-        await tx.produk.update({
+        const existing = products.find((product) => product.id === u.id);
+        const updated = await tx.produk.update({
           where: { id: u.id },
           data: {
             kategori_id,
             subkategori_id: subkategori_id ?? null,
             kode_produk: u.kode_produk,
           },
+          include: {
+            kategori: { select: { nama_kategori: true } },
+            subkategori: { select: { nama_subkategori: true } },
+          },
         });
+
+        if (!existing) continue;
+
+        const kategoriBerubah = existing.kategori_id !== kategori_id;
+        const subkategoriBerubah =
+          existing.subkategori_id !== (subkategori_id ?? null);
+        if (!kategoriBerubah && !subkategoriBerubah) continue;
+
+        await tx.riwayat_perubahan_harga.create({
+          data: {
+            produk_id: updated.id,
+            kode_produk: updated.kode_produk,
+            nama_produk: updated.nama_produk,
+            kategori_lama: existing.kategori?.nama_kategori ?? null,
+            kategori_baru: updated.kategori?.nama_kategori ?? null,
+            subkategori_lama:
+              existing.subkategori?.nama_subkategori ?? null,
+            subkategori_baru:
+              updated.subkategori?.nama_subkategori ?? null,
+            kategori_berubah: kategoriBerubah,
+            subkategori_berubah: subkategoriBerubah,
+            satuan_lama: updated.satuan,
+            satuan_baru: updated.satuan,
+            satuan_berubah: false,
+            deskripsi_lama: updated.deskripsi,
+            deskripsi_baru: updated.deskripsi,
+            deskripsi_berubah: false,
+            jenis_harga_berubah: false,
+            harga_berubah: false,
+            jenis_harga_lama: updated.jenis_harga,
+            harga_lama: updated.harga,
+            harga_min_lama: updated.harga_min,
+            harga_max_lama: updated.harga_max,
+            jenis_harga_baru: updated.jenis_harga,
+            harga_baru: updated.harga,
+            harga_min_baru: updated.harga_min,
+            harga_max_baru: updated.harga_max,
+          },
+        });
+        historyRecords += 1;
       }
     });
 
-    return NextResponse.json({ updated: products.length, skuUpdated });
+    return NextResponse.json({
+      updated: products.length,
+      skuUpdated,
+      historyRecords,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Tidak berizin." }, { status: 401 });

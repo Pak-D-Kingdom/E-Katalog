@@ -16,6 +16,15 @@ export async function GET(request: Request) {
       ? requestedPage
       : 1;
     const query = url.searchParams.get("q")?.trim() || "";
+    const filter = url.searchParams.get("filter") || "all";
+    const validFilters = [
+      "all",
+      "kategori",
+      "subkategori",
+      "satuan",
+      "deskripsi",
+      "harga",
+    ] as const;
 
     if (query.length > 191) {
       return NextResponse.json(
@@ -24,16 +33,37 @@ export async function GET(request: Request) {
       );
     }
 
-    const where = query
-      ? {
-          OR: [
-            { nama_produk: { contains: query } },
-            { kode_produk: { contains: query } },
-          ],
-        }
-      : {};
+    if (!validFilters.includes(filter as (typeof validFilters)[number])) {
+      return NextResponse.json(
+        { error: "Filter riwayat tidak valid." },
+        { status: 400 }
+      );
+    }
 
-    const [riwayatHarga, total] = await prisma.$transaction([
+    const filterWhere = {
+      all: {},
+      kategori: { kategori_berubah: true },
+      subkategori: { subkategori_berubah: true },
+      satuan: { satuan_berubah: true },
+      deskripsi: { deskripsi_berubah: true },
+      harga: { harga_berubah: true },
+    }[filter as (typeof validFilters)[number]];
+
+    const where = {
+      AND: [
+        query
+          ? {
+              OR: [
+                { nama_produk: { contains: query } },
+                { kode_produk: { contains: query } },
+              ],
+            }
+          : {},
+        filterWhere,
+      ],
+    };
+
+    const [riwayatProduk, total] = await prisma.$transaction([
       prisma.riwayat_perubahan_harga.findMany({
         where,
         orderBy: [{ diubah_pada: "desc" }, { id: "desc" }],
@@ -44,7 +74,7 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      riwayatHarga,
+      riwayatProduk,
       pagination: {
         total,
         page,
