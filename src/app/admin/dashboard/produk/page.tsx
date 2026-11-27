@@ -164,7 +164,7 @@ export default function ProductsPage() {
           });
           const result = await api<{ produk: Product[] }>(
             `/api/produk?${params}`,
-            { signal }
+            { signal, cache: "no-store" }
           );
           if (!Array.isArray(result.produk)) return;
           setProducts(result.produk);
@@ -179,7 +179,6 @@ export default function ProductsPage() {
             subkategori: subcategory,
           });
           if (refreshStats) params.set("stats", "1");
-
           const result = await api<{
             produk: Product[];
             pagination: { total: number; page: number; totalPages: number };
@@ -188,7 +187,7 @@ export default function ProductsPage() {
               produkAktif: number;
               totalFoto: number;
             };
-          }>(`/api/produk?${params}`, { signal });
+          }>(`/api/produk?${params}`, { signal, cache: "no-store" });
 
           if (!Array.isArray(result.produk) || !result.pagination) return;
           setProducts(result.produk);

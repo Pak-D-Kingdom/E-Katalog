@@ -25,7 +25,7 @@ const productOrder = [
   "DK-SRV-SLHS1", "DK-SRV-HACCP", "DK-SRV-IPAL3", "DK-SRV-ERL18",
   "DK-MNT-PEST4", "DK-MNT-GAS01", "DK-MNT-GRS92", "DK-MNT-REF34"
 ];
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 12;
 
 function getPaginationItems(currentPage: number, totalPages: number): Array<number | "ellipsis"> {
   if (totalPages <= 5) return Array.from({ length: totalPages }, (_, index) => index + 1);

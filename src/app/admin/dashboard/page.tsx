@@ -179,6 +179,7 @@ function ImportExcel() {
     hargaBerubah?: number;
     deskripsiBerubah?: number;
     deskripsiTerbaca?: number;
+    deskripsiKosong?: number;
     dilewati?: number;
     gagal: number;
     jenis?: "rekap_subkategori" | "produk";
@@ -343,6 +344,9 @@ function ImportExcel() {
                 </p>
                 <p className="text-[#172B4D]">
                   Deskripsi terbaca: {result.deskripsiTerbaca ?? 0}
+                </p>
+                <p className="text-[#172B4D]">
+                  Baris tanpa deskripsi: {result.deskripsiKosong ?? 0}
                 </p>
               </>
             )}
