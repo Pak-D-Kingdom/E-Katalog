@@ -2,7 +2,10 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPriceChanged } from "@/lib/pricing";
+import {
+  hasPriceAmountChanged,
+  hasPriceChanged,
+} from "@/lib/pricing";
 import { produkSchema, zodErrorMessage } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -97,11 +100,22 @@ export async function PUT(
     const produk = await prisma.$transaction(async (transaction) => {
       const existing = await transaction.produk.findUnique({
         where: { id },
+        include: {
+          kategori: { select: { nama_kategori: true } },
+          subkategori: { select: { nama_subkategori: true } },
+        },
       });
 
       if (!existing) return null;
 
       const priceChanged = hasPriceChanged(existing, data);
+      const kategoriBerubah = existing.kategori_id !== kategori_id;
+      const subkategoriBerubah =
+        existing.subkategori_id !== (subkategori_id ?? null);
+      const satuanBerubah = existing.satuan !== data.satuan;
+      const deskripsiBerubah = existing.deskripsi !== data.deskripsi;
+      const jenisHargaBerubah =
+        existing.jenis_harga !== data.jenis_harga;
 
       const updated = await transaction.produk.update({
         where: { id },
@@ -117,12 +131,34 @@ export async function PUT(
         },
       });
 
-      if (priceChanged) {
+      if (
+        priceChanged ||
+        kategoriBerubah ||
+        subkategoriBerubah ||
+        satuanBerubah ||
+        deskripsiBerubah
+      ) {
         await transaction.riwayat_perubahan_harga.create({
           data: {
             produk_id: id,
             kode_produk: updated.kode_produk,
             nama_produk: updated.nama_produk,
+            kategori_lama: existing.kategori?.nama_kategori ?? null,
+            kategori_baru: updated.kategori?.nama_kategori ?? null,
+            subkategori_lama:
+              existing.subkategori?.nama_subkategori ?? null,
+            subkategori_baru:
+              updated.subkategori?.nama_subkategori ?? null,
+            kategori_berubah: kategoriBerubah,
+            subkategori_berubah: subkategoriBerubah,
+            satuan_lama: existing.satuan,
+            satuan_baru: updated.satuan,
+            satuan_berubah: satuanBerubah,
+            deskripsi_lama: existing.deskripsi,
+            deskripsi_baru: updated.deskripsi,
+            deskripsi_berubah: deskripsiBerubah,
+            jenis_harga_berubah: jenisHargaBerubah,
+            harga_berubah: hasPriceAmountChanged(existing, data),
             jenis_harga_lama: existing.jenis_harga,
             harga_lama: existing.harga,
             harga_min_lama: existing.harga_min,

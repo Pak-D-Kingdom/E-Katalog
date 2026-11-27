@@ -184,7 +184,7 @@ export async function GET(request: Request) {
 
             workbook.creator = "DapurKita";
             workbook.subject = "Data Katalog Produk";
-            workbook.title = "Katalog Produk DapurKita";
+            workbook.title = "KATALOG PRODUK CV Beli Indonesia";
             workbook.created = new Date();
 
             const worksheet = workbook.addWorksheet("Katalog Produk", {
@@ -220,7 +220,7 @@ export async function GET(request: Request) {
             worksheet.mergeCells(1, 1, 1, headers.length);
 
             const titleCell = worksheet.getCell("A1");
-            titleCell.value = "KATALOG PRODUK DAPURKITA";
+            titleCell.value = "KATALOG PRODUK CV Beli Indonesia";
             titleCell.font = {
                 name: "Arial",
                 size: 16,

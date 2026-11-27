@@ -5,7 +5,10 @@ import PageTransition from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "E-Katalog MBG | Makan Bergizi Gratis",
-  description: "Katalog menu bergizi untuk sekolah dan komunitas."
+  description: "Katalog menu bergizi untuk sekolah dan komunitas.",
+  icons: {
+    icon: "/LOGO%20BELI%20INDONESIA.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
