@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { prefixForCategory, rewriteSkuPrefix } from "@/lib/sku";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
 
     const kategori = await prisma.kategori.findUnique({
       where: { id: kategori_id },
-      select: { id: true },
+      select: { id: true, nama_kategori: true },
     });
     if (!kategori) {
       return NextResponse.json({ error: "Kategori tujuan tidak ditemukan." }, { status: 404 });
@@ -44,15 +45,75 @@ export async function POST(request: Request) {
       }
     }
 
-    const result = await prisma.produk.updateMany({
+    const products = await prisma.produk.findMany({
       where: { id: { in: uniqueIds } },
-      data: { kategori_id, subkategori_id: subkategori_id ?? null },
+      select: { id: true, kode_produk: true, kategori_id: true },
     });
 
-    return NextResponse.json({ updated: result.count });
+    if (products.length === 0) {
+      return NextResponse.json({ error: "Produk tidak ditemukan." }, { status: 404 });
+    }
+
+    const newPrefix = prefixForCategory(kategori.nama_kategori);
+
+    // Kumpulkan SKU yang sedang dipakai, kecuali SKU produk yang akan dipindah
+    // (agar pertukaran prefix tidak dianggap bentrok).
+    const movingSet = new Set(products.map((p) => p.id));
+    const usedSkus = new Set<string>();
+    const allProducts = await prisma.produk.findMany({
+      select: { id: true, kode_produk: true },
+    });
+    for (const p of allProducts) {
+      if (!movingSet.has(p.id)) {
+        usedSkus.add(p.kode_produk.trim().toLowerCase());
+      }
+    }
+
+    // Hitung SKU baru per produk.
+    const updates: { id: number; kode_produk: string }[] = [];
+    let skuUpdated = 0;
+    for (const product of products) {
+      let nextSku = product.kode_produk;
+      const categoryChanged = product.kategori_id !== kategori_id;
+      if (categoryChanged) {
+        const candidate = rewriteSkuPrefix(product.kode_produk, newPrefix, usedSkus);
+        if (candidate !== product.kode_produk) {
+          skuUpdated += 1;
+        }
+        nextSku = candidate;
+      }
+      usedSkus.add(nextSku.trim().toLowerCase());
+      updates.push({ id: product.id, kode_produk: nextSku });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const u of updates) {
+        await tx.produk.update({
+          where: { id: u.id },
+          data: {
+            kategori_id,
+            subkategori_id: subkategori_id ?? null,
+            kode_produk: u.kode_produk,
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ updated: products.length, skuUpdated });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Tidak berizin." }, { status: 401 });
+    }
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      String((error as { code: unknown }).code) === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Kode SKU hasil penyesuaian sudah digunakan. Coba lagi." },
+        { status: 409 }
+      );
     }
     console.error("Move produk error:", error);
     return NextResponse.json({ error: "Gagal memindahkan produk." }, { status: 500 });

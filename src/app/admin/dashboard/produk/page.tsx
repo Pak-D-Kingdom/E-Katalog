@@ -538,7 +538,7 @@ export default function ProductsPage() {
 
     const confirmation = await Swal.fire({
       title: `Pindahkan ${selectedCount} produk?`,
-      text: `Produk akan dipindahkan ke ${targetLabel || "kategori tujuan"}.`,
+      text: `Produk akan dipindahkan ke ${targetLabel || "kategori tujuan"}. Kode SKU akan disesuaikan dengan kategori tujuan.`,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#A83D00",
@@ -552,7 +552,7 @@ export default function ProductsPage() {
     setMoving(true);
     setError("");
     try {
-      const res = await api<{ updated: number }>("/api/produk/move", {
+      const res = await api<{ updated: number; skuUpdated: number }>("/api/produk/move", {
         method: "POST",
         body: JSON.stringify({
           ids: Array.from(selectedIds),
@@ -564,10 +564,14 @@ export default function ProductsPage() {
       setSelectedIds(new Set());
       setMoveKategori("");
       setMoveSubkategori("");
-      setMessage(`${res.updated} produk berhasil dipindahkan.`);
+      setMessage(
+        `${res.updated} produk berhasil dipindahkan` +
+          (res.skuUpdated ? `, ${res.skuUpdated} kode SKU disesuaikan.` : ".")
+      );
       await Swal.fire({
         title: "Berhasil",
-        text: `${res.updated} produk dipindahkan.`,
+        text: `${res.updated} produk dipindahkan` +
+          (res.skuUpdated ? `, ${res.skuUpdated} kode SKU disesuaikan.` : "."),
         icon: "success",
         confirmButtonColor: "#A83D00",
       });
