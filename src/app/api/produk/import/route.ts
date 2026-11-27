@@ -563,6 +563,7 @@ export async function POST(request: Request) {
     let hargaBerubah = 0;
     let deskripsiBerubah = 0;
     let deskripsiTerbaca = 0;
+    let deskripsiKosong = 0;
     let dilewati = 0;
     let totalBaris = 0;
     const processedImportRows = new Set<string>();
@@ -873,20 +874,6 @@ export async function POST(request: Request) {
         const matchingByName = existingByProduct.get(productKey) ?? [];
 
         if (
-          matchingBySku &&
-          matchingByName.length === 1 &&
-          matchingByName[0].id !== matchingBySku.id
-        ) {
-          gagal.push({
-            sheet: actualSheetName,
-            baris: barisExcel,
-            nama: namaProduk,
-            pesan: "Kode SKU dan nama produk mengarah ke produk yang berbeda.",
-          });
-          continue;
-        }
-
-        if (
           matchingBySku?.kategori_id != null &&
           matchingBySku.kategori_id !== category.id
         ) {
@@ -973,7 +960,11 @@ export async function POST(request: Request) {
             berhasil++;
             if (changes.priceChanged) hargaBerubah++;
             if (changes.descriptionChanged) deskripsiBerubah++;
-            if (deskripsiExcel) deskripsiTerbaca++;
+            if (deskripsiExcel) {
+              deskripsiTerbaca++;
+            } else {
+              deskripsiKosong++;
+            }
           } catch (error) {
             gagal.push({
               sheet: actualSheetName,
@@ -1076,7 +1067,11 @@ export async function POST(request: Request) {
           processedImportRows.add(importRowKey);
           berhasil++;
           produkBaru++;
-          if (deskripsiExcel) deskripsiTerbaca++;
+          if (deskripsiExcel) {
+            deskripsiTerbaca++;
+          } else {
+            deskripsiKosong++;
+          }
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -1109,6 +1104,7 @@ export async function POST(request: Request) {
       hargaBerubah,
       deskripsiBerubah,
       deskripsiTerbaca,
+      deskripsiKosong,
       dilewati,
       gagal: gagal.length,
       detailGagal: gagal.slice(0, 100),

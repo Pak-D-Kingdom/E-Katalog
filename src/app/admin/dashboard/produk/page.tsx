@@ -148,7 +148,7 @@ export default function ProductsPage() {
             produkAktif: number;
             totalFoto: number;
           };
-        }>(`/api/produk?${params}`, { signal });
+        }>(`/api/produk?${params}`, { signal, cache: "no-store" });
 
         setProducts(result.produk);
         setFilteredProductCount(result.pagination.total);
