@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasPriceChanged } from "@/lib/pricing";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -430,21 +431,35 @@ export async function POST(request: Request) {
     // Memeriksa produk, SKU, dan slug yang sudah ada.
     const existingProducts = await prisma.produk.findMany({
       select: {
+        id: true,
         kategori_id: true,
         nama_produk: true,
         kode_produk: true,
         slug: true,
+        jenis_harga: true,
+        harga: true,
+        harga_min: true,
+        harga_max: true,
       },
     });
 
-    const usedProducts = new Set(
-      existingProducts
-        .filter((item) => item.kategori_id !== null)
-        .map(
-          (item) =>
-            `${item.kategori_id}:${normalizeText(item.nama_produk)}`
-        )
+    const existingBySku = new Map(
+      existingProducts.map((item) => [
+        item.kode_produk.toLowerCase(),
+        item,
+      ])
     );
+    const existingByProduct = new Map<string, typeof existingProducts>();
+
+    for (const product of existingProducts) {
+      if (product.kategori_id === null) continue;
+
+      const key =
+        `${product.kategori_id}:${normalizeText(product.nama_produk)}`;
+      const matches = existingByProduct.get(key) ?? [];
+      matches.push(product);
+      existingByProduct.set(key, matches);
+    }
 
     const usedSkus = new Set(
       existingProducts.map((item) =>
@@ -522,8 +537,11 @@ export async function POST(request: Request) {
     }
 
     let berhasil = 0;
+    let produkBaru = 0;
+    let hargaBerubah = 0;
     let dilewati = 0;
     let totalBaris = 0;
+    const processedImportRows = new Set<string>();
 
     const gagal: {
       sheet: string;
@@ -819,12 +837,121 @@ export async function POST(request: Request) {
           harga_max = hargaMax;
         }
 
-        // Hindari produk ganda berdasarkan kategori dan nama.
+        // SKU menjadi identitas utama; nama dan kategori dipakai sebagai fallback.
         const productKey =
           `${category.id}:${normalizeText(namaProduk)}`;
+        const importRowKey = skuExcel
+          ? `sku:${skuExcel.toLowerCase()}`
+          : `product:${productKey}`;
 
-        if (usedProducts.has(productKey)) {
+        if (processedImportRows.has(importRowKey)) {
           dilewati++;
+          continue;
+        }
+
+        const matchingBySku = skuExcel
+          ? existingBySku.get(skuExcel.toLowerCase())
+          : undefined;
+        const matchingByName = existingByProduct.get(productKey) ?? [];
+
+        if (
+          matchingBySku &&
+          matchingByName.length === 1 &&
+          matchingByName[0].id !== matchingBySku.id
+        ) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Kode SKU dan nama produk mengarah ke produk yang berbeda.",
+          });
+          continue;
+        }
+
+        if (
+          matchingBySku?.kategori_id != null &&
+          matchingBySku.kategori_id !== category.id
+        ) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: `Kode SKU "${skuExcel}" terdaftar pada kategori lain.`,
+          });
+          continue;
+        }
+
+        if (!matchingBySku && matchingByName.length > 1) {
+          gagal.push({
+            sheet: actualSheetName,
+            baris: barisExcel,
+            nama: namaProduk,
+            pesan: "Nama produk tidak unik. Isi Kode SKU untuk menentukan produk.",
+          });
+          continue;
+        }
+
+        const existingProduct = matchingBySku ?? matchingByName[0];
+
+        if (existingProduct) {
+          try {
+            const changed = await prisma.$transaction(async (transaction) => {
+              const current = await transaction.produk.findUnique({
+                where: { id: existingProduct.id },
+              });
+
+              if (!current) {
+                throw new Error("Produk tidak ditemukan saat import.");
+              }
+
+              const nextPrice = {
+                jenis_harga: jenisHarga,
+                harga,
+                harga_min,
+                harga_max,
+              };
+
+              if (!hasPriceChanged(current, nextPrice)) return false;
+
+              const updated = await transaction.produk.update({
+                where: { id: current.id },
+                data: nextPrice,
+              });
+
+              await transaction.riwayat_perubahan_harga.create({
+                data: {
+                  produk_id: current.id,
+                  kode_produk: current.kode_produk,
+                  nama_produk: current.nama_produk,
+                  jenis_harga_lama: current.jenis_harga,
+                  harga_lama: current.harga,
+                  harga_min_lama: current.harga_min,
+                  harga_max_lama: current.harga_max,
+                  jenis_harga_baru: updated.jenis_harga,
+                  harga_baru: updated.harga,
+                  harga_min_baru: updated.harga_min,
+                  harga_max_baru: updated.harga_max,
+                },
+              });
+
+              return true;
+            });
+
+            processedImportRows.add(importRowKey);
+            berhasil++;
+            if (changed) hargaBerubah++;
+          } catch (error) {
+            gagal.push({
+              sheet: actualSheetName,
+              baris: barisExcel,
+              nama: namaProduk,
+              pesan:
+                error instanceof Error
+                  ? error.message
+                  : "Gagal memperbarui harga produk.",
+            });
+          }
+
           continue;
         }
 
@@ -871,7 +998,7 @@ export async function POST(request: Request) {
           );
 
           // Simpan produk ke database.
-          await prisma.produk.create({
+          const created = await prisma.produk.create({
             data: {
               kategori_id: category.id,
               subkategori_id: subkategoriId,
@@ -895,10 +1022,26 @@ export async function POST(request: Request) {
               // Produk hasil import otomatis aktif.
               tersedia: true,
             },
+            select: {
+              id: true,
+              kategori_id: true,
+              nama_produk: true,
+              kode_produk: true,
+              slug: true,
+              jenis_harga: true,
+              harga: true,
+              harga_min: true,
+              harga_max: true,
+            },
           });
 
-          usedProducts.add(productKey);
+          const matches = existingByProduct.get(productKey) ?? [];
+          matches.push(created);
+          existingByProduct.set(productKey, matches);
+          existingBySku.set(created.kode_produk.toLowerCase(), created);
+          processedImportRows.add(importRowKey);
           berhasil++;
+          produkBaru++;
         } catch (error) {
           const code =
             typeof error === "object" &&
@@ -924,8 +1067,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: "Import katalog selesai.",
+      jenis: "produk",
       total: totalBaris,
       berhasil,
+      produkBaru,
+      hargaBerubah,
       dilewati,
       gagal: gagal.length,
       detailGagal: gagal.slice(0, 100),

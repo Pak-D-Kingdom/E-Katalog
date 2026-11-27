@@ -49,7 +49,10 @@ Atur isi `.env` sesuai koneksi MySQL. Contoh untuk MySQL lokal tanpa kata sandi:
 ```env
 DATABASE_URL="mysql://root@localhost:3306/e_katalog_mbg"
 AUTH_SECRET="isi-dengan-secret-acak-minimal-32-karakter"
+SERPAPI_API_KEY="isi-dengan-api-key-serpapi"
 ```
+
+`SERPAPI_API_KEY` diperlukan untuk menggunakan fitur Image Finder. Tanpanya, pencarian gambar dan informasi kuota tidak tersedia.
 
 Jika MySQL menggunakan kata sandi:
 
@@ -74,13 +77,24 @@ npm run db:push
 npm run db:seed
 ```
 
+Jalankan `npm run db:push` lagi setelah memperbarui kode yang menambahkan perubahan skema. Ini membuat tabel Image Finder yang dibutuhkan aplikasi.
+
 ### 4. Jalankan aplikasi
+
+Untuk pengembangan:
 
 ```powershell
 npm run dev
 ```
 
 Buka [http://localhost:3000](http://localhost:3000).
+
+Untuk produksi, buat build lalu jalankan server standalone:
+
+```powershell
+npm run build
+npm run start
+```
 
 ## Akun admin awal
 
@@ -121,7 +135,7 @@ Operasi admin pada API memerlukan sesi login. Endpoint pesanan menghitung ulang 
 |---|---|
 | `npm run dev` | Menjalankan server pengembangan |
 | `npm run build` | Membuat build produksi |
-| `npm run start` | Menjalankan build produksi |
+| `npm run start` | Menjalankan server standalone dari build produksi |
 | `npm run lint` | Menjalankan ESLint |
 | `npm run db:generate` | Membuat Prisma Client |
 | `npm run db:push` | Menyelaraskan skema ke database |

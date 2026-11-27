@@ -30,7 +30,7 @@ RUN addgroup --system --gid 1001 nodejs && \
     mkdir -p public/uploads .next && \
     chown -R nextjs:nodejs public/uploads .next
 
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma

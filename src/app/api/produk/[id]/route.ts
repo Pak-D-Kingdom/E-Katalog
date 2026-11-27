@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasPriceChanged } from "@/lib/pricing";
 import { produkSchema, zodErrorMessage } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -93,19 +94,56 @@ export async function PUT(
       }
     }
 
-    const produk = await prisma.produk.update({
-      where: { id },
-      data: {
-        ...data,
-        kategori_id,
-        subkategori_id: subkategori_id ?? null,
-        foto_url: data.foto_url ?? null,
-      },
-      include: {
-        kategori: true,
-        subkategori: true,
-      },
+    const produk = await prisma.$transaction(async (transaction) => {
+      const existing = await transaction.produk.findUnique({
+        where: { id },
+      });
+
+      if (!existing) return null;
+
+      const priceChanged = hasPriceChanged(existing, data);
+
+      const updated = await transaction.produk.update({
+        where: { id },
+        data: {
+          ...data,
+          kategori_id,
+          subkategori_id: subkategori_id ?? null,
+          foto_url: data.foto_url ?? null,
+        },
+        include: {
+          kategori: true,
+          subkategori: true,
+        },
+      });
+
+      if (priceChanged) {
+        await transaction.riwayat_perubahan_harga.create({
+          data: {
+            produk_id: id,
+            kode_produk: updated.kode_produk,
+            nama_produk: updated.nama_produk,
+            jenis_harga_lama: existing.jenis_harga,
+            harga_lama: existing.harga,
+            harga_min_lama: existing.harga_min,
+            harga_max_lama: existing.harga_max,
+            jenis_harga_baru: updated.jenis_harga,
+            harga_baru: updated.harga,
+            harga_min_baru: updated.harga_min,
+            harga_max_baru: updated.harga_max,
+          },
+        });
+      }
+
+      return updated;
     });
+
+    if (!produk) {
+      return NextResponse.json(
+        { error: "Produk tidak ditemukan." },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ produk });
   } catch (error) {

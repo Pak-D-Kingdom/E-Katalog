@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 import {
   Activity,
@@ -12,6 +13,7 @@ import {
   Star,
   ArrowUpRight,
   FileSpreadsheet,
+  History,
   X,
 } from "lucide-react";
 
@@ -173,6 +175,8 @@ function ImportExcel() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     berhasil: number;
+    produkBaru?: number;
+    hargaBerubah?: number;
     dilewati?: number;
     gagal: number;
     jenis?: "rekap_subkategori" | "produk";
@@ -238,29 +242,39 @@ function ImportExcel() {
             Import Data Produk / Rekap
           </h2>
           <p className="mt-1 text-xs text-[#64748B]">
-            Impor produk atau rekap kategori, subkategori, dan jumlah barang.
+            Impor produk atau rekap; produk yang cocok lewat SKU atau nama dan kategori akan memperbarui harga serta mencatat riwayat.
           </p>
         </div>
       </div>
 
       <div className="flex flex-col gap-2 sm:items-end">
-        <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#A83D00] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100]">
-          <FileSpreadsheet size={17} />
-          Pilih File Excel
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Link
+            href="/admin/dashboard/riwayat-harga"
+            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#DCE4F0] bg-white px-4 text-sm font-bold text-[#172B4D] transition hover:bg-[#F8FAFD]"
+          >
+            <History size={17} />
+            Riwayat Perubahan Harga
+          </Link>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            disabled={loading}
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setResult(null);
-              setError("");
-            }}
-          />
-        </label>
+          <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#A83D00] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#873100]">
+            <FileSpreadsheet size={17} />
+            Pilih File Excel
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              disabled={loading}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setResult(null);
+                setError("");
+              }}
+            />
+          </label>
+        </div>
 
         {file && (
           <>
@@ -314,6 +328,16 @@ function ImportExcel() {
             <p className="mt-1 text-[#172B4D]">
               Berhasil: {result.berhasil} {result.jenis === "rekap_subkategori" ? "rekap" : "produk"}
             </p>
+            {result.jenis === "produk" && (
+              <>
+                <p className="text-[#172B4D]">
+                  Produk baru: {result.produkBaru ?? 0}
+                </p>
+                <p className="text-[#172B4D]">
+                  Harga berubah: {result.hargaBerubah ?? 0}
+                </p>
+              </>
+            )}
             {result.dilewati ? (
               <p className="text-[#64748B]">Diabaikan: {result.dilewati} baris total</p>
             ) : null}

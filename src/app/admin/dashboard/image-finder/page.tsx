@@ -163,7 +163,7 @@ export default function ImageFinderPage() {
   const [savingKey, setSavingKey] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
-    total: number; updated: number; skipped: number; notFound: number;
+    total: number; updated: number; skipped: number; notFound: number; matchedByLegacySku: number;
   } | null>(null);
 
   const cancelRef = useRef(false);
@@ -457,7 +457,7 @@ export default function ImageFinderPage() {
     }
     const confirm = await Swal.fire({
       title: `Import ${items.length} foto URL?`,
-      text: "Produk akan diperbarui berdasarkan kode_produk.",
+      text: "Produk dicocokkan berdasarkan kode_produk. SKU lama dicocokkan berdasarkan nama dan urutan produk.",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Import",
@@ -469,7 +469,7 @@ export default function ImageFinderPage() {
     setImportResult(null);
     try {
       const res = await api<{
-        total: number; updated: number; skipped: number; notFound: number;
+        total: number; updated: number; skipped: number; notFound: number; matchedByLegacySku: number;
       }>("/api/image-finder/import-foto-url", {
         method: "POST",
         body: JSON.stringify({ items }),
@@ -478,7 +478,7 @@ export default function ImageFinderPage() {
       await loadSummary();
       Swal.fire(
         "Selesai",
-        `Total ${res.total}: diperbarui ${res.updated}, dilewati ${res.skipped}, tidak ditemukan ${res.notFound}.`,
+        `Total ${res.total}: diperbarui ${res.updated}, cocok via SKU lama ${res.matchedByLegacySku}, dilewati ${res.skipped}, tidak ditemukan ${res.notFound}.`,
         "success"
       );
     } catch (e) {
@@ -902,7 +902,7 @@ export default function ImageFinderPage() {
       <section className="rounded-xl border border-[#E5EAF3] bg-white p-5">
         <h2 className="text-sm font-bold text-[#172B4D]">Import Foto URL (SQL/JSON/CSV)</h2>
         <p className="mt-2 text-xs text-[#64748B]">
-          Tempel isi file atau upload. Format: SQL UPDATE, JSON array, atau CSV (header kode_produk,foto_url).
+          Tempel isi file atau upload. Format: SQL UPDATE, JSON array, atau CSV (header kode_produk,foto_url). SKU lama berformat PREFIX-NAMA(-NAMA)-NNN dicocokkan lewat nama dan urutan produk.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#172B4D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0f1f38]">
@@ -945,7 +945,7 @@ export default function ImageFinderPage() {
         </div>
         {importResult && (
           <p className="mt-3 text-xs text-[#172B4D]">
-            Total {importResult.total}: diperbarui {importResult.updated}, dilewati {importResult.skipped}, tidak ditemukan {importResult.notFound}.
+            Total {importResult.total}: diperbarui {importResult.updated}, cocok via SKU lama {importResult.matchedByLegacySku}, dilewati {importResult.skipped}, tidak ditemukan {importResult.notFound}.
           </p>
         )}
       </section>
