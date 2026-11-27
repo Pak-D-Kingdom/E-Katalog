@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   }
   const requested = Array.from(consolidated, ([produk_id, jumlah]) => ({ produk_id, jumlah }));
   const products = await prisma.produk.findMany({ where: { id: { in: requested.map((item) => item.produk_id) }, tersedia: true } });
-  if (products.length !== requested.length) return NextResponse.json({ error: "Ada produk yang sudah tidak tersedia. Muat ulang katalog." }, { status: 409 });
+  if (products.length !== requested.length) return NextResponse.json({ error: "Ada produk yang sudah tidak dapat dipesan. Muat ulang katalog." }, { status: 409 });
   const invalidRangeProducts = products.filter((product) => {
     if (product.jenis_harga !== "rentang") return false;
     const min = Number(product.harga_min);
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     ? `${rupiah(totalMin)} – ${rupiah(totalMax)} (estimasi)`
     : rupiah(totalMin);
   const settings = await prisma.pengaturan_katalog.findFirst({ orderBy: { id: "asc" } });
-  if (!settings) return NextResponse.json({ error: "Pengaturan katalog belum tersedia." }, { status: 503 });
+  if (!settings) return NextResponse.json({ error: "Pengaturan katalog belum siap." }, { status: 503 });
 
   const now = new Date();
   const tanggal = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
